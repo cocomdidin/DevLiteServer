@@ -1,0 +1,252 @@
+using System.Diagnostics;
+using LiteServer.Core;
+using LiteServer.Services;
+using LiteServer.UI;
+
+namespace LiteServer;
+
+public partial class MainForm : Form
+{
+    private readonly string _appRoot;
+    private readonly JobObject _job;
+    private readonly AppConfig _config;
+
+    private readonly NginxService _nginx;
+    private readonly PhpService _php;
+    private readonly MySqlService _mysql;
+    private readonly MailpitService _mailpit;
+    private readonly List<IService> _services = new();
+
+    private bool _isExitingExplicitly = false;
+
+    public MainForm()
+    {
+        InitializeComponent();
+
+        _appRoot = AppDomain.CurrentDomain.BaseDirectory;
+        if (_appRoot.Contains("build"))
+        {
+            _appRoot = Directory.GetParent(_appRoot)?.Parent?.Parent?.Parent?.FullName ?? _appRoot;
+        }
+
+        string iniPath = Path.Combine(_appRoot, "config.ini");
+        _config = ConfigManager.Load(iniPath);
+
+        _job = new JobObject();
+
+        _nginx = new NginxService(_appRoot, _job, _config);
+        _php = new PhpService(_appRoot, _job, _config);
+        _mysql = new MySqlService(_appRoot, _job, _config);
+        _mailpit = new MailpitService(_appRoot, _job, _config);
+
+        _services.AddRange([_nginx, _php, _mysql, _mailpit]);
+
+        BuildServiceCards();
+        BuildTrayMenu();
+
+        // Check for Visual C++ runtime
+        if (!DependencyChecker.IsVcRedistInstalled())
+        {
+            lblStatusText.Text = "⚠ Warning: Visual C++ Redistributable (x64) is missing. PHP might fail to start.";
+            lblStatusText.ForeColor = ModernColors.Warning;
+        }
+
+        notifyIcon.Icon = SystemIcons.Application;
+        Icon = SystemIcons.Application;
+
+        // Wire service status updates to toggle Adminer button
+        _nginx.StatusChanged += (_, _) => UpdateAdminerState();
+        _php.StatusChanged += (_, _) => UpdateAdminerState();
+        UpdateAdminerState();
+    }
+
+    private void UpdateAdminerState()
+    {
+        if (InvokeRequired)
+        {
+            Invoke(UpdateAdminerState);
+            return;
+        }
+        btnOpenAdminer.Enabled = _nginx.Status == ServiceStatus.Running && _php.Status == ServiceStatus.Running;
+    }
+
+    private void BuildServiceCards()
+    {
+        cardContainer.Controls.Clear();
+
+        // Get available PHP versions
+        var phpVersions = new List<string>();
+        string phpRoot = Path.Combine(_appRoot, "bin", "php");
+        if (Directory.Exists(phpRoot))
+        {
+            phpVersions.AddRange(Directory.GetDirectories(phpRoot).Select(Path.GetFileName).Where(s => !string.IsNullOrEmpty(s))!);
+        }
+        if (phpVersions.Count == 0)
+        {
+            phpVersions.Add(_config.ActivePhp);
+        }
+
+        // Add cards in reverse order because Dock = DockStyle.Top docks from bottom up in addition
+        var mailpitCard = new ServiceCard(_mailpit, "✉");
+        var mysqlCard = new ServiceCard(_mysql, "🐬");
+        var phpCard = new ServiceCard(
+            _php,
+            "🐘",
+            phpVersions.ToArray(),
+            _config.ActivePhp,
+            async newVersion =>
+            {
+                _config.ActivePhp = newVersion;
+                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                if (_php.Status == ServiceStatus.Running)
+                {
+                    lblStatusText.Text = $"Switching PHP to {newVersion}...";
+                    await _php.RestartAsync();
+                    lblStatusText.Text = $"Switched to PHP {newVersion}.";
+                }
+                BuildTrayMenu();
+            }
+        );
+        var nginxCard = new ServiceCard(_nginx, "⚡");
+
+        // Adding top to bottom
+        cardContainer.Controls.Add(mailpitCard);
+        cardContainer.Controls.Add(mysqlCard);
+        cardContainer.Controls.Add(phpCard);
+        cardContainer.Controls.Add(nginxCard);
+    }
+
+    private void BuildTrayMenu()
+    {
+        trayMenu.Items.Clear();
+
+        trayMenu.Items.Add("Open Local Lite Server", null, (s, e) => RestoreFromTray());
+        trayMenu.Items.Add(new ToolStripSeparator());
+
+        trayMenu.Items.Add("Start All Services", null, async (s, e) => await StartAllServicesAsync());
+        trayMenu.Items.Add("Stop All Services", null, async (s, e) => await StopAllServicesAsync());
+        trayMenu.Items.Add(new ToolStripSeparator());
+
+        // PHP Switcher submenu
+        var phpSubMenu = new ToolStripMenuItem("PHP Version");
+        string phpRoot = Path.Combine(_appRoot, "bin", "php");
+        if (Directory.Exists(phpRoot))
+        {
+            foreach (var dir in Directory.GetDirectories(phpRoot))
+            {
+                string dirName = Path.GetFileName(dir);
+                var item = new ToolStripMenuItem(dirName, null, async (s, e) =>
+                {
+                    _config.ActivePhp = dirName;
+                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                    if (_php.Status == ServiceStatus.Running)
+                    {
+                        await _php.RestartAsync();
+                    }
+                    BuildServiceCards();
+                    BuildTrayMenu();
+                })
+                {
+                    Checked = dirName.Equals(_config.ActivePhp, StringComparison.OrdinalIgnoreCase)
+                };
+                phpSubMenu.DropDownItems.Add(item);
+            }
+        }
+        trayMenu.Items.Add(phpSubMenu);
+
+        trayMenu.Items.Add("Open /www", null, (s, e) => BtnOpenWww_Click(s, e));
+        trayMenu.Items.Add("Open Terminal", null, (s, e) => BtnOpenTerminal_Click(s, e));
+        trayMenu.Items.Add(new ToolStripSeparator());
+
+        trayMenu.Items.Add("Exit", null, async (s, e) =>
+        {
+            _isExitingExplicitly = true;
+            await StopAllServicesAsync();
+            _job.Dispose();
+            notifyIcon.Visible = false;
+            Application.Exit();
+        });
+
+        notifyIcon.ContextMenuStrip = trayMenu;
+    }
+
+    private async Task StartAllServicesAsync()
+    {
+        btnStartAll.Enabled = false;
+        lblStatusText.Text = "Starting all services...";
+        lblStatusText.ForeColor = ModernColors.TextSecondary;
+
+        foreach (var svc in _services)
+        {
+            if (svc.Status != ServiceStatus.Running)
+            {
+                await svc.StartAsync();
+            }
+        }
+
+        btnStartAll.Enabled = true;
+        lblStatusText.Text = "All services processed.";
+    }
+
+    private async Task StopAllServicesAsync()
+    {
+        btnStopAll.Enabled = false;
+        lblStatusText.Text = "Stopping all services...";
+        lblStatusText.ForeColor = ModernColors.TextSecondary;
+
+        foreach (var svc in _services)
+        {
+            if (svc.Status == ServiceStatus.Running)
+            {
+                await svc.StopAsync();
+            }
+        }
+
+        btnStopAll.Enabled = true;
+        lblStatusText.Text = "All services stopped.";
+    }
+
+    private async void BtnStartAll_Click(object? sender, EventArgs e) => await StartAllServicesAsync();
+    private async void BtnStopAll_Click(object? sender, EventArgs e) => await StopAllServicesAsync();
+
+    private void BtnOpenWww_Click(object? sender, EventArgs e)
+    {
+        string wwwDir = Path.Combine(_appRoot, "www");
+        if (!Directory.Exists(wwwDir)) Directory.CreateDirectory(wwwDir);
+        Process.Start(new ProcessStartInfo("explorer.exe", wwwDir) { UseShellExecute = true });
+    }
+
+    private void BtnOpenTerminal_Click(object? sender, EventArgs e)
+    {
+        TerminalLauncher.OpenTerminal(_appRoot, _config);
+    }
+
+    private void BtnOpenMailpit_Click(object? sender, EventArgs e)
+    {
+        Process.Start(new ProcessStartInfo($"http://localhost:{_config.MailpitWebPort}") { UseShellExecute = true });
+    }
+
+    private void BtnOpenAdminer_Click(object? sender, EventArgs e)
+    {
+        Process.Start(new ProcessStartInfo($"http://localhost:{_config.HttpPort}/adminer") { UseShellExecute = true });
+    }
+
+    private void NotifyIcon_DoubleClick(object? sender, EventArgs e) => RestoreFromTray();
+
+    private void RestoreFromTray()
+    {
+        Show();
+        WindowState = FormWindowState.Normal;
+        BringToFront();
+    }
+
+    private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)
+    {
+        if (!_isExitingExplicitly && _config.MinimizeToTray)
+        {
+            e.Cancel = true;
+            Hide();
+            notifyIcon.ShowBalloonTip(1500, "Local Lite Server", "Local Lite Server is running in system tray.", ToolTipIcon.Info);
+        }
+    }
+}

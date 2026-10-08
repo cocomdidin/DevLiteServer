@@ -1,0 +1,33 @@
+# Build results
+build/
+[Oo]bj/
+[Bb]in/Debug/
+[Bb]in/Release/
+publish/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Windows thumbnail & desktop caches
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs & Binlogs
+*.log
+*.binlog
+
+# Runtime databases data dirs (ignore user DB data, keep folder structure)
+bin/mysql/data/*
+bin/postgresql/data/*
+!bin/mysql/data/.gitkeep
+!bin/postgresql/data/.gitkeep
+
+# User web root projects
+www/*
+!www/.gitkeep
