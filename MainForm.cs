@@ -482,12 +482,49 @@ public partial class MainForm : Form
         };
         btnRefresh.Click += (s, e) => RefreshSitesList();
 
+        var btnSyncHosts = new ModernButton
+        {
+            Text = "Sync Hosts",
+            IconKind = IconKind.Lightning,
+            IconSize = 10,
+            Width = 105,
+            Height = 32,
+            BorderRadius = 6,
+            ShowBorder = false,
+            NormalColor = ModernColors.Primary,
+            HoverColor = ModernColors.PrimaryHover,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(256, 4)
+        };
+        btnSyncHosts.Click += async (s, e) =>
+        {
+            btnSyncHosts.Enabled = false;
+            lblStatusText.Text = "Syncing *.test virtual domains to Windows hosts file...";
+            lblStatusText.ForeColor = ModernColors.Primary;
+            bool ok = await VirtualHostManager.SyncHostsFileBatchAsync(_appRoot);
+            if (ok)
+            {
+                lblStatusText.Text = "Windows hosts file synced with all *.test domains.";
+                lblStatusText.ForeColor = ModernColors.Success;
+                if (_nginx.Status == ServiceStatus.Running)
+                {
+                    await _nginx.RestartAsync();
+                }
+            }
+            else
+            {
+                lblStatusText.Text = "Failed or canceled hosts sync.";
+                lblStatusText.ForeColor = ModernColors.Warning;
+            }
+            btnSyncHosts.Enabled = true;
+        };
+
         var btnOpenConf = new ModernButton
         {
             Text = "nginx.conf",
             IconKind = IconKind.Folder,
             IconSize = 10,
-            Width = 100,
+            Width = 95,
             Height = 32,
             BorderRadius = 6,
             ShowBorder = true,
@@ -495,7 +532,7 @@ public partial class MainForm : Form
             HoverColor = ModernColors.SurfaceHover,
             ForeColor = ModernColors.TextSecondary,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(256, 4)
+            Location = new Point(366, 4)
         };
         btnOpenConf.Click += (s, e) =>
         {
@@ -531,6 +568,7 @@ public partial class MainForm : Form
 
         pnlTop.Controls.Add(btnOpenFolder);
         pnlTop.Controls.Add(btnRefresh);
+        pnlTop.Controls.Add(btnSyncHosts);
         pnlTop.Controls.Add(btnOpenConf);
         pnlTop.Controls.Add(lblHttp);
         pnlTop.Controls.Add(txtHttp);
@@ -572,23 +610,21 @@ public partial class MainForm : Form
         int cardWidth = _pnlSitesContainer.ClientSize.Width > 400 ? _pnlSitesContainer.ClientSize.Width - 10 : 620;
 
         // 1. Root Localhost Site
-        var rootCard = CreateSiteCard("localhost", $"http://localhost:{_config.HttpPort}", wwwDir, cardWidth);
+        var rootCard = CreateSiteCard("localhost", $"http://localhost:{_config.HttpPort}", wwwDir, cardWidth, "Default Root");
         _pnlSitesContainer.Controls.Add(rootCard);
 
-        // 2. Subproject directories in /www
-        var subDirs = Directory.GetDirectories(wwwDir);
-        foreach (var dir in subDirs)
+        // 2. Subproject directories in /www with automatic *.test vhost support
+        var vhosts = VirtualHostManager.DetectVirtualHosts(_appRoot);
+        foreach (var vhost in vhosts)
         {
-            string dirName = Path.GetFileName(dir);
-            if (string.IsNullOrEmpty(dirName) || dirName.StartsWith(".")) continue;
-
-            string url = $"http://localhost:{_config.HttpPort}/{dirName}";
-            var siteCard = CreateSiteCard(dirName, url, dir, cardWidth);
+            string url = $"http://{vhost.Domain}:{_config.HttpPort}";
+            string note = vhost.HasPublicSubfolder ? "Virtual Host (public/)" : "Virtual Host";
+            var siteCard = CreateSiteCard(vhost.Domain, url, vhost.PhysicalPath, cardWidth, note);
             _pnlSitesContainer.Controls.Add(siteCard);
         }
     }
 
-    private Panel CreateSiteCard(string name, string url, string folderPath, int width)
+    private Panel CreateSiteCard(string name, string url, string folderPath, int width, string? badgeText = null)
     {
         var card = new Panel
         {
@@ -635,7 +671,7 @@ public partial class MainForm : Form
 
         var lblUrl = new Label
         {
-            Text = $"{url}  •  {folderPath}",
+            Text = !string.IsNullOrEmpty(badgeText) ? $"{url}  •  {badgeText}  •  {folderPath}" : $"{url}  •  {folderPath}",
             ForeColor = ModernColors.TextMuted,
             Font = new Font("Segoe UI", 8f),
             Location = new Point(57, 31),
@@ -2327,6 +2363,13 @@ public partial class MainForm : Form
         btnStartAll.Enabled = false;
         lblStatusText.Text = "Starting all enabled services...";
         lblStatusText.ForeColor = ModernColors.Warning;
+
+        // Auto-sync hosts file for any newly added *.test projects if needed
+        if (VirtualHostManager.NeedsHostsSync(_appRoot))
+        {
+            lblStatusText.Text = "Syncing *.test virtual hosts to hosts file...";
+            await VirtualHostManager.SyncHostsFileBatchAsync(_appRoot);
+        }
 
         // Auto-start PHP FastCGI first if enabled and installed
         if (_config.EnablePhp && _php.IsInstalled && _php.Status != ServiceStatus.Running)

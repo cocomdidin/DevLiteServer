@@ -48,4 +48,7 @@ http {
             root   html;
         }
     }
+
+    # Dynamic virtual hosts (*.test)
+    include vhosts.conf;
 }

@@ -134,8 +134,11 @@ public class NginxService : BaseService
 
     private void GenerateConfig()
     {
+        string confDir = Path.Combine(GetNginxDirectory(), "conf");
+        if (!Directory.Exists(confDir)) Directory.CreateDirectory(confDir);
+
         string templatePath = Path.Combine(AppRoot, "templates", "nginx.conf.tpl");
-        string outputPath = Path.Combine(GetNginxDirectory(), "conf", "nginx.conf");
+        string outputPath = Path.Combine(confDir, "nginx.conf");
 
         if (File.Exists(templatePath))
         {
@@ -147,6 +150,9 @@ public class NginxService : BaseService
             );
             TemplateEngine.ProcessTemplate(templatePath, outputPath, vars);
         }
+
+        // Generate dynamic vhosts.conf for *.test domains
+        VirtualHostManager.GenerateVhostsConfig(AppRoot, _config, confDir);
     }
 
     public override async Task<bool> StopAsync()

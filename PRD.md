@@ -166,7 +166,9 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
   - Lifecycle state `NotInstalled` dengan status badge neutral gray dan dynamic 1-klik "Install" button.
   - Auto-unzip, directory placement, single-wrapper folder flattening, dan auto-configure `php.ini`.
   - Isolated Terminal launcher dengan injected dynamic `PATH` untuk PHP, Node, Git, Composer, MySQL, PostgreSQL, Redis.
-- **Milestone 4 (Virtual Host & Polish)**:
-  - Auto Virtual Host generator (`*.test`) untuk Nginx.
-  - System Tray menu lengkap & dark mode UI polish.
-  - Publish single-file release script.
+- **Milestone 4 (Virtual Host & Polish) [SELESAI]**:
+  - Auto Virtual Host generator (`*.test`) untuk Nginx dengan deteksi public folder (`/public`, `/htdocs`).
+  - Batch synchronization file `hosts` Windows dengan single prompt UAC.
+  - UI integrasi pada tab Sites & Local Domains dengan tombol 1-klik Sync Hosts.
+  - System Tray menu lengkap, dark mode UI polish, dan single instance enforcement.
+  - Publish single-file release script (`scripts/publish-release.ps1`) menghasilkan standalone executable 49.3 MB.
