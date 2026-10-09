@@ -10,6 +10,11 @@ public class MailpitService : BaseService
     public override string Name => "Mailpit";
     public override int Port => _config.MailpitWebPort;
 
+    public override void UpdatePort(int newPort)
+    {
+        _config.MailpitWebPort = newPort;
+    }
+
     public MailpitService(string appRoot, JobObject job, AppConfig config)
         : base(appRoot, job)
     {
@@ -29,17 +34,13 @@ public class MailpitService : BaseService
             return false;
         }
 
-        if (PortChecker.IsPortOccupied(_config.MailpitWebPort))
+        if (!await CheckAndResolvePortAsync(_config.MailpitWebPort, p => _config.MailpitWebPort = p))
         {
-            LastError = $"Port {_config.MailpitWebPort} (Web UI) is occupied by another process.";
-            Status = ServiceStatus.Error;
             return false;
         }
 
-        if (PortChecker.IsPortOccupied(_config.MailpitSmtpPort))
+        if (!await CheckAndResolvePortAsync(_config.MailpitSmtpPort, p => _config.MailpitSmtpPort = p))
         {
-            LastError = $"Port {_config.MailpitSmtpPort} (SMTP) is occupied by another process.";
-            Status = ServiceStatus.Error;
             return false;
         }
 

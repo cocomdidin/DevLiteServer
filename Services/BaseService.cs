@@ -12,6 +12,7 @@ public abstract class BaseService : IService
     public abstract string Name { get; }
     public abstract int Port { get; }
     public string? LastError { get; protected set; }
+    public Func<string, int, int, Task<int?>>? PortConflictResolver { get; set; }
 
     private ServiceStatus _status = ServiceStatus.Stopped;
     public ServiceStatus Status
@@ -37,6 +38,35 @@ public abstract class BaseService : IService
 
     public abstract Task<bool> StartAsync();
     public abstract Task<bool> StopAsync();
+
+    public virtual void UpdatePort(int newPort)
+    {
+    }
+
+    protected async Task<bool> CheckAndResolvePortAsync(int currentPort, Action<int> applyPort)
+    {
+        if (!PortChecker.IsPortOccupied(currentPort))
+        {
+            return true;
+        }
+
+        if (PortConflictResolver != null)
+        {
+            int suggestedBase = currentPort == 80 ? 8080 : currentPort + 1;
+            int suggested = PortChecker.GetAvailablePort(suggestedBase);
+            int? resolved = await PortConflictResolver(Name, currentPort, suggested);
+            if (resolved.HasValue && resolved.Value > 0)
+            {
+                applyPort(resolved.Value);
+                UpdatePort(resolved.Value);
+                return true;
+            }
+        }
+
+        LastError = $"Port {currentPort} is occupied by another process.";
+        Status = ServiceStatus.Error;
+        return false;
+    }
 
     public virtual async Task<bool> RestartAsync()
     {

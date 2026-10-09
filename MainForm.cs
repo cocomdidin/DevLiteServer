@@ -52,6 +52,7 @@ public partial class MainForm : Form
 
         foreach (var svc in _services)
         {
+            svc.PortConflictResolver = PromptPortConflictResolverAsync;
             svc.StatusChanged += (s, status) =>
             {
                 if (InvokeRequired)
@@ -72,14 +73,30 @@ public partial class MainForm : Form
         // Check for Visual C++ runtime
         if (!DependencyChecker.IsVcRedistInstalled())
         {
-            lblStatusText.Text = "⚠ Warning: Visual C++ Redistributable (x64) is missing. PHP might fail to start.";
+            lblStatusText.Text = "⚠ Warning: Visual C++ Redistributable (x64) is missing. Click here to install.";
             lblStatusText.ForeColor = ModernColors.Warning;
+            lblStatusText.Cursor = Cursors.Hand;
         }
         else
         {
             lblStatusText.Text = $"Ready | Root: {_appRoot}";
             lblStatusText.ForeColor = ModernColors.TextSecondary;
+            lblStatusText.Cursor = Cursors.Default;
         }
+
+        lblStatusText.Click += (s, e) =>
+        {
+            if (!DependencyChecker.IsVcRedistInstalled())
+            {
+                using var dlg = new VcRedistDialog();
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                {
+                    lblStatusText.Text = $"Ready | Root: {_appRoot}";
+                    lblStatusText.ForeColor = ModernColors.TextSecondary;
+                    lblStatusText.Cursor = Cursors.Default;
+                }
+            }
+        };
 
         try
         {
@@ -104,6 +121,17 @@ public partial class MainForm : Form
 
         Shown += async (s, e) =>
         {
+            if (!DependencyChecker.IsVcRedistInstalled())
+            {
+                using var dlg = new VcRedistDialog();
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                {
+                    lblStatusText.Text = $"Ready | Root: {_appRoot}";
+                    lblStatusText.ForeColor = ModernColors.TextSecondary;
+                    lblStatusText.Cursor = Cursors.Default;
+                }
+            }
+
             if (_config.AutoStartServices)
             {
                 await AutoStartConfiguredServicesAsync();
@@ -159,7 +187,15 @@ public partial class MainForm : Form
             Invoke(UpdateAdminerState);
             return;
         }
-        btnOpenAdminer.Enabled = _nginx.Status == ServiceStatus.Running && _php.Status == ServiceStatus.Running;
+
+        bool hasDesktopGui = false;
+        string toolsDir = Path.Combine(_appRoot, "tools");
+        if (Directory.Exists(toolsDir))
+        {
+            hasDesktopGui = Directory.GetFiles(toolsDir, "*.exe", SearchOption.AllDirectories).Length > 0;
+        }
+
+        btnOpenAdminer.Enabled = hasDesktopGui || (_nginx.Status == ServiceStatus.Running && _php.Status == ServiceStatus.Running);
     }
 
     private void LayoutActionButtons()
@@ -597,7 +633,55 @@ public partial class MainForm : Form
 
     private void BtnOpenAdminer_Click(object? sender, EventArgs e)
     {
+        string toolsDir = Path.Combine(_appRoot, "tools");
+        if (Directory.Exists(toolsDir))
+        {
+            var exes = Directory.GetFiles(toolsDir, "*.exe", SearchOption.AllDirectories);
+            if (exes.Length > 0)
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo(exes[0]) { UseShellExecute = true });
+                    return;
+                }
+                catch { }
+            }
+        }
+
         Process.Start(new ProcessStartInfo($"http://localhost:{_config.HttpPort}/adminer") { UseShellExecute = true });
+    }
+
+    private async Task<int?> PromptPortConflictResolverAsync(string serviceName, int currentPort, int suggestedPort)
+    {
+        if (InvokeRequired)
+        {
+            return await (Task<int?>)Invoke(new Func<Task<int?>>(() => PromptPortConflictResolverAsync(serviceName, currentPort, suggestedPort)));
+        }
+
+        using var dlg = new PortConflictDialog(serviceName, currentPort, suggestedPort);
+        if (dlg.ShowDialog(this) == DialogResult.OK)
+        {
+            int newPort = dlg.SelectedPort;
+            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            RefreshAllServiceCards();
+            BuildTrayMenu();
+            lblStatusText.Text = $"Port for {serviceName} reallocated to {newPort}.";
+            lblStatusText.ForeColor = ModernColors.Success;
+            return newPort;
+        }
+
+        return null;
+    }
+
+    private void RefreshAllServiceCards()
+    {
+        foreach (Control c in cardContainer.Controls)
+        {
+            if (c is ServiceCard sc)
+            {
+                sc.RefreshInfo();
+            }
+        }
     }
 
     private async void BtnCheckUpdates_Click(object? sender, EventArgs e)

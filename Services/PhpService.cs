@@ -11,6 +11,11 @@ public class PhpService : BaseService
     public override string Name => "PHP (FastCGI)";
     public override int Port => _config.PhpFastCgiPort;
 
+    public override void UpdatePort(int newPort)
+    {
+        _config.PhpFastCgiPort = newPort;
+    }
+
     public PhpService(string appRoot, JobObject job, AppConfig config)
         : base(appRoot, job)
     {
@@ -49,10 +54,8 @@ public class PhpService : BaseService
             return false;
         }
 
-        if (PortChecker.IsPortOccupied(Port))
+        if (!await CheckAndResolvePortAsync(Port, p => _config.PhpFastCgiPort = p))
         {
-            LastError = $"Port {Port} is occupied by another process.";
-            Status = ServiceStatus.Error;
             return false;
         }
 
@@ -61,6 +64,7 @@ public class PhpService : BaseService
 
         try
         {
+            EnsureConfig();
             StartWorker();
             _ = Task.Run(() => SupervisorLoopAsync(_supervisorCts.Token));
 
@@ -81,6 +85,21 @@ public class PhpService : BaseService
             LastError = ex.Message;
             Status = ServiceStatus.Error;
             return false;
+        }
+    }
+
+    private void EnsureConfig()
+    {
+        string phpDir = GetPhpDirectory();
+        string phpIni = Path.Combine(phpDir, "php.ini");
+        string templatePath = Path.Combine(AppRoot, "templates", "php.ini.tpl");
+
+        // If php.ini does not exist, compile from template if available
+        if (!File.Exists(phpIni) && File.Exists(templatePath))
+        {
+            string extDir = Path.Combine(phpDir, "ext");
+            var variables = TemplateEngine.CreateVariables(AppRoot, _config, extDir);
+            TemplateEngine.ProcessTemplate(templatePath, phpIni, variables);
         }
     }
 

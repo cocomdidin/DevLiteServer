@@ -29,6 +29,37 @@ public static class TemplateEngine
     }
 
     /// <summary>
+    /// Builds standard path variables based on application root directory and AppConfig.
+    /// </summary>
+    public static Dictionary<string, string> CreateVariables(string appRoot, AppConfig config, string? phpExtDir = null)
+    {
+        string normalizedRoot = appRoot.TrimEnd('\\', '/');
+        string forwardSlashRoot = normalizedRoot.Replace('\\', '/');
+
+        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ROOT_DIR"] = normalizedRoot,
+            ["ROOT_DIR_FORWARD"] = forwardSlashRoot,
+            ["WWW_DIR"] = Path.Combine(normalizedRoot, "www"),
+            ["WWW_DIR_FORWARD"] = $"{forwardSlashRoot}/www",
+            ["HTTP_PORT"] = config.HttpPort.ToString(),
+            ["PHP_PORT"] = config.PhpFastCgiPort.ToString(),
+            ["MYSQL_PORT"] = config.MysqlPort.ToString(),
+            ["POSTGRESQL_PORT"] = config.PostgreSqlPort.ToString(),
+            ["REDIS_PORT"] = config.RedisPort.ToString(),
+            ["MAILPIT_SMTP_PORT"] = config.MailpitSmtpPort.ToString(),
+            ["MAILPIT_WEB_PORT"] = config.MailpitWebPort.ToString()
+        };
+
+        if (!string.IsNullOrEmpty(phpExtDir))
+        {
+            dict["PHP_EXT_DIR"] = phpExtDir.Replace('\\', '/');
+        }
+
+        return dict;
+    }
+
+    /// <summary>
     /// Builds standard path variables based on application root directory.
     /// </summary>
     public static Dictionary<string, string> CreateStandardVariables(string appRoot, int httpPort = 80, int phpPort = 9000, int mysqlPort = 3306)

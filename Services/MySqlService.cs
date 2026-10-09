@@ -10,6 +10,11 @@ public class MySqlService : BaseService
     public override string Name => "MySQL";
     public override int Port => _config.MysqlPort;
 
+    public override void UpdatePort(int newPort)
+    {
+        _config.MysqlPort = newPort;
+    }
+
     public MySqlService(string appRoot, JobObject job, AppConfig config)
         : base(appRoot, job)
     {
@@ -52,10 +57,8 @@ public class MySqlService : BaseService
             return false;
         }
 
-        if (PortChecker.IsPortOccupied(Port))
+        if (!await CheckAndResolvePortAsync(Port, p => _config.MysqlPort = p))
         {
-            LastError = $"Port {Port} is occupied by another process.";
-            Status = ServiceStatus.Error;
             return false;
         }
 

@@ -45,6 +45,26 @@ public static class TerminalLauncher
             if (Directory.Exists(mysqlBin)) pathEntries.Add(mysqlBin);
         }
 
+        // 6. PostgreSQL client binaries
+        string pgDir = Path.Combine(appRoot, "bin", "postgresql");
+        if (Directory.Exists(pgDir))
+        {
+            var subDirs = Directory.GetDirectories(pgDir);
+            string targetDir = subDirs.Length > 0 ? subDirs[0] : pgDir;
+            string pgBin = Path.Combine(targetDir, "bin");
+            if (Directory.Exists(pgBin)) pathEntries.Add(pgBin);
+            else if (Directory.Exists(Path.Combine(pgDir, "bin"))) pathEntries.Add(Path.Combine(pgDir, "bin"));
+        }
+
+        // 7. Redis CLI binary
+        string redisDir = Path.Combine(appRoot, "bin", "redis");
+        if (Directory.Exists(redisDir))
+        {
+            var subDirs = Directory.GetDirectories(redisDir);
+            string targetDir = subDirs.Length > 0 ? subDirs[0] : redisDir;
+            pathEntries.Add(targetDir);
+        }
+
         // Combine with system PATH
         string systemPath = Environment.GetEnvironmentVariable("PATH") ?? "";
         string injectedPath = string.Join(";", pathEntries) + ";" + systemPath;
@@ -60,7 +80,7 @@ public static class TerminalLauncher
 
         if (usePowerShell)
         {
-            psi.Arguments = "-NoExit -Command \"Write-Host 'Dev Lite Server Isolated Terminal' -ForegroundColor Cyan; Write-Host 'Environment: PHP, Node, Git, Composer, MySQL loaded.' -ForegroundColor Gray\"";
+            psi.Arguments = "-NoExit -Command \"Write-Host 'Dev Lite Server Isolated Terminal' -ForegroundColor Cyan; Write-Host 'Environment: PHP, Node, Git, Composer, MySQL, PostgreSQL, Redis loaded.' -ForegroundColor Gray\"";
         }
 
         Process.Start(psi);

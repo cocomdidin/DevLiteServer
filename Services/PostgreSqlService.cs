@@ -10,6 +10,11 @@ public class PostgreSqlService : BaseService
     public override string Name => "PostgreSQL";
     public override int Port => _config.PostgreSqlPort;
 
+    public override void UpdatePort(int newPort)
+    {
+        _config.PostgreSqlPort = newPort;
+    }
+
     public PostgreSqlService(string appRoot, JobObject job, AppConfig config)
         : base(appRoot, job)
     {
@@ -53,10 +58,8 @@ public class PostgreSqlService : BaseService
             return false;
         }
 
-        if (PortChecker.IsPortOccupied(Port))
+        if (!await CheckAndResolvePortAsync(Port, p => _config.PostgreSqlPort = p))
         {
-            LastError = $"Port {Port} is occupied by another process.";
-            Status = ServiceStatus.Error;
             return false;
         }
 

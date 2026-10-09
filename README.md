@@ -41,8 +41,12 @@ Unlike traditional solutions, Dev Lite Server does not install Windows Services 
   Prevents duplicate application instances. Double-clicking desktop or portable shortcuts while minimized automatically restores and focuses the active window.
 - 🔄 **Nginx & FastCGI Auto-Pairing**:
   Eliminates `502 Bad Gateway` errors. Starting Nginx automatically boots upstream `php-cgi.exe` workers with auto-recovery loops (`PHP_FCGI_MAX_REQUESTS`).
+- 🔌 **Interactive Port Conflict Resolver**:
+  Automatically detects port collisions on startup (80, 9000, 3306, 5432, 6379, 1025, 8025) and offers 1-click reassignment to recommended free ports without manual config editing.
+- 🧩 **System Dependency Checker (MSVCRT)**:
+  Scans for `VCRUNTIME140.dll` on startup with 1-click automated download and installation of the official Microsoft Visual C++ 2015-2022 x64 Redistributable.
 - 💻 **Isolated Developer Terminal**:
-  One-click launcher for PowerShell / CMD with an isolated `PATH` containing PHP, Node.js, Git, Composer, and MySQL client binaries without polluting your Windows environment.
+  One-click launcher for PowerShell / CMD with an isolated `PATH` containing PHP, Node.js, Git, Composer, MySQL, PostgreSQL, and Redis client binaries without polluting your Windows environment.
 - 📬 **Built-in Mailpit Suite**:
   Zero-configuration local SMTP testing (`127.0.0.1:1025`) and beautiful web inbox viewer (`http://localhost:8025`).
 - 🗄️ **Zero-Fuss MySQL 8.4**:
@@ -98,6 +102,8 @@ Mailpit=true
 | **Nginx** | 1.26.x | `http://localhost:80` | High-performance reverse proxy & web server |
 | **PHP (NTS x64)** | 8.4.x | `127.0.0.1:9000` | FastCGI daemon with auto-supervision |
 | **MySQL** | 8.4.x | `3306` | Default user: `root` (no password) |
+| **PostgreSQL** | 16.x | `5432` | Default user: `postgres` (trust auth, no password) |
+| **Redis** | 7.x | `6379` | In-memory key-value cache store |
 | **Mailpit Web UI** | Latest | `http://localhost:8025` | Webmail inbox viewer |
 | **Mailpit SMTP** | Latest | `127.0.0.1:1025` | Local mail capture daemon |
 | **Node.js** | v24.x | CLI | Portable runtime with NPM & NPX |

@@ -219,8 +219,15 @@ public class ServiceCard : Panel
         }
     }
 
+    public void RefreshInfo()
+    {
+        _lblSub.Text = $"{_categoryTag}  •  Port: {_service.Port}";
+        UpdateVisuals(_service.Status);
+    }
+
     private void UpdateVisuals(ServiceStatus status)
     {
+        _lblSub.Text = $"{_categoryTag}  •  Port: {_service.Port}";
         _pill.Status = status;
 
         if (_btnBrowse != null)

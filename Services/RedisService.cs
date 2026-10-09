@@ -10,6 +10,11 @@ public class RedisService : BaseService
     public override string Name => "Redis";
     public override int Port => _config.RedisPort;
 
+    public override void UpdatePort(int newPort)
+    {
+        _config.RedisPort = newPort;
+    }
+
     public RedisService(string appRoot, JobObject job, AppConfig config)
         : base(appRoot, job)
     {
@@ -53,10 +58,8 @@ public class RedisService : BaseService
             return false;
         }
 
-        if (PortChecker.IsPortOccupied(Port))
+        if (!await CheckAndResolvePortAsync(Port, p => _config.RedisPort = p))
         {
-            LastError = $"Port {Port} is occupied by another process.";
-            Status = ServiceStatus.Error;
             return false;
         }
 

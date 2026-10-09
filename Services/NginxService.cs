@@ -11,6 +11,11 @@ public class NginxService : BaseService
     public override string Name => "Nginx";
     public override int Port => _config.HttpPort;
 
+    public override void UpdatePort(int newPort)
+    {
+        _config.HttpPort = newPort;
+    }
+
     public NginxService(string appRoot, JobObject job, AppConfig config, PhpService? phpService = null)
         : base(appRoot, job)
     {
@@ -66,11 +71,9 @@ public class NginxService : BaseService
             return false;
         }
 
-        // Port check
-        if (PortChecker.IsPortOccupied(Port))
+        // Port check & interactive conflict resolution
+        if (!await CheckAndResolvePortAsync(Port, p => _config.HttpPort = p))
         {
-            LastError = $"Port {Port} is occupied by another process. Please free port {Port} or change port in config.ini.";
-            Status = ServiceStatus.Error;
             return false;
         }
 

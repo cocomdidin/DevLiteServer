@@ -154,10 +154,12 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
   - Implementasi Win32 Job Object & process launcher.
   - Orchestrasi Nginx + PHP 8.4-CGI + MySQL (Start/Stop dasar).
   - Config template engine.
-- **Milestone 2 (Expanded Services & Database)**:
-  - Integrasi PostgreSQL, Redis, dan Mailpit.
-  - First-run auto-initialization untuk MySQL & PostgreSQL data directory.
-  - Port checker & conflict resolver.
+- **Milestone 2 (Expanded Services & Database) [SELESAI]**:
+  - Integrasi PostgreSQL, Redis, dan Mailpit ke UI dashboard, card, settings, dan tray menu.
+  - First-run auto-initialization untuk MySQL (`--initialize-insecure`) & PostgreSQL (`initdb`) data directory.
+  - Port checker & interactive conflict resolver modal dialog (`PortConflictDialog`) dengan 1-klik auto-reassign.
+  - System Dependency Checker (`VcRedistDialog`) dengan 1-klik download & auto-install MSVCRT x64 resmi dari Microsoft.
+  - Dynamic config templates lengkap: `nginx.conf.tpl`, `my.ini.tpl`, `php.ini.tpl`, `postgresql.conf.tpl`, `redis.conf.tpl`.
 - **Milestone 3 (Herd-Style Package Downloader)**:
   - Downloader client untuk PHP (windows.php.net) dan Node.js (nodejs.org).
   - Auto-unzip, directory placement, dan auto-configure `php.ini`.

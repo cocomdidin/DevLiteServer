@@ -17,7 +17,8 @@ public enum IconKind
     Lightning,
     Power,
     Check,
-    Gear
+    Gear,
+    Warning
 }
 
 public static class VectorIcons
@@ -213,6 +214,29 @@ public static class VectorIcons
                     }
                     g.DrawEllipse(pen, cx - innerR, cy - innerR, innerR * 2f, innerR * 2f);
                     g.DrawEllipse(pen, cx - holeR, cy - holeR, holeR * 2f, holeR * 2f);
+                }
+                break;
+
+            case IconKind.Warning:
+                {
+                    // Triangle with exclamation mark
+                    using var path = new GraphicsPath();
+                    path.AddPolygon(new[]
+                    {
+                        new PointF(x + (w * 0.5f), y + (h * 0.12f)),
+                        new PointF(x + (w * 0.88f), y + (h * 0.86f)),
+                        new PointF(x + (w * 0.12f), y + (h * 0.86f))
+                    });
+                    using var thinPen = new Pen(color, Math.Max(w * 0.08f, 1.2f))
+                    {
+                        LineJoin = LineJoin.Round
+                    };
+                    g.DrawPath(thinPen, path);
+
+                    // Exclamation vertical stroke & dot
+                    g.DrawLine(thinPen, x + (w * 0.5f), y + (h * 0.38f), x + (w * 0.5f), y + (h * 0.60f));
+                    float dotSize = Math.Max(w * 0.08f, 1.5f);
+                    g.FillEllipse(brush, x + (w * 0.5f) - (dotSize / 2f), y + (h * 0.72f), dotSize, dotSize);
                 }
                 break;
         }
