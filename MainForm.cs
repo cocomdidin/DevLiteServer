@@ -160,20 +160,20 @@ public partial class MainForm : Form
     private void SelectNavTab(int index)
     {
         navDashboard.IsActive = (index == 0);
-        navGeneral.IsActive = (index == 1);
-        navSites.IsActive = (index == 2);
-        navPhp.IsActive = (index == 3);
-        navNode.IsActive = (index == 4);
-        navServices.IsActive = (index == 5);
-        navMail.IsActive = (index == 6);
+        navSites.IsActive = (index == 1);
+        navPhp.IsActive = (index == 2);
+        navNode.IsActive = (index == 3);
+        navServices.IsActive = (index == 4);
+        navMail.IsActive = (index == 5);
+        navSettings.IsActive = (index == 6);
 
         pageDashboard.Visible = (index == 0);
-        pageGeneral.Visible = (index == 1);
-        pageSites.Visible = (index == 2);
-        pagePhp.Visible = (index == 3);
-        pageNode.Visible = (index == 4);
-        pageServices.Visible = (index == 5);
-        pageMail.Visible = (index == 6);
+        pageSites.Visible = (index == 1);
+        pagePhp.Visible = (index == 2);
+        pageNode.Visible = (index == 3);
+        pageServices.Visible = (index == 4);
+        pageMail.Visible = (index == 5);
+        pageSettings.Visible = (index == 6);
 
         switch (index)
         {
@@ -182,29 +182,29 @@ public partial class MainForm : Form
                 lblPageSubtitle.Text = "Environment overview and service controller";
                 break;
             case 1:
-                lblPageTitle.Text = "General Settings";
-                lblPageSubtitle.Text = "System integration and preference settings";
-                break;
-            case 2:
                 lblPageTitle.Text = "Sites & Local Domains";
                 lblPageSubtitle.Text = "Virtual hosts and project directories in /www";
                 RefreshSitesList();
                 break;
-            case 3:
+            case 2:
                 lblPageTitle.Text = "PHP Environment";
                 lblPageSubtitle.Text = "Active FastCGI runtime and extension configuration";
                 break;
-            case 4:
+            case 3:
                 lblPageTitle.Text = "Node.js Environment";
                 lblPageSubtitle.Text = "Node runtime, npm package manager, and CLI tools";
                 break;
-            case 5:
+            case 4:
                 lblPageTitle.Text = "Database & Cache Services";
                 lblPageSubtitle.Text = "MySQL, PostgreSQL, and Redis daemon configuration";
                 break;
-            case 6:
+            case 5:
                 lblPageTitle.Text = "Mail Testing";
                 lblPageSubtitle.Text = "Mailpit local SMTP capture daemon and webmail inbox";
+                break;
+            case 6:
+                lblPageTitle.Text = "Settings";
+                lblPageSubtitle.Text = "System integration, tray behavior, and automation preferences";
                 break;
         }
 
@@ -216,7 +216,7 @@ public partial class MainForm : Form
     // ==========================================
     private void InitPages()
     {
-        Panel[] pages = [pageDashboard, pageGeneral, pageSites, pagePhp, pageNode, pageServices, pageMail];
+        Panel[] pages = [pageDashboard, pageSites, pagePhp, pageNode, pageServices, pageMail, pageSettings];
         foreach (var page in pages)
         {
             page.Dock = DockStyle.Fill;
@@ -227,12 +227,12 @@ public partial class MainForm : Form
         }
 
         PopulateDashboardPage();
-        PopulateGeneralPage();
         PopulateSitesPage();
         PopulatePhpPage();
         PopulateNodePage();
         PopulateServicesPage();
         PopulateMailPage();
+        PopulateSettingsPage();
     }
 
     // ------------------------------------------
@@ -250,11 +250,11 @@ public partial class MainForm : Form
     }
 
     // ------------------------------------------
-    // PAGE 1: GENERAL
+    // PAGE 6: SETTINGS
     // ------------------------------------------
-    private void PopulateGeneralPage()
+    private void PopulateSettingsPage()
     {
-        pageGeneral.Padding = new Padding(24, 16, 24, 20);
+        pageSettings.Padding = new Padding(24, 16, 24, 20);
 
         var pnlHeader = CreateSectionHeader("Preferences & Automation", "Configure system integration, tray behavior, and auto-start rules.");
 
@@ -350,8 +350,8 @@ public partial class MainForm : Form
         pnlActions.Controls.Add(btnOpenConfig);
         pnlActions.Controls.Add(btnResetDefaults);
 
-        // Add to general page in reverse dock order so pnlHeader is on top
-        pageGeneral.Controls.AddRange([pnlActions, cardAuto, cardTray, cardWin, pnlHeader]);
+        // Add to settings page in reverse dock order so pnlHeader is on top
+        pageSettings.Controls.AddRange([pnlActions, cardAuto, cardTray, cardWin, pnlHeader]);
         pnlHeader.SendToBack();
     }
 
@@ -2002,18 +2002,18 @@ public partial class MainForm : Form
             };
             var lblEmptySub = new Label
             {
-                Text = "Use the 'Services' tab or General settings to enable Nginx, MySQL, Mailpit, etc.",
+                Text = "Use the 'Services' tab or Settings to enable Nginx, MySQL, Mailpit, etc.",
                 Font = new Font("Segoe UI", 8.5f),
                 ForeColor = ModernColors.TextSecondary,
                 Location = new Point(20, 68),
                 AutoSize = true
             };
-            var btnGoGeneral = new ModernButton
+            var btnGoSettings = new ModernButton
             {
-                Text = "Open General Settings",
+                Text = "Open Settings",
                 IconKind = IconKind.Gear,
                 IconSize = 11,
-                Width = 160,
+                Width = 140,
                 Height = 32,
                 BorderRadius = 6,
                 ShowBorder = true,
@@ -2023,11 +2023,11 @@ public partial class MainForm : Form
                 Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
                 Location = new Point(20, 100)
             };
-            btnGoGeneral.Click += (s, e) => SelectNavTab(1);
+            btnGoSettings.Click += (s, e) => SelectNavTab(6);
 
             pnlEmpty.Controls.Add(lblEmptyTitle);
             pnlEmpty.Controls.Add(lblEmptySub);
-            pnlEmpty.Controls.Add(btnGoGeneral);
+            pnlEmpty.Controls.Add(btnGoSettings);
             cardContainer.Controls.Add(pnlEmpty);
         }
 

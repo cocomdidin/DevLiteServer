@@ -17,12 +17,12 @@ partial class MainForm
 
     // Nav Buttons
     private NavButton navDashboard = null!;
-    private NavButton navGeneral = null!;
     private NavButton navSites = null!;
     private NavButton navPhp = null!;
     private NavButton navNode = null!;
     private NavButton navServices = null!;
     private NavButton navMail = null!;
+    private NavButton navSettings = null!;
 
     // Right Main Pane
     private System.Windows.Forms.Panel mainPane = null!;
@@ -45,12 +45,12 @@ partial class MainForm
 
     // Page Panels
     private System.Windows.Forms.Panel pageDashboard = null!;
-    private System.Windows.Forms.Panel pageGeneral = null!;
     private System.Windows.Forms.Panel pageSites = null!;
     private System.Windows.Forms.Panel pagePhp = null!;
     private System.Windows.Forms.Panel pageNode = null!;
     private System.Windows.Forms.Panel pageServices = null!;
     private System.Windows.Forms.Panel pageMail = null!;
+    private System.Windows.Forms.Panel pageSettings = null!;
 
     // Dashboard specific controls
     private System.Windows.Forms.Panel cardContainer = null!;
@@ -79,12 +79,12 @@ partial class MainForm
         lblSidebarStatus = new System.Windows.Forms.Label();
 
         navDashboard = new NavButton();
-        navGeneral = new NavButton();
         navSites = new NavButton();
         navPhp = new NavButton();
         navNode = new NavButton();
         navServices = new NavButton();
         navMail = new NavButton();
+        navSettings = new NavButton();
 
         // Right Main Pane Elements
         mainPane = new System.Windows.Forms.Panel();
@@ -105,12 +105,12 @@ partial class MainForm
 
         // 7 Pages
         pageDashboard = new System.Windows.Forms.Panel();
-        pageGeneral = new System.Windows.Forms.Panel();
         pageSites = new System.Windows.Forms.Panel();
         pagePhp = new System.Windows.Forms.Panel();
         pageNode = new System.Windows.Forms.Panel();
         pageServices = new System.Windows.Forms.Panel();
         pageMail = new System.Windows.Forms.Panel();
+        pageSettings = new System.Windows.Forms.Panel();
 
         cardContainer = new System.Windows.Forms.Panel();
 
@@ -176,35 +176,35 @@ partial class MainForm
         navContainer.AutoScroll = true;
 
         // Nav Buttons (Added in top-to-bottom order)
+        navSettings.Text = "Settings";
+        navSettings.Icon = IconKind.Gear;
+        navSettings.Dock = DockStyle.Top;
+        navSettings.Click += (s, e) => SelectNavTab(6);
+
         navMail.Text = "Mail";
         navMail.Icon = IconKind.Mail;
         navMail.Dock = DockStyle.Top;
-        navMail.Click += (s, e) => SelectNavTab(6);
+        navMail.Click += (s, e) => SelectNavTab(5);
 
         navServices.Text = "Services";
         navServices.Icon = IconKind.Database;
         navServices.Dock = DockStyle.Top;
-        navServices.Click += (s, e) => SelectNavTab(5);
+        navServices.Click += (s, e) => SelectNavTab(4);
 
         navNode.Text = "Node";
         navNode.Icon = IconKind.Terminal;
         navNode.Dock = DockStyle.Top;
-        navNode.Click += (s, e) => SelectNavTab(4);
+        navNode.Click += (s, e) => SelectNavTab(3);
 
         navPhp.Text = "PHP";
         navPhp.Icon = IconKind.Lightning;
         navPhp.Dock = DockStyle.Top;
-        navPhp.Click += (s, e) => SelectNavTab(3);
+        navPhp.Click += (s, e) => SelectNavTab(2);
 
         navSites.Text = "Sites";
         navSites.Icon = IconKind.Globe;
         navSites.Dock = DockStyle.Top;
-        navSites.Click += (s, e) => SelectNavTab(2);
-
-        navGeneral.Text = "General";
-        navGeneral.Icon = IconKind.Gear;
-        navGeneral.Dock = DockStyle.Top;
-        navGeneral.Click += (s, e) => SelectNavTab(1);
+        navSites.Click += (s, e) => SelectNavTab(1);
 
         navDashboard.Text = "Dashboard";
         navDashboard.Icon = IconKind.Server;
@@ -213,7 +213,7 @@ partial class MainForm
         navDashboard.Click += (s, e) => SelectNavTab(0);
 
         // Reverse dock order for WinForms DockStyle.Top
-        navContainer.Controls.AddRange([navMail, navServices, navNode, navPhp, navSites, navGeneral, navDashboard]);
+        navContainer.Controls.AddRange([navSettings, navMail, navServices, navNode, navPhp, navSites, navDashboard]);
 
         // Sidebar Footer
         sidebarFooter.Dock = DockStyle.Bottom;
