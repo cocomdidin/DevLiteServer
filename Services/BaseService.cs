@@ -11,6 +11,7 @@ public abstract class BaseService : IService
 
     public abstract string Name { get; }
     public abstract int Port { get; }
+    public string? LastError { get; protected set; }
 
     private ServiceStatus _status = ServiceStatus.Stopped;
     public ServiceStatus Status

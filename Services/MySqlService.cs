@@ -19,7 +19,22 @@ public class MySqlService : BaseService
     public string GetMySqlDirectory()
     {
         string mysqlDir = Path.Combine(AppRoot, "bin", "mysql");
-        var dirs = Directory.Exists(mysqlDir) ? Directory.GetDirectories(mysqlDir) : Array.Empty<string>();
+        if (!Directory.Exists(mysqlDir)) return mysqlDir;
+
+        foreach (var dir in Directory.GetDirectories(mysqlDir))
+        {
+            if (File.Exists(Path.Combine(dir, "bin", "mysqld.exe")))
+            {
+                return dir;
+            }
+        }
+
+        if (File.Exists(Path.Combine(mysqlDir, "bin", "mysqld.exe")))
+        {
+            return mysqlDir;
+        }
+
+        var dirs = Directory.GetDirectories(mysqlDir);
         return dirs.Length > 0 ? dirs[0] : mysqlDir;
     }
 
@@ -28,9 +43,18 @@ public class MySqlService : BaseService
 
     public override async Task<bool> StartAsync()
     {
+        LastError = null;
         string daemon = GetMySqlDaemon();
         if (!File.Exists(daemon))
         {
+            LastError = $"mysqld.exe not found at: {daemon}";
+            Status = ServiceStatus.Error;
+            return false;
+        }
+
+        if (PortChecker.IsPortOccupied(Port))
+        {
+            LastError = $"Port {Port} is occupied by another process.";
             Status = ServiceStatus.Error;
             return false;
         }
@@ -55,11 +79,19 @@ public class MySqlService : BaseService
             CurrentProcess = LaunchProcess(psi);
             await Task.Delay(1000);
 
+            if (CurrentProcess == null || CurrentProcess.HasExited)
+            {
+                LastError = "MySQL daemon exited unexpectedly on startup.";
+                Status = ServiceStatus.Error;
+                return false;
+            }
+
             Status = ServiceStatus.Running;
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            LastError = ex.Message;
             Status = ServiceStatus.Error;
             return false;
         }

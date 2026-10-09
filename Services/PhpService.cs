@@ -40,9 +40,18 @@ public class PhpService : BaseService
 
     public override async Task<bool> StartAsync()
     {
+        LastError = null;
         string phpCgi = GetPhpCgiPath();
         if (!File.Exists(phpCgi))
         {
+            LastError = $"php-cgi.exe not found at: {phpCgi}";
+            Status = ServiceStatus.Error;
+            return false;
+        }
+
+        if (PortChecker.IsPortOccupied(Port))
+        {
+            LastError = $"Port {Port} is occupied by another process.";
             Status = ServiceStatus.Error;
             return false;
         }
@@ -56,11 +65,20 @@ public class PhpService : BaseService
             _ = Task.Run(() => SupervisorLoopAsync(_supervisorCts.Token));
 
             await Task.Delay(300);
+
+            if (CurrentProcess == null || CurrentProcess.HasExited)
+            {
+                LastError = "php-cgi process exited immediately. Check if VC++ Redistributable is installed.";
+                Status = ServiceStatus.Error;
+                return false;
+            }
+
             Status = ServiceStatus.Running;
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            LastError = ex.Message;
             Status = ServiceStatus.Error;
             return false;
         }

@@ -23,23 +23,34 @@ public partial class MainForm : Form
     {
         InitializeComponent();
 
-        _appRoot = AppDomain.CurrentDomain.BaseDirectory;
-        if (_appRoot.Contains("build"))
-        {
-            _appRoot = Directory.GetParent(_appRoot)?.Parent?.Parent?.Parent?.FullName ?? _appRoot;
-        }
+        _appRoot = AppPaths.ResolveRoot();
 
         string iniPath = Path.Combine(_appRoot, "config.ini");
         _config = ConfigManager.Load(iniPath);
 
         _job = new JobObject();
 
-        _nginx = new NginxService(_appRoot, _job, _config);
         _php = new PhpService(_appRoot, _job, _config);
+        _nginx = new NginxService(_appRoot, _job, _config, _php);
         _mysql = new MySqlService(_appRoot, _job, _config);
         _mailpit = new MailpitService(_appRoot, _job, _config);
 
-        _services.AddRange([_nginx, _php, _mysql, _mailpit]);
+        _services.AddRange([_php, _nginx, _mysql, _mailpit]);
+
+        foreach (var svc in _services)
+        {
+            svc.StatusChanged += (s, status) =>
+            {
+                if (InvokeRequired)
+                {
+                    Invoke(() => OnServiceStatusChanged(s, status));
+                }
+                else
+                {
+                    OnServiceStatusChanged(s, status);
+                }
+            };
+        }
 
         BuildServiceCards();
         BuildTrayMenu();
@@ -50,6 +61,11 @@ public partial class MainForm : Form
             lblStatusText.Text = "⚠ Warning: Visual C++ Redistributable (x64) is missing. PHP might fail to start.";
             lblStatusText.ForeColor = ModernColors.Warning;
         }
+        else
+        {
+            lblStatusText.Text = $"Ready | Root: {_appRoot}";
+            lblStatusText.ForeColor = ModernColors.TextSecondary;
+        }
 
         notifyIcon.Icon = SystemIcons.Application;
         Icon = SystemIcons.Application;
@@ -58,6 +74,28 @@ public partial class MainForm : Form
         _nginx.StatusChanged += (_, _) => UpdateAdminerState();
         _php.StatusChanged += (_, _) => UpdateAdminerState();
         UpdateAdminerState();
+
+        Shown += async (s, e) =>
+        {
+            if (_config.AutoStartServices)
+            {
+                await StartAllServicesAsync();
+            }
+        };
+    }
+
+    private void OnServiceStatusChanged(IService svc, ServiceStatus status)
+    {
+        if (status == ServiceStatus.Error && !string.IsNullOrEmpty(svc.LastError))
+        {
+            lblStatusText.Text = $"❌ [{svc.Name}] {svc.LastError}";
+            lblStatusText.ForeColor = ModernColors.Danger;
+        }
+        else if (status == ServiceStatus.Running)
+        {
+            lblStatusText.Text = $"✔ [{svc.Name}] running on port {svc.Port}";
+            lblStatusText.ForeColor = ModernColors.Success;
+        }
     }
 
     private void UpdateAdminerState()
@@ -153,6 +191,17 @@ public partial class MainForm : Form
             }
         }
         trayMenu.Items.Add(phpSubMenu);
+
+        var autoStartItem = new ToolStripMenuItem("Auto-start Services", null, (s, e) =>
+        {
+            _config.AutoStartServices = !_config.AutoStartServices;
+            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            if (s is ToolStripMenuItem mi) mi.Checked = _config.AutoStartServices;
+        })
+        {
+            Checked = _config.AutoStartServices
+        };
+        trayMenu.Items.Add(autoStartItem);
 
         trayMenu.Items.Add("Open /www", null, (s, e) => BtnOpenWww_Click(s, e));
         trayMenu.Items.Add("Open Terminal", null, (s, e) => BtnOpenTerminal_Click(s, e));

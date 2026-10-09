@@ -2,6 +2,7 @@ namespace LiteServer.Core;
 
 public class AppConfig
 {
+    public bool AutoStartServices { get; set; } = true;
     public bool MinimizeToTray { get; set; } = true;
     public bool StartWithWindows { get; set; } = false;
 
@@ -60,7 +61,9 @@ public static class ConfigManager
             switch (currentSection.ToUpperInvariant())
             {
                 case "GENERAL":
-                    if (key.Equals("MinimizeToTray", StringComparison.OrdinalIgnoreCase))
+                    if (key.Equals("AutoStartServices", StringComparison.OrdinalIgnoreCase))
+                        config.AutoStartServices = bool.Parse(val);
+                    else if (key.Equals("MinimizeToTray", StringComparison.OrdinalIgnoreCase))
                         config.MinimizeToTray = bool.Parse(val);
                     else if (key.Equals("StartWithWindows", StringComparison.OrdinalIgnoreCase))
                         config.StartWithWindows = bool.Parse(val);
@@ -100,9 +103,10 @@ public static class ConfigManager
         var lines = new List<string>
         {
             "[General]",
-            $"AppName=LiteServer",
+            $"AppName=Local Lite Server",
             $"StartWithWindows={config.StartWithWindows.ToString().ToLower()}",
             $"MinimizeToTray={config.MinimizeToTray.ToString().ToLower()}",
+            $"AutoStartServices={config.AutoStartServices.ToString().ToLower()}",
             "",
             "[Services]",
             $"Nginx={config.EnableNginx.ToString().ToLower()}",

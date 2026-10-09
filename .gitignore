@@ -1,9 +1,13 @@
-# Build results
+# Build results & temp downloads
 build/
 [Oo]bj/
-[Bb]in/Debug/
-[Bb]in/Release/
 publish/
+
+# Portable Binaries & Runtimes (provisioned via scripts/setup-bundle.ps1)
+bin/*/*
+!bin/*/.gitkeep
+tools/composer/composer.phar
+tools/composer/composer.bat
 
 # Visual Studio / Rider / VS Code
 .vs/
@@ -22,7 +26,7 @@ Desktop.ini
 *.log
 *.binlog
 
-# Runtime databases data dirs (ignore user DB data, keep folder structure)
+# Runtime databases data dirs
 bin/mysql/data/*
 bin/postgresql/data/*
 !bin/mysql/data/.gitkeep
@@ -31,3 +35,4 @@ bin/postgresql/data/*
 # User web root projects
 www/*
 !www/.gitkeep
+!www/index.php

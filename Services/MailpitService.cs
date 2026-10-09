@@ -20,9 +20,25 @@ public class MailpitService : BaseService
 
     public override async Task<bool> StartAsync()
     {
+        LastError = null;
         string exe = GetMailpitExe();
         if (!File.Exists(exe))
         {
+            LastError = $"mailpit.exe not found at: {exe}";
+            Status = ServiceStatus.Error;
+            return false;
+        }
+
+        if (PortChecker.IsPortOccupied(_config.MailpitWebPort))
+        {
+            LastError = $"Port {_config.MailpitWebPort} (Web UI) is occupied by another process.";
+            Status = ServiceStatus.Error;
+            return false;
+        }
+
+        if (PortChecker.IsPortOccupied(_config.MailpitSmtpPort))
+        {
+            LastError = $"Port {_config.MailpitSmtpPort} (SMTP) is occupied by another process.";
             Status = ServiceStatus.Error;
             return false;
         }
@@ -43,11 +59,19 @@ public class MailpitService : BaseService
             CurrentProcess = LaunchProcess(psi);
             await Task.Delay(300);
 
+            if (CurrentProcess == null || CurrentProcess.HasExited)
+            {
+                LastError = "Mailpit process exited unexpectedly on startup.";
+                Status = ServiceStatus.Error;
+                return false;
+            }
+
             Status = ServiceStatus.Running;
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            LastError = ex.Message;
             Status = ServiceStatus.Error;
             return false;
         }

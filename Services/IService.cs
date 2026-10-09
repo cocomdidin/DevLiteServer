@@ -14,6 +14,7 @@ public interface IService
     string Name { get; }
     int Port { get; }
     ServiceStatus Status { get; }
+    string? LastError { get; }
 
     Task<bool> StartAsync();
     Task<bool> StopAsync();
