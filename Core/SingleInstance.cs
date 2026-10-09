@@ -15,6 +15,8 @@ public static class SingleInstance
 
     public static readonly int WmShowFirstInstance;
 
+    public static bool IsRestoreMessage(int msg) => WmShowFirstInstance != 0 && msg == WmShowFirstInstance;
+
     private static readonly IntPtr HwndBroadcast = (IntPtr)0xffff;
     private const int SwRestore = 9;
 

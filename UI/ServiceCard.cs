@@ -65,11 +65,10 @@ public class ServiceCard : Panel
                 break;
         }
 
-        Height = 62;
+        Height = 72;
         Dock = DockStyle.Top;
-        Margin = new Padding(0, 0, 0, 8);
-        Padding = new Padding(16, 8, 16, 8);
-        BackColor = ModernColors.Surface;
+        Padding = new Padding(16, 6, 16, 16);
+        BackColor = Color.Transparent;
         DoubleBuffered = true;
 
         SetStyle(ControlStyles.AllPaintingInWmPaint |
@@ -85,7 +84,7 @@ public class ServiceCard : Panel
             ForeColor = ModernColors.TextPrimary,
             Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
             AutoSize = true,
-            Location = new Point(62, 11)
+            Location = new Point(62, 10)
         };
 
         // Port & Category Subtitle
@@ -95,7 +94,7 @@ public class ServiceCard : Panel
             ForeColor = ModernColors.TextMuted,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Regular),
             AutoSize = true,
-            Location = new Point(63, 33)
+            Location = new Point(63, 32)
         };
 
         // Status Pill
@@ -204,6 +203,7 @@ public class ServiceCard : Panel
         Controls.Add(_btnToggle);
 
         service.StatusChanged += OnStatusChanged;
+        LayoutCardControls();
         UpdateVisuals(service.Status);
     }
 
@@ -260,14 +260,43 @@ public class ServiceCard : Panel
             _btnToggle.PressedColor = ModernColors.SuccessBg;
         }
 
+        LayoutCardControls();
         Invalidate();
+    }
+
+    private void LayoutCardControls()
+    {
+        if (_btnToggle == null || _pill == null) return;
+
+        int cardH = Height - 10;
+        int rightOffset = Width > 100 ? Width - 14 : 500;
+
+        // 1. Toggle Button (Rightmost)
+        _btnToggle.Location = new Point(rightOffset - _btnToggle.Width, (cardH - _btnToggle.Height) / 2);
+        rightOffset = _btnToggle.Left - 10;
+
+        // 2. Status Pill
+        _pill.Location = new Point(rightOffset - _pill.Width, (cardH - _pill.Height) / 2);
+        rightOffset = _pill.Left - 10;
+
+        // 3. Optional Browse Button (only takes horizontal space if visible)
+        if (_btnBrowse != null && _btnBrowse.Visible)
+        {
+            _btnBrowse.Location = new Point(rightOffset - _btnBrowse.Width, (cardH - _btnBrowse.Height) / 2);
+            rightOffset = _btnBrowse.Left - 10;
+        }
+
+        // 4. Optional Version ComboBox
+        if (_cmbVersions != null)
+        {
+            _cmbVersions.Location = new Point(rightOffset - _cmbVersions.Width, (cardH - _cmbVersions.Height) / 2);
+        }
     }
 
     protected override void OnMouseEnter(EventArgs e)
     {
         base.OnMouseEnter(e);
         _isHovered = true;
-        BackColor = ModernColors.CardHover;
         Invalidate();
     }
 
@@ -275,7 +304,6 @@ public class ServiceCard : Panel
     {
         base.OnMouseLeave(e);
         _isHovered = false;
-        BackColor = ModernColors.Surface;
         Invalidate();
     }
 
@@ -288,36 +316,7 @@ public class ServiceCard : Panel
     protected override void OnResize(EventArgs eventargs)
     {
         base.OnResize(eventargs);
-
-        // Dynamic Right-to-Left alignment
-        if (_btnToggle != null && _pill != null)
-        {
-            int rightOffset = Width - 14;
-
-            // 1. Toggle Button (Rightmost)
-            _btnToggle.Location = new Point(rightOffset - _btnToggle.Width, (Height - _btnToggle.Height) / 2);
-            rightOffset = _btnToggle.Left - 10;
-
-            // 2. Status Pill
-            _pill.Location = new Point(rightOffset - _pill.Width, (Height - _pill.Height) / 2);
-            rightOffset = _pill.Left - 10;
-
-            // 3. Optional Browse Button
-            if (_btnBrowse != null)
-            {
-                _btnBrowse.Location = new Point(rightOffset - _btnBrowse.Width, (Height - _btnBrowse.Height) / 2);
-                if (_btnBrowse.Visible)
-                {
-                    rightOffset = _btnBrowse.Left - 10;
-                }
-            }
-
-            // 4. Optional Version ComboBox
-            if (_cmbVersions != null)
-            {
-                _cmbVersions.Location = new Point(rightOffset - _cmbVersions.Width, (Height - _cmbVersions.Height) / 2);
-            }
-        }
+        LayoutCardControls();
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -333,10 +332,12 @@ public class ServiceCard : Panel
 
         float stroke = 1f;
         float halfStroke = stroke / 2f;
-        var rect = new RectangleF(halfStroke, halfStroke, Width - stroke, Height - stroke);
+        float cardH = Height - 10f;
+        var rect = new RectangleF(halfStroke, halfStroke, Width - stroke, cardH - stroke);
 
         using var path = CreateRoundedRectangle(rect, 8f);
-        using var bgBrush = new SolidBrush(BackColor);
+        Color cardFill = _isHovered ? ModernColors.CardHover : ModernColors.Surface;
+        using var bgBrush = new SolidBrush(cardFill);
         g.FillPath(bgBrush, path);
 
         using var pen = new Pen(_isHovered ? ModernColors.BorderLight : ModernColors.BorderSubtle, stroke);
@@ -348,14 +349,14 @@ public class ServiceCard : Panel
             using var activeBrush = new SolidBrush(ModernColors.Success);
             using var activePath = new GraphicsPath();
             activePath.AddArc(rect.X, rect.Y, 8f, 8f, 180, 90);
-            activePath.AddLine(rect.X + 3f, rect.Y, rect.X + 3f, rect.Bottom);
+            activePath.AddLine(rect.X + 3.5f, rect.Y, rect.X + 3.5f, rect.Bottom);
             activePath.AddArc(rect.X, rect.Bottom - 8f, 8f, 8f, 90, 90);
             activePath.CloseFigure();
             g.FillPath(activeBrush, activePath);
         }
 
         // Draw left vector icon badge (34x34)
-        var badgeRect = new RectangleF(14f + halfStroke, (Height - 34f) / 2f + halfStroke, 34f - stroke, 34f - stroke);
+        var badgeRect = new RectangleF(14f + halfStroke, (cardH - 34f) / 2f + halfStroke, 34f - stroke, 34f - stroke);
         using var badgePath = CreateRoundedRectangle(badgeRect, 6f);
         using var badgeBg = new SolidBrush(_service.Status == ServiceStatus.Running ? Color.FromArgb(16, 36, 32) : ModernColors.Card);
         g.FillPath(badgeBg, badgePath);
@@ -364,7 +365,7 @@ public class ServiceCard : Panel
         g.DrawPath(badgeBorder, badgePath);
 
         // Draw Vector Icon inside badge
-        var iconRect = new RectangleF(14f + 8f, (Height - 34f) / 2f + 8f, 18f, 18f);
+        var iconRect = new RectangleF(14f + 8f, (cardH - 34f) / 2f + 8f, 18f, 18f);
         Color iconColor = _service.Status == ServiceStatus.Running ? ModernColors.Success : ModernColors.Primary;
         VectorIcons.Draw(g, _iconKind, iconRect, iconColor);
     }

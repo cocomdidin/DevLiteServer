@@ -5,28 +5,55 @@ namespace DevLiteServer;
 partial class MainForm
 {
     private System.ComponentModel.IContainer components = null!;
-    private System.Windows.Forms.NotifyIcon notifyIcon;
-    private System.Windows.Forms.ContextMenuStrip trayMenu;
+    private System.Windows.Forms.NotifyIcon notifyIcon = null!;
+    private System.Windows.Forms.ContextMenuStrip trayMenu = null!;
 
-    private System.Windows.Forms.Panel headerPanel;
-    private System.Windows.Forms.Label lblBrandTitle;
-    private System.Windows.Forms.Label lblBrandSub;
-    private ModernButton btnStartAll;
-    private ModernButton btnStopAll;
-    private ModernButton btnExit;
+    // Sidebar
+    private System.Windows.Forms.Panel sidebarPanel = null!;
+    private System.Windows.Forms.Panel brandPanel = null!;
+    private System.Windows.Forms.Panel navContainer = null!;
+    private System.Windows.Forms.Panel sidebarFooter = null!;
+    private System.Windows.Forms.Label lblSidebarStatus = null!;
 
-    private System.Windows.Forms.Panel actionsPanel;
-    private ModernButton btnOpenWww;
-    private ModernButton btnOpenTerminal;
-    private ModernButton btnOpenMailpit;
-    private ModernButton btnOpenAdminer;
-    private ModernButton btnSettings;
-    private ModernButton btnCheckUpdates;
+    // Nav Buttons
+    private NavButton navDashboard = null!;
+    private NavButton navGeneral = null!;
+    private NavButton navSites = null!;
+    private NavButton navPhp = null!;
+    private NavButton navNode = null!;
+    private NavButton navServices = null!;
+    private NavButton navMail = null!;
 
-    private System.Windows.Forms.Panel cardContainer;
-    private System.Windows.Forms.Panel footerPanel;
-    private System.Windows.Forms.Label lblStatusText;
-    private System.Windows.Forms.Label lblStatsText;
+    // Right Main Pane
+    private System.Windows.Forms.Panel mainPane = null!;
+    private System.Windows.Forms.Panel topRibbon = null!;
+    private System.Windows.Forms.Label lblPageTitle = null!;
+    private System.Windows.Forms.Label lblPageSubtitle = null!;
+
+    // Top Action Buttons
+    private ModernButton btnOpenWww = null!;
+    private ModernButton btnOpenTerminal = null!;
+    private ModernButton btnStartAll = null!;
+    private ModernButton btnStopAll = null!;
+    private ModernButton btnExit = null!;
+
+    // Pages & Footer
+    private System.Windows.Forms.Panel pageContainer = null!;
+    private System.Windows.Forms.Panel footerPanel = null!;
+    private System.Windows.Forms.Label lblStatusText = null!;
+    private System.Windows.Forms.Label lblStatsText = null!;
+
+    // Page Panels
+    private System.Windows.Forms.Panel pageDashboard = null!;
+    private System.Windows.Forms.Panel pageGeneral = null!;
+    private System.Windows.Forms.Panel pageSites = null!;
+    private System.Windows.Forms.Panel pagePhp = null!;
+    private System.Windows.Forms.Panel pageNode = null!;
+    private System.Windows.Forms.Panel pageServices = null!;
+    private System.Windows.Forms.Panel pageMail = null!;
+
+    // Dashboard specific controls
+    private System.Windows.Forms.Panel cardContainer = null!;
 
     protected override void Dispose(bool disposing)
     {
@@ -44,238 +71,288 @@ partial class MainForm
         notifyIcon = new System.Windows.Forms.NotifyIcon(components);
         trayMenu = new System.Windows.Forms.ContextMenuStrip(components);
 
-        headerPanel = new System.Windows.Forms.Panel();
-        lblBrandTitle = new System.Windows.Forms.Label();
-        lblBrandSub = new System.Windows.Forms.Label();
+        // Sidebar Elements
+        sidebarPanel = new System.Windows.Forms.Panel();
+        brandPanel = new System.Windows.Forms.Panel();
+        navContainer = new System.Windows.Forms.Panel();
+        sidebarFooter = new System.Windows.Forms.Panel();
+        lblSidebarStatus = new System.Windows.Forms.Label();
+
+        navDashboard = new NavButton();
+        navGeneral = new NavButton();
+        navSites = new NavButton();
+        navPhp = new NavButton();
+        navNode = new NavButton();
+        navServices = new NavButton();
+        navMail = new NavButton();
+
+        // Right Main Pane Elements
+        mainPane = new System.Windows.Forms.Panel();
+        topRibbon = new System.Windows.Forms.Panel();
+        lblPageTitle = new System.Windows.Forms.Label();
+        lblPageSubtitle = new System.Windows.Forms.Label();
+
+        btnOpenWww = new ModernButton();
+        btnOpenTerminal = new ModernButton();
         btnStartAll = new ModernButton();
         btnStopAll = new ModernButton();
         btnExit = new ModernButton();
 
-        actionsPanel = new System.Windows.Forms.Panel();
-        btnOpenWww = new ModernButton();
-        btnOpenTerminal = new ModernButton();
-        btnOpenMailpit = new ModernButton();
-        btnOpenAdminer = new ModernButton();
-        btnSettings = new ModernButton();
-        btnCheckUpdates = new ModernButton();
-
-        cardContainer = new System.Windows.Forms.Panel();
+        pageContainer = new System.Windows.Forms.Panel();
         footerPanel = new System.Windows.Forms.Panel();
         lblStatusText = new System.Windows.Forms.Label();
         lblStatsText = new System.Windows.Forms.Label();
 
+        // 7 Pages
+        pageDashboard = new System.Windows.Forms.Panel();
+        pageGeneral = new System.Windows.Forms.Panel();
+        pageSites = new System.Windows.Forms.Panel();
+        pagePhp = new System.Windows.Forms.Panel();
+        pageNode = new System.Windows.Forms.Panel();
+        pageServices = new System.Windows.Forms.Panel();
+        pageMail = new System.Windows.Forms.Panel();
+
+        cardContainer = new System.Windows.Forms.Panel();
+
         SuspendLayout();
 
-        //
-        // headerPanel
-        //
-        headerPanel.Dock = DockStyle.Top;
-        headerPanel.Height = 68;
-        headerPanel.BackColor = ModernColors.Surface;
-        headerPanel.Padding = new Padding(20, 12, 20, 12);
-        headerPanel.Resize += (s, e) =>
+        // ==========================================
+        // 1. LEFT SIDEBAR PANEL (Width: 195)
+        // ==========================================
+        sidebarPanel.Dock = DockStyle.Left;
+        sidebarPanel.Width = 195;
+        sidebarPanel.BackColor = ModernColors.Surface;
+        sidebarPanel.Paint += (s, e) =>
         {
-            const int rightMargin = 20;
-            const int spacing = 8;
-            int w = headerPanel.ClientSize.Width > 200 ? headerPanel.ClientSize.Width : (ClientSize.Width > 200 ? ClientSize.Width : 760);
-            btnExit.Location = new Point(w - btnExit.Width - rightMargin, 17);
-            btnStopAll.Location = new Point(btnExit.Left - btnStopAll.Width - spacing, 17);
-            btnStartAll.Location = new Point(btnStopAll.Left - btnStartAll.Width - spacing, 17);
+            using var borderPen = new Pen(ModernColors.BorderSubtle, 1);
+            e.Graphics.DrawLine(borderPen, sidebarPanel.Width - 1, 0, sidebarPanel.Width - 1, sidebarPanel.Height);
         };
-        headerPanel.Paint += (s, e) =>
+
+        // Brand Panel
+        brandPanel.Dock = DockStyle.Top;
+        brandPanel.Height = 64;
+        brandPanel.BackColor = ModernColors.Surface;
+        brandPanel.Padding = new Padding(16, 12, 16, 12);
+        brandPanel.Paint += (s, e) =>
         {
             var g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            // Brand Icon Circle Badge (36x36)
-            var badgeRect = new RectangleF(20, 16, 36, 36);
-            using var badgeBg = new SolidBrush(Color.FromArgb(20, 32, 52));
+            // Brand Icon Circle Badge (34x34)
+            var badgeRect = new RectangleF(14, 15, 34, 34);
+            using var badgeBg = new SolidBrush(Color.FromArgb(20, 34, 52));
             using var badgeBorder = new Pen(Color.FromArgb(56, 189, 248, 140), 1.25f);
             g.FillEllipse(badgeBg, badgeRect);
             g.DrawEllipse(badgeBorder, badgeRect);
 
-            var iconRect = new RectangleF(28, 24, 20, 20);
+            var iconRect = new RectangleF(22, 23, 18, 18);
             VectorIcons.Draw(g, IconKind.Lightning, iconRect, ModernColors.Primary);
 
-            // "PORTABLE" subtle badge next to title
-            var tagRect = new RectangleF(208, 17, 62, 17);
-            using var tagBg = new SolidBrush(Color.FromArgb(24, 38, 60));
-            using var tagPen = new Pen(Color.FromArgb(56, 189, 248, 80), 1f);
-            using var tagPath = CreatePillPath(tagRect);
-            g.FillPath(tagBg, tagPath);
-            g.DrawPath(tagPen, tagPath);
+            // Title
+            using var titleFont = new Font("Segoe UI", 10.5f, FontStyle.Bold);
+            TextRenderer.DrawText(g, "Dev Lite Server", titleFont, new Point(54, 15), ModernColors.TextPrimary);
 
-            using var tagFont = new Font("Segoe UI", 7f, FontStyle.Bold);
-            TextRenderer.DrawText(g, "PORTABLE", tagFont, Rectangle.Round(tagRect), ModernColors.Primary,
+            // "PORTABLE" pill
+            var pillRect = new RectangleF(55, 35, 56, 15);
+            using var pillBg = new SolidBrush(Color.FromArgb(24, 38, 60));
+            using var pillPen = new Pen(Color.FromArgb(56, 189, 248, 90), 1f);
+            using var pillPath = CreatePillPath(pillRect);
+            g.FillPath(pillBg, pillPath);
+            g.DrawPath(pillPen, pillPath);
+
+            using var pillFont = new Font("Segoe UI", 6.75f, FontStyle.Bold);
+            TextRenderer.DrawText(g, "PORTABLE", pillFont, Rectangle.Round(pillRect), ModernColors.Primary,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
 
-            // Bottom border line
+            // Bottom subtle divider
             using var borderPen = new Pen(ModernColors.BorderSubtle, 1);
-            g.DrawLine(borderPen, 0, headerPanel.Height - 1, headerPanel.Width, headerPanel.Height - 1);
+            g.DrawLine(borderPen, 0, brandPanel.Height - 1, brandPanel.Width, brandPanel.Height - 1);
         };
 
-        lblBrandTitle.Text = "Dev Lite Server";
-        lblBrandTitle.ForeColor = ModernColors.TextPrimary;
-        lblBrandTitle.Font = new Font("Segoe UI", 12.5f, FontStyle.Bold);
-        lblBrandTitle.AutoSize = true;
-        lblBrandTitle.Location = new Point(66, 14);
+        // Navigation Container
+        navContainer.Dock = DockStyle.Fill;
+        navContainer.BackColor = ModernColors.Surface;
+        navContainer.Padding = new Padding(0, 10, 0, 10);
+        navContainer.AutoScroll = true;
 
-        lblBrandSub.Text = "High-Performance Portable Local WEMP & Database Stack";
-        lblBrandSub.ForeColor = ModernColors.TextSecondary;
-        lblBrandSub.Font = new Font("Segoe UI", 8.25f);
-        lblBrandSub.AutoSize = true;
-        lblBrandSub.Location = new Point(67, 38);
+        // Nav Buttons (Added in top-to-bottom order)
+        navMail.Text = "Mail";
+        navMail.Icon = IconKind.Mail;
+        navMail.Dock = DockStyle.Top;
+        navMail.Click += (s, e) => SelectNavTab(6);
 
-        btnStartAll.Text = "Start All";
-        btnStartAll.IconKind = IconKind.Play;
-        btnStartAll.IconSize = 10;
-        btnStartAll.Width = 96;
-        btnStartAll.Height = 34;
-        btnStartAll.NormalColor = ModernColors.Success;
-        btnStartAll.HoverColor = ModernColors.SuccessHover;
-        btnStartAll.PressedColor = ModernColors.SuccessBg;
-        btnStartAll.BorderRadius = 6;
-        btnStartAll.ShowBorder = false;
-        btnStartAll.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-        btnStartAll.Click += BtnStartAll_Click;
+        navServices.Text = "Services";
+        navServices.Icon = IconKind.Database;
+        navServices.Dock = DockStyle.Top;
+        navServices.Click += (s, e) => SelectNavTab(5);
 
-        btnStopAll.Text = "Stop All";
-        btnStopAll.IconKind = IconKind.Stop;
-        btnStopAll.IconSize = 10;
-        btnStopAll.Width = 96;
-        btnStopAll.Height = 34;
-        btnStopAll.NormalColor = ModernColors.Card;
-        btnStopAll.HoverColor = Color.FromArgb(45, 20, 28);
-        btnStopAll.PressedColor = ModernColors.DangerBg;
-        btnStopAll.BorderRadius = 6;
-        btnStopAll.ShowBorder = true;
-        btnStopAll.BorderLineColor = Color.FromArgb(244, 63, 94, 160);
-        btnStopAll.ForeColor = Color.FromArgb(254, 205, 211);
-        btnStopAll.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-        btnStopAll.Click += BtnStopAll_Click;
+        navNode.Text = "Node";
+        navNode.Icon = IconKind.Terminal;
+        navNode.Dock = DockStyle.Top;
+        navNode.Click += (s, e) => SelectNavTab(4);
 
-        btnExit.Text = "Exit";
-        btnExit.IconKind = IconKind.Power;
-        btnExit.IconSize = 11;
-        btnExit.Width = 76;
-        btnExit.Height = 34;
-        btnExit.NormalColor = ModernColors.Card;
-        btnExit.HoverColor = Color.FromArgb(40, 20, 30);
-        btnExit.PressedColor = ModernColors.DangerBg;
-        btnExit.BorderRadius = 6;
-        btnExit.ShowBorder = true;
-        btnExit.BorderLineColor = ModernColors.BorderSubtle;
-        btnExit.ForeColor = ModernColors.TextSecondary;
-        btnExit.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-        btnExit.Click += BtnExit_Click;
+        navPhp.Text = "PHP";
+        navPhp.Icon = IconKind.Lightning;
+        navPhp.Dock = DockStyle.Top;
+        navPhp.Click += (s, e) => SelectNavTab(3);
 
-        headerPanel.Controls.Add(lblBrandTitle);
-        headerPanel.Controls.Add(lblBrandSub);
-        headerPanel.Controls.Add(btnStartAll);
-        headerPanel.Controls.Add(btnStopAll);
-        headerPanel.Controls.Add(btnExit);
+        navSites.Text = "Sites";
+        navSites.Icon = IconKind.Globe;
+        navSites.Dock = DockStyle.Top;
+        navSites.Click += (s, e) => SelectNavTab(2);
 
-        //
-        // actionsPanel (Toolbar)
-        //
-        actionsPanel.Dock = DockStyle.Top;
-        actionsPanel.Height = 46;
-        actionsPanel.BackColor = Color.FromArgb(13, 19, 31);
-        actionsPanel.Padding = new Padding(20, 7, 20, 7);
-        actionsPanel.Resize += (s, e) => LayoutActionButtons();
-        actionsPanel.Paint += (s, e) =>
+        navGeneral.Text = "General";
+        navGeneral.Icon = IconKind.Gear;
+        navGeneral.Dock = DockStyle.Top;
+        navGeneral.Click += (s, e) => SelectNavTab(1);
+
+        navDashboard.Text = "Dashboard";
+        navDashboard.Icon = IconKind.Server;
+        navDashboard.IsActive = true;
+        navDashboard.Dock = DockStyle.Top;
+        navDashboard.Click += (s, e) => SelectNavTab(0);
+
+        // Reverse dock order for WinForms DockStyle.Top
+        navContainer.Controls.AddRange([navMail, navServices, navNode, navPhp, navSites, navGeneral, navDashboard]);
+
+        // Sidebar Footer
+        sidebarFooter.Dock = DockStyle.Bottom;
+        sidebarFooter.Height = 40;
+        sidebarFooter.BackColor = ModernColors.Surface;
+        sidebarFooter.Padding = new Padding(14, 8, 14, 8);
+        sidebarFooter.Paint += (s, e) =>
         {
             using var borderPen = new Pen(ModernColors.BorderSubtle, 1);
-            e.Graphics.DrawLine(borderPen, 0, actionsPanel.Height - 1, actionsPanel.Width, actionsPanel.Height - 1);
+            e.Graphics.DrawLine(borderPen, 0, 0, sidebarFooter.Width, 0);
+
+            // Active green indicator dot
+            var g = e.Graphics;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using var dotBrush = new SolidBrush(ModernColors.Success);
+            g.FillEllipse(dotBrush, 14, 16, 7, 7);
         };
 
+        lblSidebarStatus.Text = "Environment Ready";
+        lblSidebarStatus.ForeColor = ModernColors.TextSecondary;
+        lblSidebarStatus.Font = new Font("Segoe UI", 7.75f, FontStyle.Regular);
+        lblSidebarStatus.Location = new Point(27, 12);
+        lblSidebarStatus.AutoSize = true;
+        sidebarFooter.Controls.Add(lblSidebarStatus);
+
+        sidebarPanel.Controls.Add(navContainer);
+        sidebarPanel.Controls.Add(brandPanel);
+        sidebarPanel.Controls.Add(sidebarFooter);
+
+        // ==========================================
+        // 2. RIGHT MAIN PANE
+        // ==========================================
+        mainPane.Dock = DockStyle.Fill;
+        mainPane.BackColor = ModernColors.Background;
+
+        // Top Ribbon Header (Height: 60)
+        topRibbon.Dock = DockStyle.Top;
+        topRibbon.Height = 60;
+        topRibbon.BackColor = ModernColors.Surface;
+        topRibbon.Padding = new Padding(20, 10, 20, 10);
+        topRibbon.Resize += (s, e) => LayoutTopRibbonButtons();
+        topRibbon.Paint += (s, e) =>
+        {
+            using var borderPen = new Pen(ModernColors.BorderSubtle, 1);
+            e.Graphics.DrawLine(borderPen, 0, topRibbon.Height - 1, topRibbon.Width, topRibbon.Height - 1);
+        };
+
+        lblPageTitle.Text = "Dashboard";
+        lblPageTitle.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
+        lblPageTitle.ForeColor = ModernColors.TextPrimary;
+        lblPageTitle.Location = new Point(22, 10);
+        lblPageTitle.AutoSize = true;
+
+        lblPageSubtitle.Text = "Environment overview and service controller";
+        lblPageSubtitle.Font = new Font("Segoe UI", 8.25f);
+        lblPageSubtitle.ForeColor = ModernColors.TextSecondary;
+        lblPageSubtitle.Location = new Point(23, 33);
+        lblPageSubtitle.AutoSize = true;
+        lblPageSubtitle.AutoEllipsis = true;
+
+        // Action Buttons
         btnOpenWww.Text = "Web Root";
         btnOpenWww.IconKind = IconKind.Folder;
-        btnOpenWww.IconSize = 11;
-        btnOpenWww.Width = 98;
-        btnOpenWww.Height = 31;
+        btnOpenWww.IconSize = 10;
+        btnOpenWww.Width = 82;
+        btnOpenWww.Height = 30;
         btnOpenWww.BorderRadius = 6;
         btnOpenWww.ShowBorder = true;
-        btnOpenWww.NormalColor = ModernColors.Surface;
+        btnOpenWww.NormalColor = ModernColors.Card;
         btnOpenWww.HoverColor = ModernColors.SurfaceHover;
         btnOpenWww.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
         btnOpenWww.Click += BtnOpenWww_Click;
 
         btnOpenTerminal.Text = "Terminal";
         btnOpenTerminal.IconKind = IconKind.Terminal;
-        btnOpenTerminal.IconSize = 11;
-        btnOpenTerminal.Width = 92;
-        btnOpenTerminal.Height = 31;
+        btnOpenTerminal.IconSize = 10;
+        btnOpenTerminal.Width = 78;
+        btnOpenTerminal.Height = 30;
         btnOpenTerminal.BorderRadius = 6;
         btnOpenTerminal.ShowBorder = true;
-        btnOpenTerminal.NormalColor = ModernColors.Surface;
+        btnOpenTerminal.NormalColor = ModernColors.Card;
         btnOpenTerminal.HoverColor = ModernColors.SurfaceHover;
         btnOpenTerminal.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
         btnOpenTerminal.Click += BtnOpenTerminal_Click;
 
-        btnOpenMailpit.Text = "Mailpit";
-        btnOpenMailpit.IconKind = IconKind.Mail;
-        btnOpenMailpit.IconSize = 11;
-        btnOpenMailpit.Width = 86;
-        btnOpenMailpit.Height = 31;
-        btnOpenMailpit.BorderRadius = 6;
-        btnOpenMailpit.ShowBorder = true;
-        btnOpenMailpit.NormalColor = ModernColors.Surface;
-        btnOpenMailpit.HoverColor = ModernColors.SurfaceHover;
-        btnOpenMailpit.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
-        btnOpenMailpit.Click += BtnOpenMailpit_Click;
+        btnStartAll.Text = "Start All";
+        btnStartAll.IconKind = IconKind.Play;
+        btnStartAll.IconSize = 10;
+        btnStartAll.Width = 78;
+        btnStartAll.Height = 30;
+        btnStartAll.BorderRadius = 6;
+        btnStartAll.ShowBorder = false;
+        btnStartAll.NormalColor = ModernColors.Success;
+        btnStartAll.HoverColor = ModernColors.SuccessHover;
+        btnStartAll.PressedColor = ModernColors.SuccessBg;
+        btnStartAll.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
+        btnStartAll.Click += BtnStartAll_Click;
 
-        btnOpenAdminer.Text = "Adminer DB";
-        btnOpenAdminer.IconKind = IconKind.Database;
-        btnOpenAdminer.IconSize = 11;
-        btnOpenAdminer.Width = 104;
-        btnOpenAdminer.Height = 31;
-        btnOpenAdminer.BorderRadius = 6;
-        btnOpenAdminer.ShowBorder = true;
-        btnOpenAdminer.NormalColor = ModernColors.Surface;
-        btnOpenAdminer.HoverColor = ModernColors.SurfaceHover;
-        btnOpenAdminer.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
-        btnOpenAdminer.Click += BtnOpenAdminer_Click;
+        btnStopAll.Text = "Stop All";
+        btnStopAll.IconKind = IconKind.Stop;
+        btnStopAll.IconSize = 10;
+        btnStopAll.Width = 78;
+        btnStopAll.Height = 30;
+        btnStopAll.BorderRadius = 6;
+        btnStopAll.ShowBorder = true;
+        btnStopAll.BorderLineColor = Color.FromArgb(244, 63, 94, 140);
+        btnStopAll.NormalColor = ModernColors.Card;
+        btnStopAll.HoverColor = Color.FromArgb(45, 20, 28);
+        btnStopAll.PressedColor = ModernColors.DangerBg;
+        btnStopAll.ForeColor = Color.FromArgb(254, 205, 211);
+        btnStopAll.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
+        btnStopAll.Click += BtnStopAll_Click;
 
-        btnSettings.Text = "Settings";
-        btnSettings.IconKind = IconKind.Gear;
-        btnSettings.IconSize = 11;
-        btnSettings.Width = 90;
-        btnSettings.Height = 31;
-        btnSettings.BorderRadius = 6;
-        btnSettings.ShowBorder = true;
-        btnSettings.NormalColor = ModernColors.Surface;
-        btnSettings.HoverColor = ModernColors.SurfaceHover;
-        btnSettings.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
-        btnSettings.Click += BtnSettings_Click;
+        btnExit.Text = "Exit";
+        btnExit.IconKind = IconKind.Power;
+        btnExit.IconSize = 11;
+        btnExit.Width = 62;
+        btnExit.Height = 30;
+        btnExit.BorderRadius = 6;
+        btnExit.ShowBorder = true;
+        btnExit.BorderLineColor = ModernColors.BorderSubtle;
+        btnExit.NormalColor = ModernColors.Card;
+        btnExit.HoverColor = Color.FromArgb(40, 20, 30);
+        btnExit.PressedColor = ModernColors.DangerBg;
+        btnExit.ForeColor = ModernColors.TextSecondary;
+        btnExit.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
+        btnExit.Click += BtnExit_Click;
 
-        btnCheckUpdates.Text = "Updates";
-        btnCheckUpdates.IconKind = IconKind.Refresh;
-        btnCheckUpdates.IconSize = 11;
-        btnCheckUpdates.Width = 88;
-        btnCheckUpdates.Height = 31;
-        btnCheckUpdates.BorderRadius = 6;
-        btnCheckUpdates.ShowBorder = true;
-        btnCheckUpdates.NormalColor = ModernColors.Surface;
-        btnCheckUpdates.HoverColor = ModernColors.SurfaceHover;
-        btnCheckUpdates.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
-        btnCheckUpdates.Click += BtnCheckUpdates_Click;
+        topRibbon.Controls.Add(lblPageTitle);
+        topRibbon.Controls.Add(lblPageSubtitle);
+        topRibbon.Controls.AddRange([btnOpenWww, btnOpenTerminal, btnStartAll, btnStopAll, btnExit]);
 
-        actionsPanel.Controls.AddRange([btnOpenWww, btnOpenTerminal, btnOpenMailpit, btnOpenAdminer, btnSettings, btnCheckUpdates]);
+        // Page Container
+        pageContainer.Dock = DockStyle.Fill;
+        pageContainer.BackColor = ModernColors.Background;
 
-        //
-        // cardContainer
-        //
-        cardContainer.Dock = DockStyle.Fill;
-        cardContainer.BackColor = ModernColors.Background;
-        cardContainer.Padding = new Padding(20, 10, 20, 10);
-        cardContainer.AutoScroll = true;
-
-        //
-        // footerPanel
-        //
+        // Bottom Footer
         footerPanel.Dock = DockStyle.Bottom;
-        footerPanel.Height = 32;
+        footerPanel.Height = 30;
         footerPanel.BackColor = ModernColors.Surface;
         footerPanel.Padding = new Padding(20, 6, 20, 6);
         footerPanel.Paint += (s, e) =>
@@ -285,50 +362,78 @@ partial class MainForm
         };
         footerPanel.Resize += (s, e) =>
         {
-            lblStatsText.Location = new Point(footerPanel.ClientSize.Width - lblStatsText.Width - 20, 8);
+            lblStatsText.Location = new Point(footerPanel.ClientSize.Width - lblStatsText.Width - 20, 7);
         };
 
         lblStatusText.Text = "Ready - Dev Lite Server Portable Environment";
         lblStatusText.ForeColor = ModernColors.TextSecondary;
-        lblStatusText.Font = new Font("Segoe UI", 8.25f);
-        lblStatusText.Location = new Point(20, 8);
+        lblStatusText.Font = new Font("Segoe UI", 8f);
+        lblStatusText.Location = new Point(20, 7);
         lblStatusText.AutoSize = true;
 
         lblStatsText.Text = "0 / 0 active";
         lblStatsText.ForeColor = ModernColors.TextMuted;
-        lblStatsText.Font = new Font("Segoe UI", 8.25f);
+        lblStatsText.Font = new Font("Segoe UI", 8f);
         lblStatsText.TextAlign = ContentAlignment.MiddleRight;
         lblStatsText.AutoSize = true;
-        lblStatsText.Location = new Point(560, 8);
+        lblStatsText.Location = new Point(560, 7);
 
         footerPanel.Controls.Add(lblStatusText);
         footerPanel.Controls.Add(lblStatsText);
 
-        //
-        // notifyIcon
-        //
+        mainPane.Controls.Add(pageContainer);
+        mainPane.Controls.Add(topRibbon);
+        mainPane.Controls.Add(footerPanel);
+
+        // ==========================================
+        // 3. MAIN FORM SHELL
+        // ==========================================
+        AutoScaleDimensions = new SizeF(7F, 15F);
+        AutoScaleMode = AutoScaleMode.Font;
+        BackColor = ModernColors.Background;
+        ClientSize = new Size(980, 620);
+        MinimumSize = new Size(900, 560);
+        Text = "Dev Lite Server - Portable Web Environment";
+        StartPosition = FormStartPosition.CenterScreen;
+
+        Controls.Add(mainPane);
+        Controls.Add(sidebarPanel);
+
+        // Tray Icon
         notifyIcon.Text = "Dev Lite Server";
         notifyIcon.Visible = true;
         notifyIcon.DoubleClick += NotifyIcon_DoubleClick;
 
-        //
-        // MainForm
-        //
-        AutoScaleDimensions = new SizeF(7F, 15F);
-        AutoScaleMode = AutoScaleMode.Font;
-        BackColor = ModernColors.Background;
-        ClientSize = new Size(760, 560);
-        MinimumSize = new Size(740, 500);
-        Text = "Dev Lite Server - Portable Web Environment";
-        StartPosition = FormStartPosition.CenterScreen;
-
-        Controls.Add(cardContainer);
-        Controls.Add(actionsPanel);
-        Controls.Add(headerPanel);
-        Controls.Add(footerPanel);
-
         FormClosing += MainForm_FormClosing;
         ResumeLayout(false);
+    }
+
+    private void LayoutTopRibbonButtons()
+    {
+        const int rightMargin = 18;
+        const int spacing = 6;
+        int w = topRibbon.ClientSize.Width > 200 ? topRibbon.ClientSize.Width : 785;
+        const int top = 15;
+
+        btnExit.Location = new Point(w - btnExit.Width - rightMargin, top);
+        btnStopAll.Location = new Point(btnExit.Left - btnStopAll.Width - spacing, top);
+        btnStartAll.Location = new Point(btnStopAll.Left - btnStartAll.Width - spacing, top);
+        btnOpenTerminal.Location = new Point(btnStartAll.Left - btnOpenTerminal.Width - spacing - 8, top);
+        btnOpenWww.Location = new Point(btnOpenTerminal.Left - btnOpenWww.Width - spacing, top);
+
+        // Prevent title & subtitle from ever colliding with right action buttons
+        int maxTitleWidth = btnOpenWww.Left - lblPageTitle.Left - 16;
+        if (maxTitleWidth > 50)
+        {
+            lblPageTitle.MaximumSize = new Size(maxTitleWidth, 24);
+            lblPageTitle.AutoEllipsis = true;
+        }
+
+        int maxSubWidth = btnOpenWww.Left - lblPageSubtitle.Left - 16;
+        if (maxSubWidth > 50)
+        {
+            lblPageSubtitle.MaximumSize = new Size(maxSubWidth, 20);
+        }
     }
 
     private static System.Drawing.Drawing2D.GraphicsPath CreatePillPath(RectangleF rect)
