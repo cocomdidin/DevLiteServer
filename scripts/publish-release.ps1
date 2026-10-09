@@ -41,6 +41,12 @@ $projectFile = Join-Path $ScriptRoot "DevLiteServer.csproj"
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:EnableCompressionInSingleFile=true `
+    -p:PublishTrimmed=true `
+    -p:_SuppressWinFormsTrimError=true `
+    -p:EventSourceSupport=false `
+    -p:UseSystemResourceKeys=true `
+    -p:MetadataUpdaterSupport=false `
+    -p:DebuggerSupport=false `
     -p:DebugType=none `
     -p:DebugSymbols=false `
     -o $PublishDir

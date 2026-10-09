@@ -15,6 +15,7 @@
     <Version>1.0.0</Version>
     <ApplicationIcon>assets\app.ico</ApplicationIcon>
     <NoWarn>$(NoWarn);WFO1000</NoWarn>
+    <_SuppressWinFormsTrimError>true</_SuppressWinFormsTrimError>
   </PropertyGroup>
 
 </Project>

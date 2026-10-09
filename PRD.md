@@ -171,4 +171,4 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
   - Batch synchronization file `hosts` Windows dengan single prompt UAC.
   - UI integrasi pada tab Sites & Local Domains dengan tombol 1-klik Sync Hosts.
   - System Tray menu lengkap, dark mode UI polish, dan single instance enforcement.
-  - Publish single-file release script (`scripts/publish-release.ps1`) menghasilkan standalone executable 49.3 MB.
+  - Publish single-file release script (`scripts/publish-release.ps1`) menghasilkan standalone executable ~16 MB (IL trimmed, down from 49 MB).
