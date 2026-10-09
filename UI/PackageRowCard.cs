@@ -16,7 +16,6 @@ public class PackageRowCard : Panel
     private readonly Label _lblTitle;
     private readonly Label _lblTag;
     private readonly Label _lblStatus;
-    private readonly ProgressBar _progressBar;
     private readonly ModernButton _btnAction;
     private readonly ModernButton _btnSwitch;
     private readonly ModernButton _btnDelete;
@@ -89,19 +88,10 @@ public class PackageRowCard : Panel
         _lblStatus = new Label
         {
             Text = "",
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8f),
-            Location = new Point(117, 48),
+            ForeColor = ModernColors.Primary,
+            Font = new Font("Segoe UI", 8.25f),
+            Location = new Point(117, 34),
             AutoSize = true,
-            Visible = false
-        };
-
-        _progressBar = new ProgressBar
-        {
-            Height = 4,
-            Width = 200,
-            Location = new Point(117, 52),
-            Style = ProgressBarStyle.Continuous,
             Visible = false
         };
 
@@ -195,7 +185,6 @@ public class PackageRowCard : Panel
         Controls.Add(_lblTitle);
         Controls.Add(_lblTag);
         Controls.Add(_lblStatus);
-        Controls.Add(_progressBar);
         Controls.Add(_btnAction);
         Controls.Add(_btnSwitch);
         Controls.Add(_btnDelete);
@@ -220,7 +209,6 @@ public class PackageRowCard : Panel
             _btnAction.ForeColor = ModernColors.Danger;
             _btnSwitch.Visible = false;
             _btnDelete.Visible = false;
-            _progressBar.Visible = true;
             _lblStatus.Visible = true;
             _lblTag.Visible = false;
         }
@@ -234,7 +222,6 @@ public class PackageRowCard : Panel
             _btnSwitch.ForeColor = active ? ModernColors.Success : ModernColors.TextPrimary;
             _btnSwitch.NormalColor = active ? Color.FromArgb(16, 40, 32) : ModernColors.Card;
             _btnDelete.Visible = !active;
-            _progressBar.Visible = false;
             _lblStatus.Visible = false;
             _lblTag.Visible = true;
         }
@@ -250,7 +237,6 @@ public class PackageRowCard : Panel
             _btnAction.ForeColor = Color.White;
             _btnSwitch.Visible = false;
             _btnDelete.Visible = false;
-            _progressBar.Visible = false;
             _lblStatus.Visible = false;
             _lblTag.Visible = true;
         }
@@ -283,13 +269,6 @@ public class PackageRowCard : Panel
         {
             _btnAction.Location = new Point(rightX - _btnAction.Width, (cardH - _btnAction.Height) / 2);
             rightX = _btnAction.Left - 8;
-        }
-
-        // Width of progress bar when downloading
-        if (_progressBar.Visible)
-        {
-            int pBarW = Math.Max(120, rightX - _progressBar.Left - 16);
-            _progressBar.Width = pBarW;
         }
     }
 
@@ -327,7 +306,6 @@ public class PackageRowCard : Panel
     private void ApplyProgress(PackageDownloadProgress p)
     {
         _lblStatus.Text = p.StatusText;
-        _progressBar.Value = Math.Clamp((int)p.Percent, 0, 100);
 
         if (p.HasError)
         {
