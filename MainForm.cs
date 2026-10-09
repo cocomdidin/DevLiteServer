@@ -1862,8 +1862,8 @@ public partial class MainForm : Form
             return;
         }
 
-        int enabledCount = _services.Count(s => _config.IsServiceEnabled(s.Name));
-        int runningCount = _services.Count(s => _config.IsServiceEnabled(s.Name) && s.Status == ServiceStatus.Running);
+        int enabledCount = _services.Count(s => s != _php && _config.IsServiceEnabled(s.Name));
+        int runningCount = _services.Count(s => s != _php && _config.IsServiceEnabled(s.Name) && s.Status == ServiceStatus.Running);
 
         lblStatsText.Text = $"Services: {runningCount} / {enabledCount} running";
         lblStatsText.ForeColor = runningCount > 0 ? ModernColors.Success : ModernColors.TextMuted;
@@ -1962,11 +1962,11 @@ public partial class MainForm : Form
             cardContainer.Controls.Add(mysqlCard);
         }
 
-        if (_config.EnablePhp)
+        if (_config.EnableNginx)
         {
-            var phpCard = new ServiceCard(
-                _php,
-                IconKind.Lightning,
+            var nginxCard = new ServiceCard(
+                _nginx,
+                IconKind.Server,
                 phpVersions.ToArray(),
                 _config.ActivePhp,
                 async newVersion =>
@@ -1980,20 +1980,8 @@ public partial class MainForm : Form
                         lblStatusText.Text = $"Switched to PHP {newVersion}.";
                     }
                     BuildTrayMenu();
-                },
-                onInstall: _ =>
-                {
-                    SelectNavTab(3);
-                    lblStatusText.Text = "Please download and install a PHP runtime from the catalog below.";
-                    return Task.CompletedTask;
                 }
             );
-            cardContainer.Controls.Add(phpCard);
-        }
-
-        if (_config.EnableNginx)
-        {
-            var nginxCard = new ServiceCard(_nginx, IconKind.Server);
             cardContainer.Controls.Add(nginxCard);
         }
 
@@ -2014,7 +2002,7 @@ public partial class MainForm : Form
             };
             var lblEmptySub = new Label
             {
-                Text = "Use the 'General' tab or Settings dialog to enable Nginx, PHP, MySQL, Mailpit, etc.",
+                Text = "Use the 'Services' tab or General settings to enable Nginx, MySQL, Mailpit, etc.",
                 Font = new Font("Segoe UI", 8.5f),
                 ForeColor = ModernColors.TextSecondary,
                 Location = new Point(20, 68),
@@ -2137,7 +2125,6 @@ public partial class MainForm : Form
         }
 
         AddServiceEnabledMenuItem("Nginx", "nginx", () => _config.EnableNginx, v => _config.EnableNginx = v);
-        AddServiceEnabledMenuItem("PHP FastCGI", "php", () => _config.EnablePhp, v => _config.EnablePhp = v);
         AddServiceEnabledMenuItem("MySQL", "mysql", () => _config.EnableMysql, v => _config.EnableMysql = v);
         AddServiceEnabledMenuItem("Mailpit", "mailpit", () => _config.EnableMailpit, v => _config.EnableMailpit = v);
         AddServiceEnabledMenuItem("PostgreSQL", "postgresql", () => _config.EnablePostgresql, v => _config.EnablePostgresql = v);

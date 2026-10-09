@@ -38,7 +38,7 @@ public class ServiceCard : Panel
         switch (service.Name.ToLowerInvariant())
         {
             case "nginx":
-                _categoryTag = "Web Server";
+                _categoryTag = "Web Server (HTTP + PHP)";
                 _webUrl = $"http://localhost:{service.Port}";
                 break;
             case "php":

@@ -161,6 +161,12 @@ public class NginxService : BaseService
 
         try
         {
+            // Auto-stop upstream PHP FastCGI worker if running
+            if (DependentPhpService != null && DependentPhpService.Status == ServiceStatus.Running)
+            {
+                await DependentPhpService.StopAsync();
+            }
+
             string nginxExe = GetNginxExe();
             if (File.Exists(nginxExe))
             {
