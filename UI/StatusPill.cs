@@ -24,15 +24,30 @@ public class StatusPill : Control
 
     public StatusPill()
     {
-        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+        SetStyle(ControlStyles.AllPaintingInWmPaint |
+                 ControlStyles.UserPaint |
+                 ControlStyles.OptimizedDoubleBuffer |
+                 ControlStyles.ResizeRedraw |
+                 ControlStyles.SupportsTransparentBackColor, true);
+        BackColor = Color.Transparent;
         Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
-        Size = new Size(110, 26);
+        Size = new Size(96, 24);
+    }
+
+    protected override void OnPaintBackground(PaintEventArgs pevent)
+    {
+        Color parentBg = Parent?.BackColor ?? ModernColors.Surface;
+        using var bgBrush = new SolidBrush(parentBg);
+        pevent.Graphics.FillRectangle(bgBrush, ClientRectangle);
     }
 
     protected override void OnPaint(PaintEventArgs e)
     {
+        if (Width <= 1 || Height <= 1) return;
+
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
         Color bg;
         Color border;
@@ -43,61 +58,70 @@ public class StatusPill : Control
         switch (_status)
         {
             case ServiceStatus.Running:
-                bg = ModernColors.SuccessBg;
-                border = Color.FromArgb(5, 150, 105);
+                bg = Color.FromArgb(16, 45, 30);
+                border = Color.FromArgb(34, 197, 94);
                 dotColor = ModernColors.Success;
-                textColor = Color.FromArgb(209, 250, 229);
-                text = "RUNNING";
+                textColor = Color.FromArgb(220, 252, 231);
+                text = "Running";
                 break;
             case ServiceStatus.Starting:
-                bg = ModernColors.WarningBg;
-                border = Color.FromArgb(180, 83, 9);
+                bg = Color.FromArgb(45, 30, 10);
+                border = Color.FromArgb(245, 158, 11);
                 dotColor = ModernColors.Warning;
-                textColor = Color.FromArgb(254, 243, 199);
-                text = "STARTING";
+                textColor = Color.FromArgb(254, 240, 138);
+                text = "Starting...";
                 break;
             case ServiceStatus.Stopping:
-                bg = ModernColors.WarningBg;
-                border = Color.FromArgb(180, 83, 9);
+                bg = Color.FromArgb(45, 30, 10);
+                border = Color.FromArgb(245, 158, 11);
                 dotColor = ModernColors.Warning;
-                textColor = Color.FromArgb(254, 243, 199);
-                text = "STOPPING";
+                textColor = Color.FromArgb(254, 240, 138);
+                text = "Stopping...";
                 break;
             case ServiceStatus.Error:
-                bg = ModernColors.DangerBg;
-                border = Color.FromArgb(185, 28, 28);
+                bg = Color.FromArgb(50, 15, 25);
+                border = Color.FromArgb(244, 63, 94);
                 dotColor = ModernColors.Danger;
-                textColor = Color.FromArgb(254, 202, 202);
-                text = "ERROR";
+                textColor = Color.FromArgb(254, 205, 211);
+                text = "Error";
                 break;
             default:
-                bg = Color.FromArgb(30, 41, 59);
-                border = ModernColors.Border;
+                bg = Color.FromArgb(20, 27, 40);
+                border = Color.FromArgb(45, 55, 75);
                 dotColor = ModernColors.TextMuted;
                 textColor = ModernColors.TextSecondary;
-                text = "STOPPED";
+                text = "Stopped";
                 break;
         }
 
-        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
-        int radius = Height / 2;
+        float stroke = 1f;
+        float halfStroke = stroke / 2f;
+        var rect = new RectangleF(halfStroke, halfStroke, Width - stroke, Height - stroke);
+        float radius = (Height - stroke) / 2f;
 
         using var path = CreateRoundedRectangle(rect, radius);
         using var brush = new SolidBrush(bg);
-        using var pen = new Pen(border, 1);
+        using var pen = new Pen(border, stroke);
 
         g.FillPath(brush, path);
         g.DrawPath(pen, path);
 
-        // Draw dot
-        int dotSize = 6;
-        int dotX = 10;
-        int dotY = (Height - dotSize) / 2;
+        // Draw dot with subtle halo
+        float dotSize = 6f;
+        float dotX = 10f;
+        float dotY = (Height - dotSize) / 2f;
+
+        if (_status == ServiceStatus.Running)
+        {
+            using var haloBrush = new SolidBrush(Color.FromArgb(50, dotColor));
+            g.FillEllipse(haloBrush, dotX - 2, dotY - 2, dotSize + 4, dotSize + 4);
+        }
+
         using var dotBrush = new SolidBrush(dotColor);
         g.FillEllipse(dotBrush, dotX, dotY, dotSize, dotSize);
 
         // Draw text
-        var textRect = new Rectangle(dotX + dotSize + 6, 0, Width - (dotX + dotSize + 8), Height);
+        var textRect = new Rectangle((int)(dotX + dotSize + 6), 0, Width - (int)(dotX + dotSize + 8), Height);
         TextRenderer.DrawText(
             g,
             text,
@@ -108,14 +132,36 @@ public class StatusPill : Control
         );
     }
 
-    private static GraphicsPath CreateRoundedRectangle(Rectangle rect, int radius)
+    private static GraphicsPath CreateRoundedRectangle(RectangleF rect, float radius)
     {
         var path = new GraphicsPath();
-        int d = radius * 2;
-        path.AddArc(rect.X, rect.Y, d, d, 180, 90);
-        path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
-        path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
-        path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
+        if (radius <= 0.5f)
+        {
+            path.AddRectangle(rect);
+            return path;
+        }
+
+        float diameter = radius * 2f;
+        if (diameter > rect.Width) diameter = rect.Width;
+        if (diameter > rect.Height) diameter = rect.Height;
+
+        var arc = new RectangleF(rect.X, rect.Y, diameter, diameter);
+
+        // Top-left
+        path.AddArc(arc, 180, 90);
+
+        // Top-right
+        arc.X = rect.Right - diameter;
+        path.AddArc(arc, 270, 90);
+
+        // Bottom-right
+        arc.Y = rect.Bottom - diameter;
+        path.AddArc(arc, 0, 90);
+
+        // Bottom-left
+        arc.X = rect.X;
+        path.AddArc(arc, 90, 90);
+
         path.CloseFigure();
         return path;
     }

@@ -49,8 +49,35 @@ Unlike traditional solutions, Dev Lite Server does not install Windows Services 
   Out-of-the-box local database with empty root password preset for instant development.
 - 🚀 **In-App Auto-Update System**:
   Built-in GitHub Release checker with one-click direct download, progress bar, graceful daemon shutdown, and installer execution.
-- 🎨 **Modern Dark UI**:
-  High-DPI optimized, responsive WinForms dashboard with live status indicators, port conflict detection, and system tray minimization.
+- 🎨 **Modern Dark OLED UI & Graceful Exit**:
+  High-DPI optimized, responsive WinForms dashboard with live status indicators, per-service auto-start controls, port conflict detection, and dedicated one-click **Exit** button that cleanly terminates all daemons and the application.
+- 🪟 **Windows Logon Auto-Start**:
+  Optional single-click startup on Windows logon (`StartWithWindows=true`) registering into `HKCU` Run key, launching minimized to tray with zero UAC prompts.
+
+---
+
+## ⚙️ Configuration (`config.ini`)
+
+Dev Lite Server is fully configured via `config.ini`:
+
+```ini
+[General]
+AppName=Dev Lite Server
+StartWithWindows=false
+MinimizeToTray=true
+AutoStartServices=false
+CheckUpdatesOnStart=true
+
+[AutoStart]
+Nginx=false
+Php=false
+Mysql=false
+Mailpit=false
+Postgresql=false
+Redis=false
+```
+
+> **Note**: By default, no daemons auto-start until enabled. You can toggle auto-start behavior per-service and Windows logon startup directly from the System Tray context menu under **Auto-start Services** and **Start with Windows**.
 
 ---
 

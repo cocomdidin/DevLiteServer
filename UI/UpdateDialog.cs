@@ -136,7 +136,9 @@ public class UpdateDialog : Form
 
         _btnInstall = new ModernButton
         {
-            Text = "⬇ Install Update",
+            Text = "Install Update",
+            IconKind = IconKind.Refresh,
+            IconSize = 12,
             Width = 135,
             Height = 34,
             Location = new Point(365, 13),
@@ -151,7 +153,9 @@ public class UpdateDialog : Form
 
         _btnViewOnWeb = new ModernButton
         {
-            Text = "🌐 View on GitHub",
+            Text = "View on GitHub",
+            IconKind = IconKind.Globe,
+            IconSize = 12,
             Width = 135,
             Height = 34,
             Location = new Point(220, 13),

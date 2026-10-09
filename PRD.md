@@ -64,7 +64,7 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
 
 | ID Fitur | Modul | Deskripsi Fungsional | Prioritas |
 |---|---|---|---|
-| **FR-01** | Master & Individual Controller | Tombol **Start All / Stop All**, serta tombol toggle on/off independen untuk tiap service (Nginx, MySQL, PostgreSQL, Redis, Mailpit). | P0 (Kritis) |
+| **FR-01** | Master & Individual Controller | Tombol **Start All / Stop All / Exit**, tombol toggle on/off independen, serta konfigurasi selektif **Auto-Start per service** via `config.ini` dan menu tray (default: semua service `false`). Tombol Exit menghentikan semua daemon aktif dan menutup aplikasi secara bersih tanpa proses tersisa. | P0 (Kritis) |
 | **FR-02** | Process Isolation (Job Object) | Proteksi child processes via Win32 Job Object; garansi pembunuhan proses bersih tanpa port tertinggal. | P0 (Kritis) |
 | **FR-03** | Port Conflict Resolver | Deteksi ketersediaan port (80, 9000, 3306, 5432, 6379, 1025, 8025) via `IPGlobalProperties`. Dialog peringatan dan opsi auto-reassign port jika bentrok. | P0 (Kritis) |
 | **FR-04** | Dynamic Config Templating | Kompilasi template `.tpl` ke konfigurasi aktif saat start service dengan drive letter dinamis (portabel USB). | P0 (Kritis) |
@@ -74,6 +74,7 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
 | **FR-08** | Virtual Hosts & Batch Sync | Deteksi folder di `/www`. Otomatis generate konfigurasi Nginx vhost untuk domain `http://<folder>.test`. Pembaruan file `hosts` Windows dilakukan secara **Batch** (saat Start All atau tombol klik "Sync Hosts") dengan 1x prompt UAC per sync untuk mencegah spam dialog Admin. | P1 (Tinggi) |
 | **FR-09** | Isolated Terminal Environment | Tombol "Open Terminal" yang membuka PowerShell/CMD dengan environment variable `PATH` yang sudah diinjeksi versi aktif PHP, Node.js (v24), Git, Composer, MySQL, PostgreSQL. Tidak merusak environment Windows global. | P1 (Tinggi) |
 | **FR-10** | Quick Access Tools | Tombol cepat: Buka Folder `/www`, Buka Mailpit Web UI (`:8025`), Buka Database Manager (Default: Adminer web client via `http://localhost/adminer`, tombol disabled jika Nginx/PHP belum running; Auto-detect jika ada desktop GUI di folder `/tools/`). | P2 (Medium) |
+| **FR-11** | Windows Logon Auto-Start | Opsi integrasi autorun saat user logon Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`), dengan argumen `--tray` agar langsung berjalan di background system tray tanpa popup window. Bebas hak administrator/UAC. | P2 (Medium) |
 
 ---
 

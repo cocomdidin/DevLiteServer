@@ -17,16 +17,25 @@ public partial class MainForm : Form
     private readonly MailpitService _mailpit;
     private readonly List<IService> _services = new();
 
+    private readonly bool _startMinimized;
+    private bool _hasBeenShown = false;
     private bool _isExitingExplicitly = false;
 
-    public MainForm()
+    public MainForm(bool startMinimized = false)
     {
+        _startMinimized = startMinimized;
         InitializeComponent();
 
         _appRoot = AppPaths.ResolveRoot();
 
         string iniPath = Path.Combine(_appRoot, "config.ini");
         _config = ConfigManager.Load(iniPath);
+
+        // Sync Windows Logon Startup state with registry
+        if (_config.StartWithWindows != WindowsStartup.IsEnabled())
+        {
+            WindowsStartup.SetStartup(_config.StartWithWindows, Application.ExecutablePath);
+        }
 
         _job = new JobObject();
 
@@ -92,7 +101,7 @@ public partial class MainForm : Form
         {
             if (_config.AutoStartServices)
             {
-                await StartAllServicesAsync();
+                await AutoStartConfiguredServicesAsync();
             }
 
             if (_config.CheckUpdatesOnStart)
@@ -147,11 +156,11 @@ public partial class MainForm : Form
         }
 
         // Add cards in reverse order because Dock = DockStyle.Top docks from bottom up in addition
-        var mailpitCard = new ServiceCard(_mailpit, "✉");
-        var mysqlCard = new ServiceCard(_mysql, "🐬");
+        var mailpitCard = new ServiceCard(_mailpit, IconKind.Mail);
+        var mysqlCard = new ServiceCard(_mysql, IconKind.Database);
         var phpCard = new ServiceCard(
             _php,
-            "🐘",
+            IconKind.Lightning,
             phpVersions.ToArray(),
             _config.ActivePhp,
             async newVersion =>
@@ -167,7 +176,7 @@ public partial class MainForm : Form
                 BuildTrayMenu();
             }
         );
-        var nginxCard = new ServiceCard(_nginx, "⚡");
+        var nginxCard = new ServiceCard(_nginx, IconKind.Server);
 
         // Adding top to bottom
         cardContainer.Controls.Add(mailpitCard);
@@ -214,7 +223,9 @@ public partial class MainForm : Form
         }
         trayMenu.Items.Add(phpSubMenu);
 
-        var autoStartItem = new ToolStripMenuItem("Auto-start Services", null, (s, e) =>
+        // Auto-start submenu
+        var autoStartMenu = new ToolStripMenuItem("Auto-start Services");
+        var masterAutoStartItem = new ToolStripMenuItem("Enable Auto-start", null, (s, e) =>
         {
             _config.AutoStartServices = !_config.AutoStartServices;
             ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
@@ -223,7 +234,43 @@ public partial class MainForm : Form
         {
             Checked = _config.AutoStartServices
         };
-        trayMenu.Items.Add(autoStartItem);
+        autoStartMenu.DropDownItems.Add(masterAutoStartItem);
+        autoStartMenu.DropDownItems.Add(new ToolStripSeparator());
+
+        void AddServiceAutoStartItem(string label, Func<bool> getter, Action<bool> setter)
+        {
+            var item = new ToolStripMenuItem(label, null, (s, e) =>
+            {
+                bool newVal = !getter();
+                setter(newVal);
+                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                if (s is ToolStripMenuItem mi) mi.Checked = newVal;
+            })
+            {
+                Checked = getter()
+            };
+            autoStartMenu.DropDownItems.Add(item);
+        }
+
+        AddServiceAutoStartItem("Nginx", () => _config.AutoStartNginx, v => _config.AutoStartNginx = v);
+        AddServiceAutoStartItem("PHP FastCGI", () => _config.AutoStartPhp, v => _config.AutoStartPhp = v);
+        AddServiceAutoStartItem("MySQL", () => _config.AutoStartMysql, v => _config.AutoStartMysql = v);
+        AddServiceAutoStartItem("Mailpit", () => _config.AutoStartMailpit, v => _config.AutoStartMailpit = v);
+
+        trayMenu.Items.Add(autoStartMenu);
+
+        var startWithWindowsItem = new ToolStripMenuItem("Start with Windows", null, (s, e) =>
+        {
+            bool newVal = !_config.StartWithWindows;
+            _config.StartWithWindows = newVal;
+            WindowsStartup.SetStartup(newVal, Application.ExecutablePath);
+            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            if (s is ToolStripMenuItem mi) mi.Checked = newVal;
+        })
+        {
+            Checked = _config.StartWithWindows
+        };
+        trayMenu.Items.Add(startWithWindowsItem);
 
         trayMenu.Items.Add("Open /www", null, (s, e) => BtnOpenWww_Click(s, e));
         trayMenu.Items.Add("Open Terminal", null, (s, e) => BtnOpenTerminal_Click(s, e));
@@ -232,16 +279,31 @@ public partial class MainForm : Form
         trayMenu.Items.Add("Check for Updates...", null, async (s, e) => await CheckForUpdatesAsync(manual: true));
         trayMenu.Items.Add(new ToolStripSeparator());
 
-        trayMenu.Items.Add("Exit", null, async (s, e) =>
-        {
-            _isExitingExplicitly = true;
-            await StopAllServicesAsync();
-            _job.Dispose();
-            notifyIcon.Visible = false;
-            Application.Exit();
-        });
+        trayMenu.Items.Add("Exit", null, async (s, e) => await ExitApplicationAsync());
 
         notifyIcon.ContextMenuStrip = trayMenu;
+    }
+
+    private async Task AutoStartConfiguredServicesAsync()
+    {
+        btnStartAll.Enabled = false;
+        lblStatusText.Text = "Auto-starting configured services...";
+        lblStatusText.ForeColor = ModernColors.TextSecondary;
+
+        int startedCount = 0;
+        foreach (var svc in _services)
+        {
+            if (_config.ShouldAutoStart(svc.Name) && svc.Status != ServiceStatus.Running)
+            {
+                await svc.StartAsync();
+                startedCount++;
+            }
+        }
+
+        btnStartAll.Enabled = true;
+        lblStatusText.Text = startedCount > 0
+            ? $"Auto-start complete ({startedCount} service(s) running)."
+            : "Ready - Auto-start finished (no services selected).";
     }
 
     private async Task StartAllServicesAsync()
@@ -282,6 +344,22 @@ public partial class MainForm : Form
 
     private async void BtnStartAll_Click(object? sender, EventArgs e) => await StartAllServicesAsync();
     private async void BtnStopAll_Click(object? sender, EventArgs e) => await StopAllServicesAsync();
+    private async void BtnExit_Click(object? sender, EventArgs e) => await ExitApplicationAsync();
+
+    private async Task ExitApplicationAsync()
+    {
+        _isExitingExplicitly = true;
+        btnExit.Enabled = false;
+        btnStartAll.Enabled = false;
+        btnStopAll.Enabled = false;
+        lblStatusText.Text = "Stopping all services and exiting...";
+        lblStatusText.ForeColor = ModernColors.Warning;
+
+        await StopAllServicesAsync();
+        _job.Dispose();
+        notifyIcon.Visible = false;
+        Application.Exit();
+    }
 
     private void BtnOpenWww_Click(object? sender, EventArgs e)
     {
@@ -389,6 +467,7 @@ public partial class MainForm : Form
 
     public void RestoreFromTray()
     {
+        _hasBeenShown = true;
         if (!Visible)
         {
             Show();
@@ -402,6 +481,16 @@ public partial class MainForm : Form
         SingleInstance.ForceForeground(Handle);
         BringToFront();
         Activate();
+    }
+
+    protected override void SetVisibleCore(bool value)
+    {
+        if (_startMinimized && !_hasBeenShown)
+        {
+            value = false;
+            if (!IsHandleCreated) CreateHandle();
+        }
+        base.SetVisibleCore(value);
     }
 
     protected override void WndProc(ref Message m)
