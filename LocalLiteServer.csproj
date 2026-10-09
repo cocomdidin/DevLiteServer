@@ -9,6 +9,9 @@
     <AssemblyName>LocalLiteServer</AssemblyName>
     <Title>Local Lite Server</Title>
     <Product>Local Lite Server</Product>
+    <Description>Fast, portable, lightweight local web development environment for Windows (WEMP stack)</Description>
+    <Company>Local Lite Server</Company>
+    <Version>1.0.0</Version>
     <NoWarn>$(NoWarn);WFO1000</NoWarn>
   </PropertyGroup>
 

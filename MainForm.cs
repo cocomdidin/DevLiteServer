@@ -81,6 +81,15 @@ public partial class MainForm : Form
             {
                 await StartAllServicesAsync();
             }
+
+            if (_config.CheckUpdatesOnStart)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(3000);
+                    await CheckForUpdatesAsync(manual: false);
+                });
+            }
         };
     }
 
@@ -207,6 +216,9 @@ public partial class MainForm : Form
         trayMenu.Items.Add("Open Terminal", null, (s, e) => BtnOpenTerminal_Click(s, e));
         trayMenu.Items.Add(new ToolStripSeparator());
 
+        trayMenu.Items.Add("Check for Updates...", null, async (s, e) => await CheckForUpdatesAsync(manual: true));
+        trayMenu.Items.Add(new ToolStripSeparator());
+
         trayMenu.Items.Add("Exit", null, async (s, e) =>
         {
             _isExitingExplicitly = true;
@@ -278,6 +290,86 @@ public partial class MainForm : Form
     private void BtnOpenAdminer_Click(object? sender, EventArgs e)
     {
         Process.Start(new ProcessStartInfo($"http://localhost:{_config.HttpPort}/adminer") { UseShellExecute = true });
+    }
+
+    private async void BtnCheckUpdates_Click(object? sender, EventArgs e)
+    {
+        await CheckForUpdatesAsync(manual: true);
+    }
+
+    private async Task CheckForUpdatesAsync(bool manual)
+    {
+        if (manual)
+        {
+            lblStatusText.Text = "Checking for updates...";
+            lblStatusText.ForeColor = ModernColors.TextSecondary;
+            Cursor = Cursors.WaitCursor;
+        }
+
+        try
+        {
+            var updateInfo = await UpdateChecker.CheckForUpdatesAsync();
+            if (updateInfo == null)
+            {
+                if (manual)
+                {
+                    lblStatusText.Text = "Could not reach update server. Check internet connection.";
+                    lblStatusText.ForeColor = ModernColors.Warning;
+                    MessageBox.Show(
+                        this,
+                        "Could not check for updates.\nPlease verify your internet connection or check the GitHub releases page manually.",
+                        "Check for Updates",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                }
+                return;
+            }
+
+            if (manual || updateInfo.IsUpdateAvailable)
+            {
+                if (InvokeRequired)
+                {
+                    Invoke(() => ShowUpdateDialog(updateInfo));
+                }
+                else
+                {
+                    ShowUpdateDialog(updateInfo);
+                }
+            }
+            else if (manual)
+            {
+                lblStatusText.Text = $"Up to date (v{updateInfo.CurrentVersion}).";
+                lblStatusText.ForeColor = ModernColors.Success;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (manual)
+            {
+                lblStatusText.Text = $"Update check failed: {ex.Message}";
+                lblStatusText.ForeColor = ModernColors.Danger;
+            }
+        }
+        finally
+        {
+            if (manual)
+            {
+                Cursor = Cursors.Default;
+            }
+        }
+    }
+
+    private void ShowUpdateDialog(UpdateInfo updateInfo)
+    {
+        using var dialog = new UpdateDialog(updateInfo, async () =>
+        {
+            _isExitingExplicitly = true;
+            await StopAllServicesAsync();
+            _job.Dispose();
+            notifyIcon.Visible = false;
+        });
+        dialog.ShowDialog(this);
     }
 
     private void NotifyIcon_DoubleClick(object? sender, EventArgs e) => RestoreFromTray();

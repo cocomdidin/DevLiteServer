@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine Semantic Version
+        id: semver
+        uses: paulhatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: "v"
+          major_pattern: "(MAJOR)|BREAKING CHANGE"
+          minor_pattern: "(MINOR)|feat"
+          version_format: "${major}.${minor}.${patch}"
+          bump_each_commit: false
+          search_commit_body: true
+          default_bump: patch
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          include-prerelease: true
+
+      - name: Provision Starter Runtimes
+        shell: pwsh
+        run: |
+          Write-Host "Provisioning full runtime bundle (Nginx, PHP 8.4, MySQL 8.4, Node.js 24, Git, Mailpit, Composer)..."
+          .\scripts\setup-bundle.ps1 -Component All
+
+      - name: Publish .NET Application
+        shell: pwsh
+        run: |
+          dotnet publish LocalLiteServer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:Version=${{ steps.semver.outputs.version }} -o ./dist/app
+
+      - name: Assemble Distribution Bundle
+        shell: pwsh
+        run: |
+          Copy-Item -Path "templates" -Destination "dist/app/templates" -Recurse -Force
+          Copy-Item -Path "tools" -Destination "dist/app/tools" -Recurse -Force
+          Copy-Item -Path "www" -Destination "dist/app/www" -Recurse -Force
+          Copy-Item -Path "config.ini" -Destination "dist/app/config.ini" -Force
+          Copy-Item -Path "bin" -Destination "dist/app/bin" -Recurse -Force
+
+      - name: Package Portable Zip
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist/release")) { New-Item -ItemType Directory -Force -Path "dist/release" | Out-Null }
+          Compress-Archive -Path "dist/app/*" -DestinationPath "dist/release/LocalLiteServer-v${{ steps.semver.outputs.version }}-portable.zip" -CompressionLevel Optimal
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Compile Windows Installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" /DMyAppVersion=${{ steps.semver.outputs.version }} /DSourceDir=..\dist\app installer\setup.iss
+          Move-Item -Path "dist/installer/*.exe" -Destination "dist/release/" -Force
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ steps.semver.outputs.version }}"
+          name: "Local Lite Server v${{ steps.semver.outputs.version }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/release/LocalLiteServer-Setup-v${{ steps.semver.outputs.version }}.exe
+            dist/release/LocalLiteServer-v${{ steps.semver.outputs.version }}-portable.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

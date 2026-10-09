@@ -19,6 +19,7 @@ partial class MainForm
     private ModernButton btnOpenTerminal;
     private ModernButton btnOpenMailpit;
     private ModernButton btnOpenAdminer;
+    private ModernButton btnCheckUpdates;
 
     private System.Windows.Forms.Panel cardContainer;
     private System.Windows.Forms.Panel footerPanel;
@@ -51,6 +52,7 @@ partial class MainForm
         btnOpenTerminal = new ModernButton();
         btnOpenMailpit = new ModernButton();
         btnOpenAdminer = new ModernButton();
+        btnCheckUpdates = new ModernButton();
 
         cardContainer = new System.Windows.Forms.Panel();
         footerPanel = new System.Windows.Forms.Panel();
@@ -147,7 +149,15 @@ partial class MainForm
         btnOpenAdminer.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
         btnOpenAdminer.Click += BtnOpenAdminer_Click;
 
-        actionsPanel.Controls.AddRange([btnOpenWww, btnOpenTerminal, btnOpenMailpit, btnOpenAdminer]);
+        btnCheckUpdates.Text = "🔄 Updates";
+        btnCheckUpdates.Width = 95;
+        btnCheckUpdates.Height = 32;
+        btnCheckUpdates.Location = new Point(535, 8);
+        btnCheckUpdates.BorderRadius = 6;
+        btnCheckUpdates.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+        btnCheckUpdates.Click += BtnCheckUpdates_Click;
+
+        actionsPanel.Controls.AddRange([btnOpenWww, btnOpenTerminal, btnOpenMailpit, btnOpenAdminer, btnCheckUpdates]);
 
         //
         // cardContainer
