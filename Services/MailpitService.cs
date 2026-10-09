@@ -9,6 +9,7 @@ public class MailpitService : BaseService
 
     public override string Name => "Mailpit";
     public override int Port => _config.MailpitWebPort;
+    public override bool IsInstalled => File.Exists(GetMailpitExe());
 
     public override void UpdatePort(int newPort)
     {
@@ -19,9 +20,21 @@ public class MailpitService : BaseService
         : base(appRoot, job)
     {
         _config = config;
+        CheckInstallation();
     }
 
-    public string GetMailpitExe() => Path.Combine(AppRoot, "bin", "mailpit", "mailpit.exe");
+    public string GetMailpitExe()
+    {
+        string direct = Path.Combine(AppRoot, "bin", "mailpit", "mailpit.exe");
+        if (File.Exists(direct)) return direct;
+        string mailpitDir = Path.Combine(AppRoot, "bin", "mailpit");
+        if (Directory.Exists(mailpitDir))
+        {
+            var files = Directory.GetFiles(mailpitDir, "mailpit.exe", SearchOption.AllDirectories);
+            if (files.Length > 0) return files[0];
+        }
+        return direct;
+    }
 
     public override async Task<bool> StartAsync()
     {

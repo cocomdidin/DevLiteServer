@@ -9,6 +9,7 @@ public class MySqlService : BaseService
 
     public override string Name => "MySQL";
     public override int Port => _config.MysqlPort;
+    public override bool IsInstalled => File.Exists(GetMySqlDaemon());
 
     public override void UpdatePort(int newPort)
     {
@@ -19,6 +20,7 @@ public class MySqlService : BaseService
         : base(appRoot, job)
     {
         _config = config;
+        CheckInstallation();
     }
 
     public string GetMySqlDirectory()

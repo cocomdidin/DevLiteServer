@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using DevLiteServer.Core;
+using DevLiteServer.Core.Downloader;
 using DevLiteServer.Services;
 using DevLiteServer.UI;
 
@@ -26,6 +27,10 @@ public partial class MainForm : Form
 
     // Sites Page dynamic container
     private FlowLayoutPanel _pnlSitesContainer = null!;
+    private Panel _pnlPhpPackages = null!;
+    private Panel _pnlNodePackages = null!;
+    private ComboBox _cmbPhpVersions = null!;
+    private Label _lblNodeTitle = null!;
 
     public MainForm(bool startMinimized = false)
     {
@@ -738,7 +743,7 @@ public partial class MainForm : Form
         };
 
         // ComboBox versions
-        var cmbVersions = new ComboBox
+        _cmbPhpVersions = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             BackColor = ModernColors.Card,
@@ -749,18 +754,26 @@ public partial class MainForm : Form
             Location = new Point(110, 13)
         };
 
-        string phpRoot = Path.Combine(_appRoot, "bin", "php");
-        if (Directory.Exists(phpRoot))
+        void RefreshPhpVersionsCombo()
         {
-            var dirs = Directory.GetDirectories(phpRoot).Select(Path.GetFileName).Where(s => !string.IsNullOrEmpty(s)).ToArray();
-            if (dirs.Length > 0) cmbVersions.Items.AddRange(dirs!);
+            _cmbPhpVersions.Items.Clear();
+            string phpRoot = Path.Combine(_appRoot, "bin", "php");
+            if (Directory.Exists(phpRoot))
+            {
+                var dirs = Directory.GetDirectories(phpRoot).Select(Path.GetFileName).Where(s => !string.IsNullOrEmpty(s)).ToArray();
+                if (dirs.Length > 0) _cmbPhpVersions.Items.AddRange(dirs!);
+            }
+            if (_cmbPhpVersions.Items.Count == 0) _cmbPhpVersions.Items.Add(_config.ActivePhp);
+            if (_cmbPhpVersions.Items.Contains(_config.ActivePhp))
+                _cmbPhpVersions.SelectedItem = _config.ActivePhp;
+            else if (_cmbPhpVersions.Items.Count > 0)
+                _cmbPhpVersions.SelectedIndex = 0;
         }
-        if (cmbVersions.Items.Count == 0) cmbVersions.Items.Add(_config.ActivePhp);
-        cmbVersions.SelectedItem = _config.ActivePhp;
+        RefreshPhpVersionsCombo();
 
-        cmbVersions.SelectedIndexChanged += async (s, e) =>
+        _cmbPhpVersions.SelectedIndexChanged += async (s, e) =>
         {
-            if (cmbVersions.SelectedItem is string newVer && !newVer.Equals(_config.ActivePhp, StringComparison.OrdinalIgnoreCase))
+            if (_cmbPhpVersions.SelectedItem is string newVer && !newVer.Equals(_config.ActivePhp, StringComparison.OrdinalIgnoreCase))
             {
                 _config.ActivePhp = newVer;
                 ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
@@ -770,6 +783,7 @@ public partial class MainForm : Form
                     await _php.RestartAsync();
                     lblStatusText.Text = $"Switched to PHP {newVer}.";
                 }
+                RefreshPhpPackagesList();
                 BuildTrayMenu();
             }
         };
@@ -896,7 +910,7 @@ public partial class MainForm : Form
         };
 
         heroCard.Controls.Add(lblPhpActiveTitle);
-        heroCard.Controls.Add(cmbVersions);
+        heroCard.Controls.Add(_cmbPhpVersions);
         heroCard.Controls.Add(btnRestartPhp);
         heroCard.Controls.Add(btnOpenPhpIni);
         heroCard.Controls.Add(btnOpenExt);
@@ -906,9 +920,47 @@ public partial class MainForm : Form
         heroCard.Controls.Add(togAutoPhp);
         heroCard.Controls.Add(lblPhpDetails);
 
-        pagePhp.Controls.Add(heroCard);
-        pagePhp.Controls.Add(pnlHeader);
+        // Section: Available PHP Runtimes (Herd Downloader)
+        var pnlPhpPacksHeader = CreateSectionHeader("Available PHP Runtimes (Official windows.php.net)", "1-click download, auto-extract, and configure PHP versions.");
+
+        _pnlPhpPackages = new Panel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            BackColor = Color.Transparent
+        };
+
+        void RefreshPhpPackagesList()
+        {
+            _pnlPhpPackages.Controls.Clear();
+            var packages = PackageCatalog.GetPhpPackages();
+            var cards = new List<Control>();
+            foreach (var pkg in packages)
+            {
+                var card = new PackageRowCard(pkg, _appRoot, _config, async () =>
+                {
+                    RefreshPhpVersionsCombo();
+                    RefreshPhpPackagesList();
+                    BuildTrayMenu();
+                    if (_php.Status == ServiceStatus.Running)
+                    {
+                        lblStatusText.Text = $"Applying PHP {_config.ActivePhp}...";
+                        await _php.RestartAsync();
+                        lblStatusText.Text = $"PHP {_config.ActivePhp} active.";
+                    }
+                });
+                cards.Add(card);
+            }
+            cards.Reverse();
+            _pnlPhpPackages.Controls.AddRange(cards.ToArray());
+        }
+        RefreshPhpPackagesList();
+
+        pagePhp.Controls.AddRange([_pnlPhpPackages, pnlPhpPacksHeader, heroCard, pnlHeader]);
         pnlHeader.SendToBack();
+        heroCard.SendToBack();
+        pnlPhpPacksHeader.SendToBack();
+        _pnlPhpPackages.SendToBack();
     }
 
     // ------------------------------------------
@@ -938,9 +990,9 @@ public partial class MainForm : Form
             g.DrawPath(pen, path);
         };
 
-        var lblNodeTitle = new Label
+        _lblNodeTitle = new Label
         {
-            Text = $"Bundled Runtime: {_config.ActiveNode}",
+            Text = $"Active Runtime: {_config.ActiveNode}",
             ForeColor = ModernColors.TextPrimary,
             Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
             Location = new Point(16, 14),
@@ -980,8 +1032,8 @@ public partial class MainForm : Form
         };
         btnOpenNodeFolder.Click += (s, e) =>
         {
-            string nodeDir = Path.Combine(_appRoot, "bin", "node", _config.ActiveNode);
-            if (!Directory.Exists(nodeDir)) nodeDir = Path.Combine(_appRoot, "bin", "node");
+            string nodeDir = Path.Combine(_appRoot, "bin", "nodejs", _config.ActiveNode);
+            if (!Directory.Exists(nodeDir)) nodeDir = Path.Combine(_appRoot, "bin", "nodejs");
             if (Directory.Exists(nodeDir))
             {
                 Process.Start(new ProcessStartInfo("explorer.exe", $"\"{nodeDir}\"") { UseShellExecute = true });
@@ -997,14 +1049,47 @@ public partial class MainForm : Form
             AutoSize = true
         };
 
-        heroCard.Controls.Add(lblNodeTitle);
+        heroCard.Controls.Add(_lblNodeTitle);
         heroCard.Controls.Add(btnOpenNodeTerminal);
         heroCard.Controls.Add(btnOpenNodeFolder);
         heroCard.Controls.Add(lblNodeNote);
 
-        pageNode.Controls.Add(heroCard);
-        pageNode.Controls.Add(pnlHeader);
+        // Section: Available Node.js Runtimes (Herd Downloader)
+        var pnlNodePacksHeader = CreateSectionHeader("Available Node.js Runtimes (Official nodejs.org)", "1-click download and extract portable Node.js, NPM, and NPX runtimes.");
+
+        _pnlNodePackages = new Panel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            BackColor = Color.Transparent
+        };
+
+        void RefreshNodePackagesList()
+        {
+            _pnlNodePackages.Controls.Clear();
+            var packages = PackageCatalog.GetNodePackages();
+            var cards = new List<Control>();
+            foreach (var pkg in packages)
+            {
+                var card = new PackageRowCard(pkg, _appRoot, _config, () =>
+                {
+                    _lblNodeTitle.Text = $"Active Runtime: {_config.ActiveNode}";
+                    RefreshNodePackagesList();
+                    BuildTrayMenu();
+                    lblStatusText.Text = $"Node.js {_config.ActiveNode} active.";
+                });
+                cards.Add(card);
+            }
+            cards.Reverse();
+            _pnlNodePackages.Controls.AddRange(cards.ToArray());
+        }
+        RefreshNodePackagesList();
+
+        pageNode.Controls.AddRange([_pnlNodePackages, pnlNodePacksHeader, heroCard, pnlHeader]);
         pnlHeader.SendToBack();
+        heroCard.SendToBack();
+        pnlNodePacksHeader.SendToBack();
+        _pnlNodePackages.SendToBack();
     }
 
     // ------------------------------------------
@@ -1181,35 +1266,74 @@ public partial class MainForm : Form
 
         var btnToggle = new ModernButton
         {
-            Text = service.Status == ServiceStatus.Running ? "Stop" : "Start",
-            IconKind = service.Status == ServiceStatus.Running ? IconKind.Stop : IconKind.Play,
+            Text = service.Status == ServiceStatus.Running ? "Stop" : (service.Status == ServiceStatus.NotInstalled ? "Install" : "Start"),
+            IconKind = service.Status == ServiceStatus.Running ? IconKind.Stop : (service.Status == ServiceStatus.NotInstalled ? IconKind.Download : IconKind.Play),
             IconSize = 10,
             Width = 80,
             Height = 32,
             BorderRadius = 6,
             ShowBorder = false,
-            NormalColor = service.Status == ServiceStatus.Running ? ModernColors.Danger : ModernColors.Success,
-            HoverColor = service.Status == ServiceStatus.Running ? ModernColors.DangerHover : ModernColors.SuccessHover,
+            NormalColor = service.Status == ServiceStatus.Running ? ModernColors.Danger : (service.Status == ServiceStatus.NotInstalled ? ModernColors.Primary : ModernColors.Success),
+            HoverColor = service.Status == ServiceStatus.Running ? ModernColors.DangerHover : (service.Status == ServiceStatus.NotInstalled ? ModernColors.PrimaryHover : ModernColors.SuccessHover),
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
+
+        void UpdateBtn()
+        {
+            if (service.Status == ServiceStatus.Running)
+            {
+                btnToggle.Text = "Stop";
+                btnToggle.IconKind = IconKind.Stop;
+                btnToggle.NormalColor = ModernColors.Danger;
+                btnToggle.HoverColor = ModernColors.DangerHover;
+            }
+            else if (service.Status == ServiceStatus.NotInstalled)
+            {
+                btnToggle.Text = "Install";
+                btnToggle.IconKind = IconKind.Download;
+                btnToggle.NormalColor = ModernColors.Primary;
+                btnToggle.HoverColor = ModernColors.PrimaryHover;
+            }
+            else
+            {
+                btnToggle.Text = "Start";
+                btnToggle.IconKind = IconKind.Play;
+                btnToggle.NormalColor = ModernColors.Success;
+                btnToggle.HoverColor = ModernColors.SuccessHover;
+            }
+        }
 
         btnToggle.Click += async (s, e) =>
         {
             btnToggle.Enabled = false;
-            if (service.Status == ServiceStatus.Running) await service.StopAsync();
-            else await service.StartAsync();
-            btnToggle.Enabled = true;
+            try
+            {
+                if (service.Status == ServiceStatus.NotInstalled)
+                {
+                    string key = service.Name.ToLowerInvariant();
+                    if (key.Contains("mysql")) await InstallServiceWithUiAsync("mysql", service);
+                    else if (key.Contains("postgre")) await InstallServiceWithUiAsync("postgresql", service);
+                    else if (key.Contains("redis")) await InstallServiceWithUiAsync("redis", service);
+                    else if (key.Contains("mailpit")) await InstallServiceWithUiAsync("mailpit", service);
+                }
+                else if (service.Status == ServiceStatus.Running)
+                {
+                    await service.StopAsync();
+                }
+                else
+                {
+                    await service.StartAsync();
+                }
+            }
+            finally
+            {
+                btnToggle.Enabled = true;
+                UpdateBtn();
+            }
         };
 
         service.StatusChanged += (s, st) =>
         {
-            void UpdateBtn()
-            {
-                btnToggle.Text = st == ServiceStatus.Running ? "Stop" : "Start";
-                btnToggle.IconKind = st == ServiceStatus.Running ? IconKind.Stop : IconKind.Play;
-                btnToggle.NormalColor = st == ServiceStatus.Running ? ModernColors.Danger : ModernColors.Success;
-                btnToggle.HoverColor = st == ServiceStatus.Running ? ModernColors.DangerHover : ModernColors.SuccessHover;
-            }
             if (InvokeRequired) Invoke((Action)UpdateBtn);
             else UpdateBtn();
         };
@@ -1399,35 +1523,72 @@ public partial class MainForm : Form
         // Action Buttons (Right-aligned)
         var btnToggle = new ModernButton
         {
-            Text = _mailpit.Status == ServiceStatus.Running ? "Stop" : "Start",
-            IconKind = _mailpit.Status == ServiceStatus.Running ? IconKind.Stop : IconKind.Play,
+            Text = _mailpit.Status == ServiceStatus.Running ? "Stop" : (_mailpit.Status == ServiceStatus.NotInstalled ? "Install" : "Start"),
+            IconKind = _mailpit.Status == ServiceStatus.Running ? IconKind.Stop : (_mailpit.Status == ServiceStatus.NotInstalled ? IconKind.Download : IconKind.Play),
             IconSize = 10,
             Width = 80,
             Height = 32,
             BorderRadius = 6,
             ShowBorder = false,
-            NormalColor = _mailpit.Status == ServiceStatus.Running ? ModernColors.Danger : ModernColors.Success,
-            HoverColor = _mailpit.Status == ServiceStatus.Running ? ModernColors.DangerHover : ModernColors.SuccessHover,
+            NormalColor = _mailpit.Status == ServiceStatus.Running ? ModernColors.Danger : (_mailpit.Status == ServiceStatus.NotInstalled ? ModernColors.Primary : ModernColors.Success),
+            HoverColor = _mailpit.Status == ServiceStatus.Running ? ModernColors.DangerHover : (_mailpit.Status == ServiceStatus.NotInstalled ? ModernColors.PrimaryHover : ModernColors.SuccessHover),
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
+
+        void UpdateMailBtn()
+        {
+            if (_mailpit.Status == ServiceStatus.Running)
+            {
+                btnToggle.Text = "Stop";
+                btnToggle.IconKind = IconKind.Stop;
+                btnToggle.NormalColor = ModernColors.Danger;
+                btnToggle.HoverColor = ModernColors.DangerHover;
+            }
+            else if (_mailpit.Status == ServiceStatus.NotInstalled)
+            {
+                btnToggle.Text = "Install";
+                btnToggle.IconKind = IconKind.Download;
+                btnToggle.NormalColor = ModernColors.Primary;
+                btnToggle.HoverColor = ModernColors.PrimaryHover;
+            }
+            else
+            {
+                btnToggle.Text = "Start";
+                btnToggle.IconKind = IconKind.Play;
+                btnToggle.NormalColor = ModernColors.Success;
+                btnToggle.HoverColor = ModernColors.SuccessHover;
+            }
+        }
+
         btnToggle.Click += async (s, e) =>
         {
             btnToggle.Enabled = false;
-            if (_mailpit.Status == ServiceStatus.Running) await _mailpit.StopAsync();
-            else await _mailpit.StartAsync();
-            btnToggle.Enabled = true;
+            try
+            {
+                if (_mailpit.Status == ServiceStatus.NotInstalled)
+                {
+                    await InstallServiceWithUiAsync("mailpit", _mailpit);
+                }
+                else if (_mailpit.Status == ServiceStatus.Running)
+                {
+                    await _mailpit.StopAsync();
+                }
+                else
+                {
+                    await _mailpit.StartAsync();
+                }
+            }
+            finally
+            {
+                btnToggle.Enabled = true;
+                UpdateMailBtn();
+            }
         };
+
         _mailpit.StatusChanged += (s, st) =>
         {
-            void UpdateBtn()
-            {
-                btnToggle.Text = st == ServiceStatus.Running ? "Stop" : "Start";
-                btnToggle.IconKind = st == ServiceStatus.Running ? IconKind.Stop : IconKind.Play;
-                btnToggle.NormalColor = st == ServiceStatus.Running ? ModernColors.Danger : ModernColors.Success;
-                btnToggle.HoverColor = st == ServiceStatus.Running ? ModernColors.DangerHover : ModernColors.SuccessHover;
-            }
-            if (InvokeRequired) Invoke((Action)UpdateBtn);
-            else UpdateBtn();
+            if (InvokeRequired) Invoke((Action)UpdateMailBtn);
+            else UpdateMailBtn();
         };
 
         var btnOpenInbox = new ModernButton
@@ -1830,6 +1991,56 @@ public partial class MainForm : Form
         lblSidebarStatus.Text = runningCount > 0 ? $"{runningCount} running" : "Stopped";
     }
 
+    private async Task InstallServiceWithUiAsync(string serviceKey, IService targetService)
+    {
+        var pkg = PackageCatalog.GetServicePackage(serviceKey);
+        if (pkg == null)
+        {
+            MessageBox.Show(this, $"No download package found for {targetService.Name}.", "Install Service", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        var confirm = MessageBox.Show(this,
+            $"Download and install {pkg.Name} ({pkg.Tag})?\nApproximate download size: ~{pkg.ApproximateSizeBytes / (1024 * 1024)} MB",
+            $"Install {targetService.Name}",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+
+        if (confirm != DialogResult.Yes) return;
+
+        lblStatusText.Text = $"Connecting to download {pkg.Name}...";
+        lblStatusText.ForeColor = ModernColors.Primary;
+
+        var progress = new Progress<PackageDownloadProgress>(p =>
+        {
+            if (p.HasError)
+            {
+                lblStatusText.Text = $"Installation error: {p.ErrorMessage}";
+                lblStatusText.ForeColor = ModernColors.Danger;
+            }
+            else
+            {
+                lblStatusText.Text = p.StatusText;
+                lblStatusText.ForeColor = ModernColors.Primary;
+            }
+        });
+
+        bool success = await PackageDownloader.DownloadAndInstallAsync(pkg, _appRoot, progress);
+        if (success)
+        {
+            targetService.CheckInstallation();
+            lblStatusText.Text = $"{pkg.Name} installed successfully and ready to start.";
+            lblStatusText.ForeColor = ModernColors.Success;
+            BuildServiceCards();
+            BuildTrayMenu();
+        }
+        else
+        {
+            lblStatusText.Text = $"Failed to install {pkg.Name}.";
+            lblStatusText.ForeColor = ModernColors.Danger;
+        }
+    }
+
     private void BuildServiceCards()
     {
         cardContainer.Controls.Clear();
@@ -1848,25 +2059,25 @@ public partial class MainForm : Form
         // Add enabled service cards in reverse dock order
         if (_config.EnableRedis)
         {
-            var redisCard = new ServiceCard(_redis, IconKind.Server);
+            var redisCard = new ServiceCard(_redis, IconKind.Server, onInstall: async svc => await InstallServiceWithUiAsync("redis", svc));
             cardContainer.Controls.Add(redisCard);
         }
 
         if (_config.EnablePostgresql)
         {
-            var pgCard = new ServiceCard(_postgresql, IconKind.Database);
+            var pgCard = new ServiceCard(_postgresql, IconKind.Database, onInstall: async svc => await InstallServiceWithUiAsync("postgresql", svc));
             cardContainer.Controls.Add(pgCard);
         }
 
         if (_config.EnableMailpit)
         {
-            var mailpitCard = new ServiceCard(_mailpit, IconKind.Mail);
+            var mailpitCard = new ServiceCard(_mailpit, IconKind.Mail, onInstall: async svc => await InstallServiceWithUiAsync("mailpit", svc));
             cardContainer.Controls.Add(mailpitCard);
         }
 
         if (_config.EnableMysql)
         {
-            var mysqlCard = new ServiceCard(_mysql, IconKind.Database);
+            var mysqlCard = new ServiceCard(_mysql, IconKind.Database, onInstall: async svc => await InstallServiceWithUiAsync("mysql", svc));
             cardContainer.Controls.Add(mysqlCard);
         }
 
@@ -1888,6 +2099,12 @@ public partial class MainForm : Form
                         lblStatusText.Text = $"Switched to PHP {newVersion}.";
                     }
                     BuildTrayMenu();
+                },
+                onInstall: _ =>
+                {
+                    SelectNavTab(3);
+                    lblStatusText.Text = "Please download and install a PHP runtime from the catalog below.";
+                    return Task.CompletedTask;
                 }
             );
             cardContainer.Controls.Add(phpCard);
@@ -1984,6 +2201,29 @@ public partial class MainForm : Form
             }
         }
         trayMenu.Items.Add(phpSubMenu);
+
+        // Node Version submenu
+        var nodeSubMenu = new ToolStripMenuItem("Node Version");
+        string nodeRoot = Path.Combine(_appRoot, "bin", "nodejs");
+        if (Directory.Exists(nodeRoot))
+        {
+            foreach (var dir in Directory.GetDirectories(nodeRoot))
+            {
+                string dirName = Path.GetFileName(dir);
+                var item = new ToolStripMenuItem(dirName, null, (s, e) =>
+                {
+                    _config.ActiveNode = dirName;
+                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                    if (_lblNodeTitle != null) _lblNodeTitle.Text = $"Active Runtime: {_config.ActiveNode}";
+                    BuildTrayMenu();
+                })
+                {
+                    Checked = dirName.Equals(_config.ActiveNode, StringComparison.OrdinalIgnoreCase)
+                };
+                nodeSubMenu.DropDownItems.Add(item);
+            }
+        }
+        trayMenu.Items.Add(nodeSubMenu);
 
         // Auto-start submenu
         var autoStartMenu = new ToolStripMenuItem("Auto-start Services");
@@ -2088,15 +2328,15 @@ public partial class MainForm : Form
         lblStatusText.Text = "Starting all enabled services...";
         lblStatusText.ForeColor = ModernColors.Warning;
 
-        // Auto-start PHP FastCGI first if enabled
-        if (_config.EnablePhp && _php.Status != ServiceStatus.Running)
+        // Auto-start PHP FastCGI first if enabled and installed
+        if (_config.EnablePhp && _php.IsInstalled && _php.Status != ServiceStatus.Running)
         {
             await _php.StartAsync();
         }
 
         foreach (var svc in _services)
         {
-            if (svc != _php && _config.IsServiceEnabled(svc.Name) && svc.Status != ServiceStatus.Running)
+            if (svc != _php && _config.IsServiceEnabled(svc.Name) && svc.IsInstalled && svc.Status != ServiceStatus.Running)
             {
                 await svc.StartAsync();
             }
@@ -2130,32 +2370,32 @@ public partial class MainForm : Form
 
     private async Task AutoStartConfiguredServicesAsync()
     {
-        if (_config.EnablePhp && _config.AutoStartPhp && _php.Status != ServiceStatus.Running)
+        if (_config.EnablePhp && _config.AutoStartPhp && _php.IsInstalled && _php.Status != ServiceStatus.Running)
         {
             await _php.StartAsync();
         }
 
-        if (_config.EnableNginx && _config.AutoStartNginx && _nginx.Status != ServiceStatus.Running)
+        if (_config.EnableNginx && _config.AutoStartNginx && _nginx.IsInstalled && _nginx.Status != ServiceStatus.Running)
         {
             await _nginx.StartAsync();
         }
 
-        if (_config.EnableMysql && _config.AutoStartMysql && _mysql.Status != ServiceStatus.Running)
+        if (_config.EnableMysql && _config.AutoStartMysql && _mysql.IsInstalled && _mysql.Status != ServiceStatus.Running)
         {
             await _mysql.StartAsync();
         }
 
-        if (_config.EnableMailpit && _config.AutoStartMailpit && _mailpit.Status != ServiceStatus.Running)
+        if (_config.EnableMailpit && _config.AutoStartMailpit && _mailpit.IsInstalled && _mailpit.Status != ServiceStatus.Running)
         {
             await _mailpit.StartAsync();
         }
 
-        if (_config.EnablePostgresql && _config.AutoStartPostgresql && _postgresql.Status != ServiceStatus.Running)
+        if (_config.EnablePostgresql && _config.AutoStartPostgresql && _postgresql.IsInstalled && _postgresql.Status != ServiceStatus.Running)
         {
             await _postgresql.StartAsync();
         }
 
-        if (_config.EnableRedis && _config.AutoStartRedis && _redis.Status != ServiceStatus.Running)
+        if (_config.EnableRedis && _config.AutoStartRedis && _redis.IsInstalled && _redis.Status != ServiceStatus.Running)
         {
             await _redis.StartAsync();
         }

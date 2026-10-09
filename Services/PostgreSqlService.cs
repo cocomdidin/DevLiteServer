@@ -9,6 +9,7 @@ public class PostgreSqlService : BaseService
 
     public override string Name => "PostgreSQL";
     public override int Port => _config.PostgreSqlPort;
+    public override bool IsInstalled => File.Exists(GetDaemonPath());
 
     public override void UpdatePort(int newPort)
     {
@@ -19,6 +20,7 @@ public class PostgreSqlService : BaseService
         : base(appRoot, job)
     {
         _config = config;
+        CheckInstallation();
     }
 
     public string GetPostgreSqlDirectory()

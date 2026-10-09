@@ -14,6 +14,8 @@ public abstract class BaseService : IService
     public string? LastError { get; protected set; }
     public Func<string, int, int, Task<int?>>? PortConflictResolver { get; set; }
 
+    public virtual bool IsInstalled => true;
+
     private ServiceStatus _status = ServiceStatus.Stopped;
     public ServiceStatus Status
     {
@@ -34,6 +36,18 @@ public abstract class BaseService : IService
     {
         AppRoot = appRoot;
         Job = job;
+    }
+
+    public virtual void CheckInstallation()
+    {
+        if (!IsInstalled)
+        {
+            Status = ServiceStatus.NotInstalled;
+        }
+        else if (Status == ServiceStatus.NotInstalled)
+        {
+            Status = ServiceStatus.Stopped;
+        }
     }
 
     public abstract Task<bool> StartAsync();

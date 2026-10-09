@@ -10,6 +10,7 @@ public class ServiceCard : Panel
     private readonly IconKind _iconKind;
     private readonly string _categoryTag;
     private readonly string? _webUrl;
+    private readonly Func<IService, Task>? _onInstall;
 
     private readonly StatusPill _pill;
     private readonly ModernButton _btnToggle;
@@ -26,10 +27,12 @@ public class ServiceCard : Panel
         IconKind iconKind = IconKind.Server,
         string[]? versions = null,
         string? activeVersion = null,
-        Action<string>? onVersionChanged = null)
+        Action<string>? onVersionChanged = null,
+        Func<IService, Task>? onInstall = null)
     {
         _service = service;
         _iconKind = iconKind;
+        _onInstall = onInstall;
 
         // Determine category tag and quick browser URL
         switch (service.Name.ToLowerInvariant())
@@ -186,15 +189,29 @@ public class ServiceCard : Panel
         _btnToggle.Click += async (s, e) =>
         {
             _btnToggle.Enabled = false;
-            if (_service.Status == ServiceStatus.Running)
+            try
             {
-                await _service.StopAsync();
+                if (_service.Status == ServiceStatus.NotInstalled)
+                {
+                    if (_onInstall != null)
+                    {
+                        await _onInstall(_service);
+                    }
+                }
+                else if (_service.Status == ServiceStatus.Running)
+                {
+                    await _service.StopAsync();
+                }
+                else
+                {
+                    await _service.StartAsync();
+                }
             }
-            else
+            finally
             {
-                await _service.StartAsync();
+                _btnToggle.Enabled = true;
+                UpdateVisuals(_service.Status);
             }
-            _btnToggle.Enabled = true;
         };
 
         Controls.Add(_lblTitle);
@@ -242,6 +259,14 @@ public class ServiceCard : Panel
             _btnToggle.NormalColor = ModernColors.Danger;
             _btnToggle.HoverColor = ModernColors.DangerHover;
             _btnToggle.PressedColor = ModernColors.DangerBg;
+        }
+        else if (status == ServiceStatus.NotInstalled)
+        {
+            _btnToggle.Text = "Install";
+            _btnToggle.IconKind = IconKind.Download;
+            _btnToggle.NormalColor = ModernColors.Primary;
+            _btnToggle.HoverColor = ModernColors.PrimaryHover;
+            _btnToggle.PressedColor = ModernColors.PrimaryBg;
         }
         else if (status == ServiceStatus.Starting || status == ServiceStatus.Stopping)
         {

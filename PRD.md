@@ -160,10 +160,12 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
   - Port checker & interactive conflict resolver modal dialog (`PortConflictDialog`) dengan 1-klik auto-reassign.
   - System Dependency Checker (`VcRedistDialog`) dengan 1-klik download & auto-install MSVCRT x64 resmi dari Microsoft.
   - Dynamic config templates lengkap: `nginx.conf.tpl`, `my.ini.tpl`, `php.ini.tpl`, `postgresql.conf.tpl`, `redis.conf.tpl`.
-- **Milestone 3 (Herd-Style Package Downloader)**:
-  - Downloader client untuk PHP (windows.php.net) dan Node.js (nodejs.org).
-  - Auto-unzip, directory placement, dan auto-configure `php.ini`.
-  - Isolated Terminal launcher dengan injected dynamic `PATH`.
+- **Milestone 3 (Herd-Style Package Downloader) [SELESAI]**:
+  - Downloader client untuk PHP (windows.php.net: 7.4, 8.1, 8.2, 8.3, 8.4) dan Node.js (nodejs.org: v18, v20, v22, v24).
+  - Thin Core Bundle architecture: Nginx & core assets bundled (~15 MB), runtime heavy (MySQL, PostgreSQL, Redis, Mailpit) diunduh on-demand.
+  - Lifecycle state `NotInstalled` dengan status badge neutral gray dan dynamic 1-klik "Install" button.
+  - Auto-unzip, directory placement, single-wrapper folder flattening, dan auto-configure `php.ini`.
+  - Isolated Terminal launcher dengan injected dynamic `PATH` untuk PHP, Node, Git, Composer, MySQL, PostgreSQL, Redis.
 - **Milestone 4 (Virtual Host & Polish)**:
   - Auto Virtual Host generator (`*.test`) untuk Nginx.
   - System Tray menu lengkap & dark mode UI polish.

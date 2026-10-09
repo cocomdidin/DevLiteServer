@@ -18,7 +18,9 @@ public enum IconKind
     Power,
     Check,
     Gear,
-    Warning
+    Warning,
+    Download,
+    Trash
 }
 
 public static class VectorIcons
@@ -237,6 +239,54 @@ public static class VectorIcons
                     g.DrawLine(thinPen, x + (w * 0.5f), y + (h * 0.38f), x + (w * 0.5f), y + (h * 0.60f));
                     float dotSize = Math.Max(w * 0.08f, 1.5f);
                     g.FillEllipse(brush, x + (w * 0.5f) - (dotSize / 2f), y + (h * 0.72f), dotSize, dotSize);
+                }
+                break;
+
+            case IconKind.Download:
+                {
+                    // Downward arrow
+                    float cx = x + (w * 0.5f);
+                    float arrowTop = y + (h * 0.16f);
+                    float arrowBot = y + (h * 0.62f);
+                    g.DrawLine(pen, cx, arrowTop, cx, arrowBot);
+                    g.DrawLine(pen, cx - (w * 0.22f), arrowBot - (h * 0.20f), cx, arrowBot);
+                    g.DrawLine(pen, cx + (w * 0.22f), arrowBot - (h * 0.20f), cx, arrowBot);
+
+                    // Bottom tray
+                    float trayLeft = x + (w * 0.16f);
+                    float trayRight = x + (w * 0.84f);
+                    float trayTop = y + (h * 0.68f);
+                    float trayBot = y + (h * 0.86f);
+                    g.DrawLine(pen, trayLeft, trayTop, trayLeft, trayBot);
+                    g.DrawLine(pen, trayLeft, trayBot, trayRight, trayBot);
+                    g.DrawLine(pen, trayRight, trayBot, trayRight, trayTop);
+                }
+                break;
+
+            case IconKind.Trash:
+                {
+                    // Lid
+                    float lx1 = x + (w * 0.16f);
+                    float lx2 = x + (w * 0.84f);
+                    float ly = y + (h * 0.26f);
+                    g.DrawLine(pen, lx1, ly, lx2, ly);
+                    // Handle
+                    g.DrawLine(pen, x + (w * 0.38f), ly, x + (w * 0.38f), y + (h * 0.15f));
+                    g.DrawLine(pen, x + (w * 0.38f), y + (h * 0.15f), x + (w * 0.62f), y + (h * 0.15f));
+                    g.DrawLine(pen, x + (w * 0.62f), y + (h * 0.15f), x + (w * 0.62f), ly);
+
+                    // Body
+                    float bx1 = x + (w * 0.24f);
+                    float bx2 = x + (w * 0.76f);
+                    float byTop = ly;
+                    float byBot = y + (h * 0.86f);
+                    g.DrawLine(pen, bx1, byTop, bx1 + (w * 0.04f), byBot);
+                    g.DrawLine(pen, bx1 + (w * 0.04f), byBot, bx2 - (w * 0.04f), byBot);
+                    g.DrawLine(pen, bx2 - (w * 0.04f), byBot, bx2, byTop);
+
+                    // Inner lines
+                    g.DrawLine(pen, x + (w * 0.42f), ly + (h * 0.15f), x + (w * 0.42f), byBot - (h * 0.10f));
+                    g.DrawLine(pen, x + (w * 0.58f), ly + (h * 0.15f), x + (w * 0.58f), byBot - (h * 0.10f));
                 }
                 break;
         }

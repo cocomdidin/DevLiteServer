@@ -87,6 +87,13 @@ public class StatusPill : Control
                 textColor = Color.FromArgb(254, 205, 211);
                 text = "Error";
                 break;
+            case ServiceStatus.NotInstalled:
+                bg = Color.FromArgb(24, 27, 36);
+                border = Color.FromArgb(55, 65, 81);
+                dotColor = Color.FromArgb(107, 114, 128);
+                textColor = Color.FromArgb(156, 163, 175);
+                text = "Not Installed";
+                break;
             default:
                 bg = Color.FromArgb(20, 27, 40);
                 border = Color.FromArgb(45, 55, 75);

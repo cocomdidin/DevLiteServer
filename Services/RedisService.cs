@@ -9,6 +9,7 @@ public class RedisService : BaseService
 
     public override string Name => "Redis";
     public override int Port => _config.RedisPort;
+    public override bool IsInstalled => File.Exists(GetDaemonPath());
 
     public override void UpdatePort(int newPort)
     {
@@ -19,6 +20,7 @@ public class RedisService : BaseService
         : base(appRoot, job)
     {
         _config = config;
+        CheckInstallation();
     }
 
     public string GetRedisDirectory()

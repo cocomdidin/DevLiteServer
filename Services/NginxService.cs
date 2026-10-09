@@ -10,6 +10,7 @@ public class NginxService : BaseService
 
     public override string Name => "Nginx";
     public override int Port => _config.HttpPort;
+    public override bool IsInstalled => File.Exists(GetNginxExe());
 
     public override void UpdatePort(int newPort)
     {
@@ -21,6 +22,7 @@ public class NginxService : BaseService
     {
         _config = config;
         DependentPhpService = phpService;
+        CheckInstallation();
     }
 
     public string GetNginxDirectory()

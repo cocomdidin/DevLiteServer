@@ -10,6 +10,7 @@ public class PhpService : BaseService
 
     public override string Name => "PHP (FastCGI)";
     public override int Port => _config.PhpFastCgiPort;
+    public override bool IsInstalled => File.Exists(GetPhpCgiPath());
 
     public override void UpdatePort(int newPort)
     {
@@ -20,6 +21,7 @@ public class PhpService : BaseService
         : base(appRoot, job)
     {
         _config = config;
+        CheckInstallation();
     }
 
     public string GetPhpDirectory()
