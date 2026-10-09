@@ -55,3 +55,30 @@ Setiap git commit message yang dibuat oleh asisten wajib diakhiri dengan:
 ```text
 Co-Authored-By: Claude Code <noreply@anthropic.com>
 ```
+
+---
+
+## Standar Pipeline Perubahan (Definition of Done / DoD)
+
+Setiap ada **penambahan fitur baru**, **revisi**, **refactoring**, atau **perubahan konfigurasi**, wajib melalui dan memvalidasi alur sinkronisasi berikut sebelum pekerjaan dianggap selesai:
+
+```
+[1. Code/Config] ➔ [2. Sync Docs (README/PRD)] ➔ [3. Sync Installer/Bundle] ➔ [4. Build Verify] ➔ [5. Commit Approval]
+```
+
+### Checklist Wajib Sinkronisasi (Synchronous Checklist):
+1. **Sinkronisasi Kode & Config**:
+   - Jika menambah port/service baru: perbarui `config.ini`, `Core/AppConfig.cs`, dan `templates/`.
+   - Pastikan path resolution selalu melalui `Core/AppPaths.cs`.
+2. **Sinkronisasi Dokumentasi (`README.md` & `PRD.md`)**:
+   - Fitur baru / opsi baru wajib dicatat pada daftar fitur di `README.md`.
+   - Matriks port atau service baru wajib dicatat pada tabel Stack & Ports di `README.md`.
+   - Perubahan arsitektur/scope wajib di-update pada `PRD.md`.
+3. **Sinkronisasi Distribusi & Installer**:
+   - Jika ada file/folder baru di luar `bin/` yang perlu di-bundle: perbarui `installer/setup.iss`, `.github/workflows/release.yml`, dan `scripts/setup-bundle.ps1`.
+4. **Verifikasi Kompilasi**:
+   - Jalankan `rtk dotnet build` dan pastikan **0 error, 0 warning**.
+5. **Konfirmasi & Commit**:
+   - Rangkum perubahan kepada user dan minta persetujuan commit sesuai Conventional Commits.
+   - DILARANG commit otomatis tanpa persetujuan eksplisit.
+
