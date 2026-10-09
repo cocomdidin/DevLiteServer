@@ -10,7 +10,7 @@
 
 [CmdletBinding()]
 param (
-    [ValidateSet("All", "Core", "Nginx", "Php", "Node", "Git", "Mailpit", "Composer", "Mysql")]
+    [ValidateSet("All", "Core", "Nginx", "Php", "Node", "Git", "Mailpit", "Composer", "Mysql", "Optimize")]
     [string]$Component = "Core"
 )
 
@@ -166,7 +166,7 @@ function Setup-Git {
         -TargetDir $target
 }
 
-# 7. MYSQL 8.4 (~259MB)
+# 7. MYSQL 8.4
 function Setup-Mysql {
     $target = Join-Path $BinDir "mysql\mysql-8.4"
     Download-And-Extract -Name "MySQL 8.4" `
@@ -174,6 +174,41 @@ function Setup-Mysql {
         -ZipName "mysql-8.4.4-winx64.zip" `
         -TargetDir $target `
         -FlattenSingleSubdir
+
+    Optimize-Bundle
+}
+
+# 8. BUNDLE OPTIMIZATION (Strips ~800MB of unused debug symbols and foreign dictionaries)
+function Optimize-Bundle {
+    Write-Host "`n[Optimization] Stripping debug symbols and unused bloat from runtime binaries..." -ForegroundColor Cyan
+
+    # Strip *.pdb and *.lib files from bin/
+    $debugFiles = Get-ChildItem -Path $BinDir -Recurse -File -Include "*.pdb", "*.lib" -ErrorAction SilentlyContinue
+    $freedBytes = 0
+    foreach ($file in $debugFiles) {
+        $freedBytes += $file.Length
+        Remove-Item -Force $file.FullName -ErrorAction SilentlyContinue
+    }
+
+    # Strip MySQL debug plugins, mecab Japanese dictionaries, and C++ include headers
+    $bloatDirs = @(
+        "mysql\mysql-8.4\lib\plugin\debug",
+        "mysql\mysql-8.4\lib\mecab",
+        "mysql\mysql-8.4\docs",
+        "mysql\mysql-8.4\include"
+    )
+
+    foreach ($rel in $bloatDirs) {
+        $p = Join-Path $BinDir $rel
+        if (Test-Path $p) {
+            $dirSize = (Get-ChildItem -Path $p -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+            $freedBytes += $dirSize
+            Remove-Item -Recurse -Force $p -ErrorAction SilentlyContinue
+        }
+    }
+
+    $freedMB = [math]::Round($freedBytes / 1MB, 2)
+    Write-Host "[Optimization] Pruning complete. Freed ~${freedMB} MB of bloat!" -ForegroundColor Green
 }
 
 # Execution Dispatcher
@@ -200,6 +235,7 @@ switch ($Component) {
     "Node"     { Setup-Node }
     "Git"      { Setup-Git }
     "Mysql"    { Setup-Mysql }
+    "Optimize" { Optimize-Bundle }
 }
 
 Write-Host "`n[OK] Setup completed successfully for component: $Component" -ForegroundColor Green

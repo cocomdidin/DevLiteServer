@@ -50,7 +50,7 @@ jobs:
       - name: Publish .NET Application
         shell: pwsh
         run: |
-          dotnet publish DevLiteServer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:Version=${{ steps.semver.outputs.version }} -o ./dist/app
+          dotnet publish DevLiteServer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:DebugType=none -p:Version=${{ steps.semver.outputs.version }} -o ./dist/app
 
       - name: Assemble Distribution Bundle
         shell: pwsh
