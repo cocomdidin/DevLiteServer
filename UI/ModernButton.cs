@@ -83,11 +83,8 @@ public class ModernButton : Button
 
     protected override void OnPaintBackground(PaintEventArgs pevent)
     {
-        // Clear background with parent's BackColor to ensure corner anti-aliasing
-        // blends seamlessly with no dirty rectangular edges or artifacts.
         Color parentBg = Parent?.BackColor ?? ModernColors.Background;
-        using var bgBrush = new SolidBrush(parentBg);
-        pevent.Graphics.FillRectangle(bgBrush, ClientRectangle);
+        pevent.Graphics.Clear(parentBg);
     }
 
     protected override void OnPaint(PaintEventArgs pevent)
@@ -95,6 +92,11 @@ public class ModernButton : Button
         if (Width <= 1 || Height <= 1) return;
 
         var g = pevent.Graphics;
+
+        // Ensure entire surface is cleared to parent background so rounded corners blend 100% seamlessly with no black siku artifacts
+        Color parentBg = Parent?.BackColor ?? ModernColors.Background;
+        g.Clear(parentBg);
+
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
         g.InterpolationMode = InterpolationMode.HighQualityBicubic;

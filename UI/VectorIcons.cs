@@ -15,7 +15,9 @@ public enum IconKind
     Server,
     Globe,
     Lightning,
-    Power
+    Power,
+    Check,
+    Gear
 }
 
 public static class VectorIcons
@@ -182,6 +184,35 @@ public static class VectorIcons
                     float inset = pen.Width * 0.7f + 1f;
                     var arcRect = new RectangleF(x + inset, y + inset, w - (inset * 2f), h - (inset * 2f));
                     g.DrawArc(pen, arcRect, -60, 300);
+                }
+                break;
+
+            case IconKind.Check:
+                g.DrawLines(pen, new[]
+                {
+                    new PointF(x + (w * 0.22f), y + (h * 0.52f)),
+                    new PointF(x + (w * 0.44f), y + (h * 0.74f)),
+                    new PointF(x + (w * 0.80f), y + (h * 0.28f))
+                });
+                break;
+
+            case IconKind.Gear:
+                {
+                    float cx = x + (w * 0.5f);
+                    float cy = y + (h * 0.5f);
+                    float outerR = Math.Min(w, h) * 0.44f;
+                    float innerR = outerR * 0.68f;
+                    float holeR = outerR * 0.32f;
+
+                    for (int i = 0; i < 6; i++)
+                    {
+                        double angle = i * Math.PI / 3.0;
+                        float cos = (float)Math.Cos(angle);
+                        float sin = (float)Math.Sin(angle);
+                        g.DrawLine(pen, cx + (cos * innerR), cy + (sin * innerR), cx + (cos * outerR), cy + (sin * outerR));
+                    }
+                    g.DrawEllipse(pen, cx - innerR, cy - innerR, innerR * 2f, innerR * 2f);
+                    g.DrawEllipse(pen, cx - holeR, cy - holeR, holeR * 2f, holeR * 2f);
                 }
                 break;
         }

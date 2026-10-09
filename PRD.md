@@ -64,7 +64,7 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
 
 | ID Fitur | Modul | Deskripsi Fungsional | Prioritas |
 |---|---|---|---|
-| **FR-01** | Master & Individual Controller | Tombol **Start All / Stop All / Exit**, tombol toggle on/off independen, serta konfigurasi selektif **Auto-Start per service** via `config.ini` dan menu tray (default: semua service `false`). Tombol Exit menghentikan semua daemon aktif dan menutup aplikasi secara bersih tanpa proses tersisa. | P0 (Kritis) |
+| **FR-01** | Master & Individual Controller | Tombol **Start All / Stop All / Exit**, tombol toggle on/off independen, form dialog khusus **Settings & Configuration** untuk mengelola service aktif (hanya service yang enabled yang tampil di dashboard serta dijalankan oleh Start All & Auto-start), konfigurasi port, auto-start, dan integrasi Windows logon. Tombol Exit menghentikan semua daemon aktif dan menutup aplikasi secara bersih tanpa proses tersisa. | P0 (Kritis) |
 | **FR-02** | Process Isolation (Job Object) | Proteksi child processes via Win32 Job Object; garansi pembunuhan proses bersih tanpa port tertinggal. | P0 (Kritis) |
 | **FR-03** | Port Conflict Resolver | Deteksi ketersediaan port (80, 9000, 3306, 5432, 6379, 1025, 8025) via `IPGlobalProperties`. Dialog peringatan dan opsi auto-reassign port jika bentrok. | P0 (Kritis) |
 | **FR-04** | Dynamic Config Templating | Kompilasi template `.tpl` ke konfigurasi aktif saat start service dengan drive letter dinamis (portabel USB). | P0 (Kritis) |
@@ -131,8 +131,9 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
 ## 7. Desain Antarmuka & UX
 
 1. **Dashboard Utama**:
-   - **Service Grid**: Card/Row untuk Nginx, PHP (versi aktif), MySQL, PostgreSQL, Redis, Mailpit lengkap dengan status running badge (Hijau/Abu-abu), tombol Start/Stop per item, dan info port.
-   - **Quick Action Bar**: [Start All] [Stop All] [Open /www] [Sync Hosts] [Mail Web UI] [Terminal] [Database (Adminer)].
+   - **Service Grid**: Hanya menampilkan card untuk service yang berstatus **Enabled** (Nginx, PHP, MySQL, Mailpit, dll.) lengkap dengan status running badge, tombol Start/Stop per item, info port, dan version switcher.
+   - **Quick Action Bar**: [Start All] [Stop All] [Exit] di header utama; serta secondary toolbar: [Open /www] [Terminal] [Mailpit] [Adminer] [Settings] [Updates].
+   - **Settings Dialog**: Form modal khusus untuk konfigurasi visibilitas service dashboard, auto-start per-service, startup Windows logon, dan port jaringan.
    - **Runtime Manager Tab**: Panel untuk melihat, mengunduh, dan menghapus versi PHP & Node.js dengan indikator download progress.
 2. **System Tray Integration**:
    - **Single-Instance Enforcement**: Named Mutex + Win32 Registered Window Message mencegah aplikasi terbuka dobel; dobel-klik shortcut desktop/portable otomatis me-restore dan memfokuskan jendela yang sedang diminimize ke tray.

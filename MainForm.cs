@@ -15,6 +15,8 @@ public partial class MainForm : Form
     private readonly PhpService _php;
     private readonly MySqlService _mysql;
     private readonly MailpitService _mailpit;
+    private readonly PostgreSqlService _postgresql;
+    private readonly RedisService _redis;
     private readonly List<IService> _services = new();
 
     private readonly bool _startMinimized;
@@ -43,8 +45,10 @@ public partial class MainForm : Form
         _nginx = new NginxService(_appRoot, _job, _config, _php);
         _mysql = new MySqlService(_appRoot, _job, _config);
         _mailpit = new MailpitService(_appRoot, _job, _config);
+        _postgresql = new PostgreSqlService(_appRoot, _job, _config);
+        _redis = new RedisService(_appRoot, _job, _config);
 
-        _services.AddRange([_php, _nginx, _mysql, _mailpit]);
+        _services.AddRange([_php, _nginx, _mysql, _mailpit, _postgresql, _redis]);
 
         foreach (var svc in _services)
         {
@@ -63,6 +67,7 @@ public partial class MainForm : Form
 
         BuildServiceCards();
         BuildTrayMenu();
+        UpdateServiceStats();
 
         // Check for Visual C++ runtime
         if (!DependencyChecker.IsVcRedistInstalled())
@@ -127,6 +132,24 @@ public partial class MainForm : Form
             lblStatusText.Text = $"✔ [{svc.Name}] running on port {svc.Port}";
             lblStatusText.ForeColor = ModernColors.Success;
         }
+
+        UpdateServiceStats();
+    }
+
+    private void UpdateServiceStats()
+    {
+        if (InvokeRequired)
+        {
+            Invoke(UpdateServiceStats);
+            return;
+        }
+
+        int enabledCount = _services.Count(s => _config.IsServiceEnabled(s.Name));
+        int runningCount = _services.Count(s => _config.IsServiceEnabled(s.Name) && s.Status == ServiceStatus.Running);
+
+        lblStatsText.Text = $"Services: {runningCount} / {enabledCount} running";
+        lblStatsText.ForeColor = runningCount > 0 ? ModernColors.Success : ModernColors.TextMuted;
+        lblStatsText.Location = new Point(footerPanel.ClientSize.Width - lblStatsText.Width - 20, 8);
     }
 
     private void UpdateAdminerState()
@@ -137,6 +160,38 @@ public partial class MainForm : Form
             return;
         }
         btnOpenAdminer.Enabled = _nginx.Status == ServiceStatus.Running && _php.Status == ServiceStatus.Running;
+    }
+
+    private void LayoutActionButtons()
+    {
+        if (btnOpenWww == null || btnSettings == null || btnCheckUpdates == null) return;
+
+        int left = 20;
+        const int spacing = 8;
+        const int top = 7;
+
+        btnOpenWww.Location = new Point(left, top);
+        left += btnOpenWww.Width + spacing;
+
+        btnOpenTerminal.Location = new Point(left, top);
+        left += btnOpenTerminal.Width + spacing;
+
+        if (_config.EnableMailpit)
+        {
+            btnOpenMailpit.Visible = true;
+            btnOpenMailpit.Location = new Point(left, top);
+            left += btnOpenMailpit.Width + spacing;
+        }
+        else
+        {
+            btnOpenMailpit.Visible = false;
+        }
+
+        btnOpenAdminer.Location = new Point(left, top);
+
+        int panelWidth = actionsPanel.Width > 200 ? actionsPanel.Width : (ClientSize.Width > 200 ? ClientSize.Width : 760);
+        btnCheckUpdates.Location = new Point(panelWidth - btnCheckUpdates.Width - 20, top);
+        btnSettings.Location = new Point(btnCheckUpdates.Left - btnSettings.Width - spacing, top);
     }
 
     private void BuildServiceCards()
@@ -155,34 +210,136 @@ public partial class MainForm : Form
             phpVersions.Add(_config.ActivePhp);
         }
 
-        // Add cards in reverse order because Dock = DockStyle.Top docks from bottom up in addition
-        var mailpitCard = new ServiceCard(_mailpit, IconKind.Mail);
-        var mysqlCard = new ServiceCard(_mysql, IconKind.Database);
-        var phpCard = new ServiceCard(
-            _php,
-            IconKind.Lightning,
-            phpVersions.ToArray(),
-            _config.ActivePhp,
-            async newVersion =>
-            {
-                _config.ActivePhp = newVersion;
-                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-                if (_php.Status == ServiceStatus.Running)
-                {
-                    lblStatusText.Text = $"Switching PHP to {newVersion}...";
-                    await _php.RestartAsync();
-                    lblStatusText.Text = $"Switched to PHP {newVersion}.";
-                }
-                BuildTrayMenu();
-            }
-        );
-        var nginxCard = new ServiceCard(_nginx, IconKind.Server);
+        // Add enabled service cards in reverse dock order (DockStyle.Top docks bottom-up)
+        // Bottom to top: Redis -> PostgreSQL -> Mailpit -> MySQL -> PHP -> Nginx
+        if (_config.EnableRedis)
+        {
+            var redisCard = new ServiceCard(_redis, IconKind.Server);
+            cardContainer.Controls.Add(redisCard);
+        }
 
-        // Adding top to bottom
-        cardContainer.Controls.Add(mailpitCard);
-        cardContainer.Controls.Add(mysqlCard);
-        cardContainer.Controls.Add(phpCard);
-        cardContainer.Controls.Add(nginxCard);
+        if (_config.EnablePostgresql)
+        {
+            var pgCard = new ServiceCard(_postgresql, IconKind.Database);
+            cardContainer.Controls.Add(pgCard);
+        }
+
+        if (_config.EnableMailpit)
+        {
+            var mailpitCard = new ServiceCard(_mailpit, IconKind.Mail);
+            cardContainer.Controls.Add(mailpitCard);
+        }
+
+        if (_config.EnableMysql)
+        {
+            var mysqlCard = new ServiceCard(_mysql, IconKind.Database);
+            cardContainer.Controls.Add(mysqlCard);
+        }
+
+        if (_config.EnablePhp)
+        {
+            var phpCard = new ServiceCard(
+                _php,
+                IconKind.Lightning,
+                phpVersions.ToArray(),
+                _config.ActivePhp,
+                async newVersion =>
+                {
+                    _config.ActivePhp = newVersion;
+                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                    if (_php.Status == ServiceStatus.Running)
+                    {
+                        lblStatusText.Text = $"Switching PHP to {newVersion}...";
+                        await _php.RestartAsync();
+                        lblStatusText.Text = $"Switched to PHP {newVersion}.";
+                    }
+                    BuildTrayMenu();
+                }
+            );
+            cardContainer.Controls.Add(phpCard);
+        }
+
+        if (_config.EnableNginx)
+        {
+            var nginxCard = new ServiceCard(_nginx, IconKind.Server);
+            cardContainer.Controls.Add(nginxCard);
+        }
+
+        if (cardContainer.Controls.Count == 0)
+        {
+            var pnlEmpty = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent
+            };
+
+            var lblEmptyTitle = new Label
+            {
+                Text = "No services are currently enabled",
+                ForeColor = ModernColors.TextPrimary,
+                Font = new Font("Segoe UI", 11f, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Top,
+                Height = 32
+            };
+
+            var lblEmptySub = new Label
+            {
+                Text = "Activate Nginx, PHP, MySQL, Mailpit, PostgreSQL, or Redis in Settings to display them here.",
+                ForeColor = ModernColors.TextSecondary,
+                Font = new Font("Segoe UI", 8.5f),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Top,
+                Height = 24
+            };
+
+            var btnOpenSettingsFromEmpty = new ModernButton
+            {
+                Text = "Open Settings",
+                IconKind = IconKind.Gear,
+                IconSize = 11,
+                Width = 130,
+                Height = 34,
+                BorderRadius = 6,
+                ShowBorder = true,
+                NormalColor = ModernColors.Card,
+                HoverColor = ModernColors.SurfaceHover,
+                ForeColor = ModernColors.Primary,
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold)
+            };
+            btnOpenSettingsFromEmpty.Click += BtnSettings_Click;
+
+            var pnlEmptyWrap = new Panel
+            {
+                Width = 480,
+                Height = 120,
+                BackColor = ModernColors.Surface,
+                Padding = new Padding(20)
+            };
+            pnlEmptyWrap.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                var rect = new RectangleF(0.5f, 0.5f, pnlEmptyWrap.Width - 1f, pnlEmptyWrap.Height - 1f);
+                using var borderPen = new Pen(ModernColors.BorderSubtle, 1f);
+                g.DrawRectangle(borderPen, 0, 0, pnlEmptyWrap.Width - 1, pnlEmptyWrap.Height - 1);
+            };
+
+            pnlEmpty.Resize += (s, e) =>
+            {
+                pnlEmptyWrap.Location = new Point((pnlEmpty.ClientSize.Width - pnlEmptyWrap.Width) / 2, Math.Max(40, (pnlEmpty.ClientSize.Height - pnlEmptyWrap.Height) / 3));
+                btnOpenSettingsFromEmpty.Location = new Point((pnlEmptyWrap.Width - btnOpenSettingsFromEmpty.Width) / 2, 68);
+            };
+
+            pnlEmptyWrap.Controls.Add(btnOpenSettingsFromEmpty);
+            pnlEmptyWrap.Controls.Add(lblEmptySub);
+            pnlEmptyWrap.Controls.Add(lblEmptyTitle);
+            pnlEmpty.Controls.Add(pnlEmptyWrap);
+            cardContainer.Controls.Add(pnlEmpty);
+        }
+
+        LayoutActionButtons();
+        UpdateServiceStats();
     }
 
     private void BuildTrayMenu()
@@ -256,8 +413,41 @@ public partial class MainForm : Form
         AddServiceAutoStartItem("PHP FastCGI", () => _config.AutoStartPhp, v => _config.AutoStartPhp = v);
         AddServiceAutoStartItem("MySQL", () => _config.AutoStartMysql, v => _config.AutoStartMysql = v);
         AddServiceAutoStartItem("Mailpit", () => _config.AutoStartMailpit, v => _config.AutoStartMailpit = v);
+        AddServiceAutoStartItem("PostgreSQL", () => _config.AutoStartPostgresql, v => _config.AutoStartPostgresql = v);
+        AddServiceAutoStartItem("Redis", () => _config.AutoStartRedis, v => _config.AutoStartRedis = v);
 
         trayMenu.Items.Add(autoStartMenu);
+
+        // Enabled services submenu
+        var enabledServicesMenu = new ToolStripMenuItem("Enabled Services");
+        void AddServiceEnabledMenuItem(string label, string serviceKey, Func<bool> getter, Action<bool> setter)
+        {
+            var item = new ToolStripMenuItem(label, null, (s, e) =>
+            {
+                bool newVal = !getter();
+                setter(newVal);
+                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                if (s is ToolStripMenuItem mi) mi.Checked = newVal;
+                BuildServiceCards();
+                lblStatusText.Text = newVal
+                    ? $"✔ {label} enabled (will start on Start All / Auto-start)."
+                    : $"ℹ {label} disabled (skipped by Start All / Auto-start).";
+                lblStatusText.ForeColor = newVal ? ModernColors.Success : ModernColors.TextSecondary;
+            })
+            {
+                Checked = getter()
+            };
+            enabledServicesMenu.DropDownItems.Add(item);
+        }
+
+        AddServiceEnabledMenuItem("Nginx", "nginx", () => _config.EnableNginx, v => _config.EnableNginx = v);
+        AddServiceEnabledMenuItem("PHP FastCGI", "php", () => _config.EnablePhp, v => _config.EnablePhp = v);
+        AddServiceEnabledMenuItem("MySQL", "mysql", () => _config.EnableMysql, v => _config.EnableMysql = v);
+        AddServiceEnabledMenuItem("Mailpit", "mailpit", () => _config.EnableMailpit, v => _config.EnableMailpit = v);
+        AddServiceEnabledMenuItem("PostgreSQL", "postgresql", () => _config.EnablePostgresql, v => _config.EnablePostgresql = v);
+        AddServiceEnabledMenuItem("Redis", "redis", () => _config.EnableRedis, v => _config.EnableRedis = v);
+
+        trayMenu.Items.Add(enabledServicesMenu);
 
         var startWithWindowsItem = new ToolStripMenuItem("Start with Windows", null, (s, e) =>
         {
@@ -276,6 +466,7 @@ public partial class MainForm : Form
         trayMenu.Items.Add("Open Terminal", null, (s, e) => BtnOpenTerminal_Click(s, e));
         trayMenu.Items.Add(new ToolStripSeparator());
 
+        trayMenu.Items.Add("Settings...", null, (s, e) => BtnSettings_Click(s, e));
         trayMenu.Items.Add("Check for Updates...", null, async (s, e) => await CheckForUpdatesAsync(manual: true));
         trayMenu.Items.Add(new ToolStripSeparator());
 
@@ -293,7 +484,7 @@ public partial class MainForm : Form
         int startedCount = 0;
         foreach (var svc in _services)
         {
-            if (_config.ShouldAutoStart(svc.Name) && svc.Status != ServiceStatus.Running)
+            if (_config.IsServiceEnabled(svc.Name) && _config.ShouldAutoStart(svc.Name) && svc.Status != ServiceStatus.Running)
             {
                 await svc.StartAsync();
                 startedCount++;
@@ -302,26 +493,38 @@ public partial class MainForm : Form
 
         btnStartAll.Enabled = true;
         lblStatusText.Text = startedCount > 0
-            ? $"Auto-start complete ({startedCount} service(s) running)."
-            : "Ready - Auto-start finished (no services selected).";
+            ? $"Auto-start complete ({startedCount} enabled service(s) running)."
+            : "Ready - Auto-start finished (no enabled services scheduled).";
     }
 
     private async Task StartAllServicesAsync()
     {
         btnStartAll.Enabled = false;
-        lblStatusText.Text = "Starting all services...";
+        lblStatusText.Text = "Starting enabled services...";
         lblStatusText.ForeColor = ModernColors.TextSecondary;
 
+        int startedCount = 0;
+        int skippedCount = 0;
         foreach (var svc in _services)
         {
+            if (!_config.IsServiceEnabled(svc.Name))
+            {
+                skippedCount++;
+                continue;
+            }
+
             if (svc.Status != ServiceStatus.Running)
             {
                 await svc.StartAsync();
+                startedCount++;
             }
         }
 
         btnStartAll.Enabled = true;
-        lblStatusText.Text = "All services processed.";
+        lblStatusText.Text = startedCount > 0
+            ? $"All enabled services processed ({startedCount} started{(skippedCount > 0 ? $", {skippedCount} disabled skipped" : "")})."
+            : $"Ready{(skippedCount > 0 ? $" ({skippedCount} disabled service(s) skipped)" : "")}.";
+        UpdateServiceStats();
     }
 
     private async Task StopAllServicesAsync()
@@ -340,11 +543,25 @@ public partial class MainForm : Form
 
         btnStopAll.Enabled = true;
         lblStatusText.Text = "All services stopped.";
+        UpdateServiceStats();
     }
 
     private async void BtnStartAll_Click(object? sender, EventArgs e) => await StartAllServicesAsync();
     private async void BtnStopAll_Click(object? sender, EventArgs e) => await StopAllServicesAsync();
     private async void BtnExit_Click(object? sender, EventArgs e) => await ExitApplicationAsync();
+
+    private void BtnSettings_Click(object? sender, EventArgs e)
+    {
+        using var settingsForm = new SettingsForm(_config, _appRoot);
+        if (settingsForm.ShowDialog(this) == DialogResult.OK)
+        {
+            BuildServiceCards();
+            BuildTrayMenu();
+            UpdateAdminerState();
+            lblStatusText.Text = "Settings applied successfully.";
+            lblStatusText.ForeColor = ModernColors.Success;
+        }
+    }
 
     private async Task ExitApplicationAsync()
     {

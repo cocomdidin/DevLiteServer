@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using DevLiteServer.Services;
 
@@ -7,8 +8,12 @@ public class ServiceCard : Panel
 {
     private readonly IService _service;
     private readonly IconKind _iconKind;
+    private readonly string _categoryTag;
+    private readonly string? _webUrl;
+
     private readonly StatusPill _pill;
     private readonly ModernButton _btnToggle;
+    private readonly ModernButton? _btnBrowse;
     private readonly Label _lblTitle;
     private readonly Label _lblSub;
     private readonly ComboBox? _cmbVersions;
@@ -26,10 +31,44 @@ public class ServiceCard : Panel
         _service = service;
         _iconKind = iconKind;
 
-        Height = 58;
+        // Determine category tag and quick browser URL
+        switch (service.Name.ToLowerInvariant())
+        {
+            case "nginx":
+                _categoryTag = "Web Server";
+                _webUrl = $"http://localhost:{service.Port}";
+                break;
+            case "php":
+            case "php-cgi":
+                _categoryTag = "FastCGI Runtime";
+                _webUrl = null;
+                break;
+            case "mysql":
+                _categoryTag = "Database Engine";
+                _webUrl = null;
+                break;
+            case "mailpit":
+                _categoryTag = "Mail Inbox & SMTP";
+                _webUrl = $"http://localhost:{service.Port}";
+                break;
+            case "postgresql":
+                _categoryTag = "Relational DB";
+                _webUrl = null;
+                break;
+            case "redis":
+                _categoryTag = "In-Memory Cache";
+                _webUrl = null;
+                break;
+            default:
+                _categoryTag = "Background Service";
+                _webUrl = null;
+                break;
+        }
+
+        Height = 62;
         Dock = DockStyle.Top;
         Margin = new Padding(0, 0, 0, 8);
-        Padding = new Padding(14, 8, 14, 8);
+        Padding = new Padding(16, 8, 16, 8);
         BackColor = ModernColors.Surface;
         DoubleBuffered = true;
 
@@ -44,29 +83,58 @@ public class ServiceCard : Panel
         {
             Text = service.Name,
             ForeColor = ModernColors.TextPrimary,
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
             AutoSize = true,
-            Location = new Point(56, 11)
+            Location = new Point(62, 11)
         };
 
-        // Port & Subtitle
+        // Port & Category Subtitle
         _lblSub = new Label
         {
-            Text = $"Port: {service.Port}",
+            Text = $"{_categoryTag}  •  Port: {service.Port}",
             ForeColor = ModernColors.TextMuted,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Regular),
             AutoSize = true,
-            Location = new Point(57, 31)
+            Location = new Point(63, 33)
         };
 
         // Status Pill
         _pill = new StatusPill
         {
             Status = service.Status,
-            Location = new Point(320, 17)
+            Location = new Point(360, 19)
         };
 
-        // Version dropdown if available
+        // Optional Quick Web Browser Button (for Nginx & Mailpit)
+        if (!string.IsNullOrEmpty(_webUrl))
+        {
+            _btnBrowse = new ModernButton
+            {
+                Text = service.Name.Equals("nginx", StringComparison.OrdinalIgnoreCase) ? "Open Web" : "Open Inbox",
+                IconKind = IconKind.Globe,
+                IconSize = 10,
+                Width = 84,
+                Height = 30,
+                BorderRadius = 6,
+                ShowBorder = true,
+                NormalColor = ModernColors.Card,
+                HoverColor = ModernColors.SurfaceHover,
+                ForeColor = ModernColors.Primary,
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+                Visible = service.Status == ServiceStatus.Running
+            };
+            _btnBrowse.Click += (s, e) =>
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo { FileName = _webUrl, UseShellExecute = true });
+                }
+                catch { }
+            };
+            Controls.Add(_btnBrowse);
+        }
+
+        // Version dropdown if available (e.g. PHP)
         if (versions != null && versions.Length > 0)
         {
             _cmbVersions = new ComboBox
@@ -76,8 +144,8 @@ public class ServiceCard : Panel
                 ForeColor = ModernColors.TextPrimary,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 8.5f),
-                Width = 95,
-                Location = new Point(210, 17)
+                Width = 100,
+                Location = new Point(240, 18)
             };
             _cmbVersions.Items.AddRange(versions);
             if (!string.IsNullOrEmpty(activeVersion) && _cmbVersions.Items.Contains(activeVersion))
@@ -99,15 +167,15 @@ public class ServiceCard : Panel
             Controls.Add(_cmbVersions);
         }
 
-        // Action Button
+        // Action Start/Stop Button
         _btnToggle = new ModernButton
         {
             Text = "Start",
             IconKind = IconKind.Play,
             IconSize = 10,
             Width = 84,
-            Height = 30,
-            Location = new Point(440, 14),
+            Height = 32,
+            Location = new Point(500, 15),
             NormalColor = ModernColors.Success,
             HoverColor = ModernColors.SuccessHover,
             PressedColor = ModernColors.SuccessBg,
@@ -155,6 +223,11 @@ public class ServiceCard : Panel
     {
         _pill.Status = status;
 
+        if (_btnBrowse != null)
+        {
+            _btnBrowse.Visible = status == ServiceStatus.Running;
+        }
+
         if (status == ServiceStatus.Running)
         {
             _btnToggle.Text = "Stop";
@@ -179,6 +252,8 @@ public class ServiceCard : Panel
             _btnToggle.HoverColor = ModernColors.SuccessHover;
             _btnToggle.PressedColor = ModernColors.SuccessBg;
         }
+
+        Invalidate();
     }
 
     protected override void OnMouseEnter(EventArgs e)
@@ -186,7 +261,6 @@ public class ServiceCard : Panel
         base.OnMouseEnter(e);
         _isHovered = true;
         BackColor = ModernColors.CardHover;
-        _btnToggle?.Invalidate();
         Invalidate();
     }
 
@@ -195,28 +269,46 @@ public class ServiceCard : Panel
         base.OnMouseLeave(e);
         _isHovered = false;
         BackColor = ModernColors.Surface;
-        _btnToggle?.Invalidate();
         Invalidate();
     }
 
     protected override void OnPaintBackground(PaintEventArgs pevent)
     {
         Color parentBg = Parent?.BackColor ?? ModernColors.Background;
-        using var bgBrush = new SolidBrush(parentBg);
-        pevent.Graphics.FillRectangle(bgBrush, ClientRectangle);
+        pevent.Graphics.Clear(parentBg);
     }
 
     protected override void OnResize(EventArgs eventargs)
     {
         base.OnResize(eventargs);
-        // Anchor right-side controls dynamically
+
+        // Dynamic Right-to-Left alignment
         if (_btnToggle != null && _pill != null)
         {
-            _btnToggle.Location = new Point(Width - _btnToggle.Width - 14, (Height - _btnToggle.Height) / 2);
-            _pill.Location = new Point(_btnToggle.Left - _pill.Width - 12, (Height - _pill.Height) / 2);
+            int rightOffset = Width - 14;
+
+            // 1. Toggle Button (Rightmost)
+            _btnToggle.Location = new Point(rightOffset - _btnToggle.Width, (Height - _btnToggle.Height) / 2);
+            rightOffset = _btnToggle.Left - 10;
+
+            // 2. Status Pill
+            _pill.Location = new Point(rightOffset - _pill.Width, (Height - _pill.Height) / 2);
+            rightOffset = _pill.Left - 10;
+
+            // 3. Optional Browse Button
+            if (_btnBrowse != null)
+            {
+                _btnBrowse.Location = new Point(rightOffset - _btnBrowse.Width, (Height - _btnBrowse.Height) / 2);
+                if (_btnBrowse.Visible)
+                {
+                    rightOffset = _btnBrowse.Left - 10;
+                }
+            }
+
+            // 4. Optional Version ComboBox
             if (_cmbVersions != null)
             {
-                _cmbVersions.Location = new Point(_pill.Left - _cmbVersions.Width - 12, (Height - _cmbVersions.Height) / 2);
+                _cmbVersions.Location = new Point(rightOffset - _cmbVersions.Width, (Height - _cmbVersions.Height) / 2);
             }
         }
     }
@@ -226,6 +318,9 @@ public class ServiceCard : Panel
         if (Width <= 1 || Height <= 1) return;
 
         var g = e.Graphics;
+        Color parentBg = Parent?.BackColor ?? ModernColors.Background;
+        g.Clear(parentBg);
+
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
@@ -237,20 +332,34 @@ public class ServiceCard : Panel
         using var bgBrush = new SolidBrush(BackColor);
         g.FillPath(bgBrush, path);
 
-        using var pen = new Pen(_isHovered ? ModernColors.BorderLight : ModernColors.Border, stroke);
+        using var pen = new Pen(_isHovered ? ModernColors.BorderLight : ModernColors.BorderSubtle, stroke);
         g.DrawPath(pen, path);
 
-        // Draw left vector icon badge (32x32)
-        var badgeRect = new RectangleF(14f + halfStroke, (Height - 32f) / 2f + halfStroke, 32f - stroke, 32f - stroke);
+        // Active running indicator bar on left edge (3px)
+        if (_service.Status == ServiceStatus.Running)
+        {
+            using var activeBrush = new SolidBrush(ModernColors.Success);
+            using var activePath = new GraphicsPath();
+            activePath.AddArc(rect.X, rect.Y, 8f, 8f, 180, 90);
+            activePath.AddLine(rect.X + 3f, rect.Y, rect.X + 3f, rect.Bottom);
+            activePath.AddArc(rect.X, rect.Bottom - 8f, 8f, 8f, 90, 90);
+            activePath.CloseFigure();
+            g.FillPath(activeBrush, activePath);
+        }
+
+        // Draw left vector icon badge (34x34)
+        var badgeRect = new RectangleF(14f + halfStroke, (Height - 34f) / 2f + halfStroke, 34f - stroke, 34f - stroke);
         using var badgePath = CreateRoundedRectangle(badgeRect, 6f);
-        using var badgeBg = new SolidBrush(ModernColors.Card);
+        using var badgeBg = new SolidBrush(_service.Status == ServiceStatus.Running ? Color.FromArgb(16, 36, 32) : ModernColors.Card);
         g.FillPath(badgeBg, badgePath);
-        using var badgeBorder = new Pen(ModernColors.BorderSubtle, stroke);
+
+        using var badgeBorder = new Pen(_service.Status == ServiceStatus.Running ? Color.FromArgb(34, 197, 94, 120) : ModernColors.BorderSubtle, stroke);
         g.DrawPath(badgeBorder, badgePath);
 
         // Draw Vector Icon inside badge
-        var iconRect = new RectangleF(14f + 7f, (Height - 32f) / 2f + 7f, 18f, 18f);
-        VectorIcons.Draw(g, _iconKind, iconRect, ModernColors.Primary);
+        var iconRect = new RectangleF(14f + 8f, (Height - 34f) / 2f + 8f, 18f, 18f);
+        Color iconColor = _service.Status == ServiceStatus.Running ? ModernColors.Success : ModernColors.Primary;
+        VectorIcons.Draw(g, _iconKind, iconRect, iconColor);
     }
 
     private static GraphicsPath CreateRoundedRectangle(RectangleF rect, float radius)
@@ -262,27 +371,11 @@ public class ServiceCard : Panel
             return path;
         }
 
-        float diameter = radius * 2f;
-        if (diameter > rect.Width) diameter = rect.Width;
-        if (diameter > rect.Height) diameter = rect.Height;
-
-        var arc = new RectangleF(rect.X, rect.Y, diameter, diameter);
-
-        // Top-left
-        path.AddArc(arc, 180, 90);
-
-        // Top-right
-        arc.X = rect.Right - diameter;
-        path.AddArc(arc, 270, 90);
-
-        // Bottom-right
-        arc.Y = rect.Bottom - diameter;
-        path.AddArc(arc, 0, 90);
-
-        // Bottom-left
-        arc.X = rect.X;
-        path.AddArc(arc, 90, 90);
-
+        float d = radius * 2f;
+        path.AddArc(rect.X, rect.Y, d, d, 180, 90);
+        path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
+        path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
+        path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
         path.CloseFigure();
         return path;
     }

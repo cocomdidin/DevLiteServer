@@ -46,8 +46,8 @@ public class NginxService : BaseService
     {
         LastError = null;
 
-        // Auto-start upstream PHP FastCGI if assigned and not running
-        if (DependentPhpService != null && DependentPhpService.Status != ServiceStatus.Running)
+        // Auto-start upstream PHP FastCGI if assigned, not running, and PHP service is enabled
+        if (DependentPhpService != null && DependentPhpService.Status != ServiceStatus.Running && _config.IsServiceEnabled("php"))
         {
             bool phpStarted = await DependentPhpService.StartAsync();
             if (!phpStarted)

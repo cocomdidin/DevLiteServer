@@ -36,9 +36,37 @@ public class AppConfig
     public int MailpitSmtpPort { get; set; } = 1025;
     public int MailpitWebPort { get; set; } = 8025;
 
+    public bool IsServiceEnabled(string serviceName)
+    {
+        return serviceName.ToLowerInvariant() switch
+        {
+            "nginx" => EnableNginx,
+            "php" or "php-cgi" => EnablePhp,
+            "mysql" or "mysqld" => EnableMysql,
+            "mailpit" => EnableMailpit,
+            "postgresql" or "postgres" => EnablePostgresql,
+            "redis" => EnableRedis,
+            _ => true
+        };
+    }
+
+    public void SetServiceEnabled(string serviceName, bool enabled)
+    {
+        switch (serviceName.ToLowerInvariant())
+        {
+            case "nginx": EnableNginx = enabled; break;
+            case "php" or "php-cgi": EnablePhp = enabled; break;
+            case "mysql" or "mysqld": EnableMysql = enabled; break;
+            case "mailpit": EnableMailpit = enabled; break;
+            case "postgresql" or "postgres": EnablePostgresql = enabled; break;
+            case "redis": EnableRedis = enabled; break;
+        }
+    }
+
     public bool ShouldAutoStart(string serviceName)
     {
         if (!AutoStartServices) return false;
+        if (!IsServiceEnabled(serviceName)) return false;
 
         return serviceName.ToLowerInvariant() switch
         {

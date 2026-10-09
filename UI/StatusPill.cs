@@ -37,8 +37,7 @@ public class StatusPill : Control
     protected override void OnPaintBackground(PaintEventArgs pevent)
     {
         Color parentBg = Parent?.BackColor ?? ModernColors.Surface;
-        using var bgBrush = new SolidBrush(parentBg);
-        pevent.Graphics.FillRectangle(bgBrush, ClientRectangle);
+        pevent.Graphics.Clear(parentBg);
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -46,6 +45,9 @@ public class StatusPill : Control
         if (Width <= 1 || Height <= 1) return;
 
         var g = e.Graphics;
+        Color parentBg = Parent?.BackColor ?? ModernColors.Surface;
+        g.Clear(parentBg);
+
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 

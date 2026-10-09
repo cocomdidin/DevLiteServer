@@ -49,16 +49,16 @@ Unlike traditional solutions, Dev Lite Server does not install Windows Services 
   Out-of-the-box local database with empty root password preset for instant development.
 - 🚀 **In-App Auto-Update System**:
   Built-in GitHub Release checker with one-click direct download, progress bar, graceful daemon shutdown, and installer execution.
-- 🎨 **Modern Dark OLED UI & Graceful Exit**:
-  High-DPI optimized, responsive WinForms dashboard with live status indicators, per-service auto-start controls, port conflict detection, and dedicated one-click **Exit** button that cleanly terminates all daemons and the application.
+- 🎨 **Modern Dark OLED UI, Dedicated Settings & Clean Dashboard**:
+  High-DPI optimized, responsive WinForms dashboard that displays only currently enabled services. Includes a dedicated **Settings & Configuration** dialog with port management, per-service dashboard visibility toggles, auto-start options, and dedicated one-click **Exit** button that cleanly terminates all daemons and the application.
 - 🪟 **Windows Logon Auto-Start**:
   Optional single-click startup on Windows logon (`StartWithWindows=true`) registering into `HKCU` Run key, launching minimized to tray with zero UAC prompts.
 
 ---
 
-## ⚙️ Configuration (`config.ini`)
+## ⚙️ Configuration (`config.ini` & Settings Dialog)
 
-Dev Lite Server is fully configured via `config.ini`:
+Dev Lite Server can be configured either via the built-in **Settings** UI dialog (click the `Settings` button on the toolbar or right-click the System Tray icon) or directly via `config.ini`:
 
 ```ini
 [General]
@@ -75,9 +75,19 @@ Mysql=false
 Mailpit=false
 Postgresql=false
 Redis=false
+
+[Services]
+Nginx=true
+Php=true
+Mysql=true
+Postgresql=false
+Redis=false
+Mailpit=true
 ```
 
-> **Note**: By default, no daemons auto-start until enabled. You can toggle auto-start behavior per-service and Windows logon startup directly from the System Tray context menu under **Auto-start Services** and **Start with Windows**.
+> **Note**:
+> - **Enabled Services (`[Services]`)**: Controls whether a service is active in the environment. Services marked `false` (Disabled) are hidden from the dashboard and skipped by **Start All** and **Auto-start**. You can toggle active services directly from the **Settings** dialog or the System Tray menu under **Enabled Services**.
+> - **Auto-Start (`[AutoStart]`)**: By default, no services auto-start until enabled. You can toggle auto-start behavior per-service and Windows logon startup from the **Settings** dialog or System Tray context menu under **Auto-start Services** and **Start with Windows**.
 
 ---
 
