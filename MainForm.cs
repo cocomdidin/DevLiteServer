@@ -272,61 +272,162 @@ public partial class MainForm : Form
         };
         var cardTray = CreateOptionCard("Minimize to System Tray", "Closing the main window keeps services running in the background tray.", togTray);
 
-        // 3. Auto-start enabled services
+        // 4. Auto-start enabled services (Master switch)
         var togAuto = new ModernToggle { Checked = _config.AutoStartServices };
+        var cardAuto = CreateOptionCard("Auto-start Enabled Services", "Master switch to boot selected services when application opens.", togAuto);
+
+        // 5. Selective Auto-start Matrix Card
+        var pnlMatrix = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 100,
+            BackColor = Color.Transparent,
+            Padding = new Padding(16, 6, 16, 12)
+        };
+        pnlMatrix.Paint += (s, e) =>
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            float stroke = 1f;
+            float halfStroke = stroke / 2f;
+            float cardH = pnlMatrix.Height - 8f;
+            var rect = new RectangleF(halfStroke, halfStroke, pnlMatrix.Width - stroke, cardH - stroke);
+            using var path = CreateRoundedRectangle(rect, 6f);
+            using var bgBrush = new SolidBrush(ModernColors.Surface);
+            g.FillPath(bgBrush, path);
+            using var pen = new Pen(ModernColors.BorderSubtle, stroke);
+            g.DrawPath(pen, path);
+        };
+
+        var lblMatrixTitle = new Label
+        {
+            Text = "Selective Auto-Start Daemons (applied when master auto-start is active):",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            Location = new Point(16, 10),
+            AutoSize = true
+        };
+
+        var flowToggles = new FlowLayoutPanel
+        {
+            Location = new Point(16, 32),
+            Size = new Size(680, 56),
+            BackColor = Color.Transparent,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true
+        };
+
+        void AddMatrixItem(string name, bool isChecked, Action<bool> onToggle)
+        {
+            var itemPnl = new Panel { Width = 105, Height = 48, Margin = new Padding(0, 0, 8, 4) };
+            var lbl = new Label
+            {
+                Text = name,
+                ForeColor = ModernColors.TextPrimary,
+                Font = new Font("Segoe UI", 8f),
+                Location = new Point(0, 2),
+                AutoSize = true
+            };
+            var tog = new ModernToggle { Checked = isChecked, Location = new Point(0, 20) };
+            tog.CheckedChanged += (s, e) =>
+            {
+                onToggle(tog.Checked);
+                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                BuildTrayMenu();
+            };
+            itemPnl.Controls.Add(lbl);
+            itemPnl.Controls.Add(tog);
+            flowToggles.Controls.Add(itemPnl);
+        }
+
+        AddMatrixItem("Nginx", _config.AutoStartNginx, v => _config.AutoStartNginx = v);
+        AddMatrixItem("PHP FastCGI", _config.AutoStartPhp, v => _config.AutoStartPhp = v);
+        AddMatrixItem("MySQL", _config.AutoStartMysql, v => _config.AutoStartMysql = v);
+        AddMatrixItem("Mailpit", _config.AutoStartMailpit, v => _config.AutoStartMailpit = v);
+        AddMatrixItem("PostgreSQL", _config.AutoStartPostgresql, v => _config.AutoStartPostgresql = v);
+        AddMatrixItem("Redis", _config.AutoStartRedis, v => _config.AutoStartRedis = v);
+
+        void UpdateMatrixState()
+        {
+            flowToggles.Enabled = togAuto.Checked;
+        }
         togAuto.CheckedChanged += (s, e) =>
         {
             _config.AutoStartServices = togAuto.Checked;
             ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            UpdateMatrixState();
+            BuildTrayMenu();
         };
-        var cardAuto = CreateOptionCard("Auto-start Enabled Services", "Start all enabled server daemons immediately when the app launches.", togAuto);
+        UpdateMatrixState();
 
-        // 4. Check for updates on startup
-        var togUpdates = new ModernToggle { Checked = _config.CheckUpdatesOnStart };
-        togUpdates.CheckedChanged += (s, e) =>
-        {
-            _config.CheckUpdatesOnStart = togUpdates.Checked;
-            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-        };
-        var cardUpdates = CreateOptionCard("Check for Updates on Startup", "Check official GitHub releases for new versions upon startup.", togUpdates);
+        pnlMatrix.Controls.Add(lblMatrixTitle);
+        pnlMatrix.Controls.Add(flowToggles);
 
-        // 5. Open Full Settings Dialog Button
-        var pnlSettingsLink = new Panel
+        // 6. Action Buttons Bar (Reset Settings & Open config.ini)
+        var pnlActions = new Panel
         {
-            Height = 52,
+            Height = 44,
             Dock = DockStyle.Top,
             Padding = new Padding(0, 8, 0, 0)
         };
-        var btnFullSettings = new ModernButton
+        var btnOpenConfig = new ModernButton
         {
-            Text = "Configure All Ports & Full Settings",
-            IconKind = IconKind.Gear,
-            IconSize = 12,
-            Width = 240,
-            Height = 36,
+            Text = "Open config.ini",
+            IconKind = IconKind.Folder,
+            IconSize = 10,
+            Width = 130,
+            Height = 32,
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
-            ForeColor = ModernColors.Primary,
-            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-            Location = new Point(0, 8)
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(0, 6)
         };
-        btnFullSettings.Click += (s, e) =>
+        btnOpenConfig.Click += (s, e) =>
         {
-            using var dlg = new SettingsForm(_config, _appRoot);
-            if (dlg.ShowDialog(this) == DialogResult.OK)
+            string cfgFile = Path.Combine(_appRoot, "config.ini");
+            if (File.Exists(cfgFile))
             {
+                Process.Start(new ProcessStartInfo("notepad.exe", $"\"{cfgFile}\"") { UseShellExecute = true });
+            }
+        };
+
+        var btnResetDefaults = new ModernButton
+        {
+            Text = "Reset to Defaults",
+            IconKind = IconKind.Refresh,
+            IconSize = 10,
+            Width = 140,
+            Height = 32,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.Danger,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(140, 6)
+        };
+        btnResetDefaults.Click += (s, e) =>
+        {
+            var res = MessageBox.Show(this, "Are you sure you want to reset all preferences to default values?", "Reset Preferences", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (res == DialogResult.Yes)
+            {
+                _config.ResetToDefaults();
+                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
                 BuildServiceCards();
                 BuildTrayMenu();
-                lblStatusText.Text = "Settings applied successfully.";
+                lblStatusText.Text = "Preferences reset to default values.";
                 lblStatusText.ForeColor = ModernColors.Success;
             }
         };
-        pnlSettingsLink.Controls.Add(btnFullSettings);
+
+        pnlActions.Controls.Add(btnOpenConfig);
+        pnlActions.Controls.Add(btnResetDefaults);
 
         // Add to general page in reverse dock order so pnlHeader is on top
-        pageGeneral.Controls.AddRange([pnlSettingsLink, cardUpdates, cardAuto, cardTray, cardWin, pnlHeader]);
+        pageGeneral.Controls.AddRange([pnlActions, pnlMatrix, cardAuto, cardTray, cardWin, pnlHeader]);
         pnlHeader.SendToBack();
     }
 
@@ -365,19 +466,69 @@ public partial class MainForm : Form
             Text = "Refresh Sites",
             IconKind = IconKind.Refresh,
             IconSize = 10,
-            Width = 115,
+            Width = 110,
             Height = 32,
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(145, 4)
+            Location = new Point(140, 4)
         };
         btnRefresh.Click += (s, e) => RefreshSitesList();
 
+        var btnOpenConf = new ModernButton
+        {
+            Text = "nginx.conf",
+            IconKind = IconKind.Folder,
+            IconSize = 10,
+            Width = 100,
+            Height = 32,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(256, 4)
+        };
+        btnOpenConf.Click += (s, e) =>
+        {
+            string confFile = Path.Combine(_nginx.GetNginxDirectory(), "conf", "nginx.conf");
+            if (File.Exists(confFile))
+            {
+                Process.Start(new ProcessStartInfo("notepad.exe", $"\"{confFile}\"") { UseShellExecute = true });
+            }
+        };
+
+        var lblHttp = new Label
+        {
+            Text = "HTTP Port:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            AutoSize = true
+        };
+        var txtHttp = CreatePortInput(_config.HttpPort, p =>
+        {
+            _config.HttpPort = p;
+            _nginx.UpdatePort(p);
+            RefreshSitesList();
+        });
+
+        void LayoutSitesTop()
+        {
+            int rX = pnlTop.ClientSize.Width > 150 ? pnlTop.ClientSize.Width - txtHttp.Width - 10 : 500;
+            txtHttp.Location = new Point(rX, 8);
+            lblHttp.Location = new Point(txtHttp.Left - lblHttp.Width - 6, 12);
+        }
+        pnlTop.Resize += (s, e) => LayoutSitesTop();
+        LayoutSitesTop();
+
         pnlTop.Controls.Add(btnOpenFolder);
         pnlTop.Controls.Add(btnRefresh);
+        pnlTop.Controls.Add(btnOpenConf);
+        pnlTop.Controls.Add(lblHttp);
+        pnlTop.Controls.Add(txtHttp);
 
         _pnlSitesContainer = new FlowLayoutPanel
         {
@@ -562,7 +713,7 @@ public partial class MainForm : Form
         var heroCard = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 150,
+            Height = 175,
             BackColor = ModernColors.Surface,
             Margin = new Padding(0, 0, 0, 14),
             Padding = new Padding(18, 14, 18, 14)
@@ -646,10 +797,10 @@ public partial class MainForm : Form
 
         var btnOpenPhpIni = new ModernButton
         {
-            Text = "Open php.ini",
+            Text = "php.ini",
             IconKind = IconKind.Folder,
             IconSize = 10,
-            Width = 110,
+            Width = 84,
             Height = 30,
             BorderRadius = 6,
             ShowBorder = true,
@@ -676,19 +827,83 @@ public partial class MainForm : Form
             }
         };
 
+        var btnOpenExt = new ModernButton
+        {
+            Text = "Open /ext",
+            IconKind = IconKind.Folder,
+            IconSize = 10,
+            Width = 90,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextSecondary,
+            Location = new Point(488, 12)
+        };
+        btnOpenExt.Click += (s, e) =>
+        {
+            string extDir = Path.Combine(_php.GetPhpDirectory(), "ext");
+            if (Directory.Exists(extDir))
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{extDir}\"") { UseShellExecute = true });
+            }
+        };
+
+        // Row 2: Port & Auto-start configuration
+        var lblPortTitle = new Label
+        {
+            Text = "FastCGI Port:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            Location = new Point(16, 56),
+            AutoSize = true
+        };
+        var txtFastCgiPort = CreatePortInput(_config.PhpFastCgiPort, p =>
+        {
+            _config.PhpFastCgiPort = p;
+            _php.UpdatePort(p);
+        });
+        txtFastCgiPort.Location = new Point(102, 53);
+
+        var lblAutoTitle = new Label
+        {
+            Text = "Auto-start on Boot:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            Location = new Point(180, 56),
+            AutoSize = true
+        };
+        var togAutoPhp = new ModernToggle
+        {
+            Checked = _config.AutoStartPhp,
+            Location = new Point(300, 53)
+        };
+        togAutoPhp.CheckedChanged += (s, e) =>
+        {
+            _config.AutoStartPhp = togAutoPhp.Checked;
+            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            BuildTrayMenu();
+        };
+
         var lblPhpDetails = new Label
         {
-            Text = $"Loopback Address: 127.0.0.1:{_config.PhpFastCgiPort}\nSupervisor Pool: Max 5000 requests with instant auto-respawn\nDefault extensions: curl, mysqli, pdo_mysql, pdo_pgsql, pgsql, redis, mbstring, openssl, zip",
+            Text = "Loopback Address: 127.0.0.1  •  Pool: Max 5000 requests with instant worker respawn\nDefault extensions: curl, mysqli, pdo_mysql, pdo_pgsql, pgsql, redis, mbstring, openssl, zip",
             ForeColor = ModernColors.TextMuted,
             Font = new Font("Segoe UI", 8.25f),
-            Location = new Point(16, 56),
-            Size = new Size(540, 50)
+            Location = new Point(16, 92),
+            Size = new Size(580, 40)
         };
 
         heroCard.Controls.Add(lblPhpActiveTitle);
         heroCard.Controls.Add(cmbVersions);
         heroCard.Controls.Add(btnRestartPhp);
         heroCard.Controls.Add(btnOpenPhpIni);
+        heroCard.Controls.Add(btnOpenExt);
+        heroCard.Controls.Add(lblPortTitle);
+        heroCard.Controls.Add(txtFastCgiPort);
+        heroCard.Controls.Add(lblAutoTitle);
+        heroCard.Controls.Add(togAutoPhp);
         heroCard.Controls.Add(lblPhpDetails);
 
         pagePhp.Controls.Add(heroCard);
@@ -748,6 +963,31 @@ public partial class MainForm : Form
         };
         btnOpenNodeTerminal.Click += BtnOpenTerminal_Click;
 
+        var btnOpenNodeFolder = new ModernButton
+        {
+            Text = "Node Directory",
+            IconKind = IconKind.Folder,
+            IconSize = 10,
+            Width = 125,
+            Height = 32,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(184, 48)
+        };
+        btnOpenNodeFolder.Click += (s, e) =>
+        {
+            string nodeDir = Path.Combine(_appRoot, "bin", "node", _config.ActiveNode);
+            if (!Directory.Exists(nodeDir)) nodeDir = Path.Combine(_appRoot, "bin", "node");
+            if (Directory.Exists(nodeDir))
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{nodeDir}\"") { UseShellExecute = true });
+            }
+        };
+
         var lblNodeNote = new Label
         {
             Text = "Node.js, npm, and npx are accessible via Dev Lite Server Isolated Terminal.\nNo global Windows PATH modification is made.",
@@ -759,6 +999,7 @@ public partial class MainForm : Form
 
         heroCard.Controls.Add(lblNodeTitle);
         heroCard.Controls.Add(btnOpenNodeTerminal);
+        heroCard.Controls.Add(btnOpenNodeFolder);
         heroCard.Controls.Add(lblNodeNote);
 
         pageNode.Controls.Add(heroCard);
@@ -776,33 +1017,64 @@ public partial class MainForm : Form
         var pnlHeader = CreateSectionHeader("Databases & Cache Engines", "Relational databases and in-memory key-value cache services.");
 
         // 1. MySQL Card
-        var cardMySql = CreateServiceManagementCard(_mysql, "Default user: 'root' with empty password (port 3306).", () =>
-        {
-            BtnOpenAdminer_Click(null, EventArgs.Empty);
-        });
+        var cardMySql = CreateServiceManagementCard(
+            _mysql,
+            "MySQL 8.4 Server (Default user: 'root' with empty password)",
+            () => _config.EnableMysql,
+            v => _config.EnableMysql = v,
+            () => _config.MysqlPort,
+            p => _config.MysqlPort = p,
+            () => _config.AutoStartMysql,
+            v => _config.AutoStartMysql = v,
+            Path.Combine(_appRoot, "bin", "mysql", "data"),
+            () => BtnOpenAdminer_Click(null, EventArgs.Empty));
 
         // 2. PostgreSQL Card
-        var cardPg = CreateServiceManagementCard(_postgresql, "Default user: 'postgres' with trust auth (port 5432).", () =>
-        {
-            BtnOpenAdminer_Click(null, EventArgs.Empty);
-        });
+        var cardPg = CreateServiceManagementCard(
+            _postgresql,
+            "PostgreSQL 17 Server (Default user: 'postgres' with trust auth)",
+            () => _config.EnablePostgresql,
+            v => _config.EnablePostgresql = v,
+            () => _config.PostgreSqlPort,
+            p => _config.PostgreSqlPort = p,
+            () => _config.AutoStartPostgresql,
+            v => _config.AutoStartPostgresql = v,
+            Path.Combine(_appRoot, "bin", "postgresql", "data"),
+            () => BtnOpenAdminer_Click(null, EventArgs.Empty));
 
         // 3. Redis Card
-        var cardRedis = CreateServiceManagementCard(_redis, "In-memory key-value store binding to loopback 127.0.0.1:6379.", () =>
-        {
-            TerminalLauncher.OpenTerminal(_appRoot, _config);
-        });
+        var cardRedis = CreateServiceManagementCard(
+            _redis,
+            "In-memory key-value cache server binding to loopback 127.0.0.1",
+            () => _config.EnableRedis,
+            v => _config.EnableRedis = v,
+            () => _config.RedisPort,
+            p => _config.RedisPort = p,
+            () => _config.AutoStartRedis,
+            v => _config.AutoStartRedis = v,
+            null,
+            () => TerminalLauncher.OpenTerminal(_appRoot, _config));
 
         pageServices.Controls.AddRange([cardRedis, cardPg, cardMySql, pnlHeader]);
         pnlHeader.SendToBack();
     }
 
-    private Panel CreateServiceManagementCard(IService service, string description, Action onOpenClient)
+    private Panel CreateServiceManagementCard(
+        IService service,
+        string description,
+        Func<bool> getEnabled,
+        Action<bool> setEnabled,
+        Func<int> getPort,
+        Action<int> setPort,
+        Func<bool> getAutoStart,
+        Action<bool> setAutoStart,
+        string? dataDirPath,
+        Action onOpenClient)
     {
         var card = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 82,
+            Height = 96,
             BackColor = Color.Transparent,
             Padding = new Padding(16, 6, 16, 16)
         };
@@ -824,7 +1096,7 @@ public partial class MainForm : Form
         var pill = new StatusPill
         {
             Status = service.Status,
-            Location = new Point(14, 24)
+            Location = new Point(14, 20)
         };
         service.StatusChanged += (s, st) =>
         {
@@ -834,10 +1106,10 @@ public partial class MainForm : Form
 
         var lblName = new Label
         {
-            Text = $"{service.Name}  (Port: {service.Port})",
+            Text = service.Name,
             ForeColor = ModernColors.TextPrimary,
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
-            Location = new Point(120, 14),
+            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
+            Location = new Point(116, 10),
             AutoSize = true
         };
 
@@ -846,8 +1118,65 @@ public partial class MainForm : Form
             Text = description,
             ForeColor = ModernColors.TextMuted,
             Font = new Font("Segoe UI", 8.25f),
-            Location = new Point(121, 38),
+            Location = new Point(117, 32),
             AutoSize = true
+        };
+
+        // Configuration Row (Y=58): Enable, Port, Auto-start
+        var lblEnable = new Label
+        {
+            Text = "Enabled:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Location = new Point(117, 60),
+            AutoSize = true
+        };
+        var togEnable = new ModernToggle
+        {
+            Checked = getEnabled(),
+            Location = new Point(170, 58)
+        };
+        togEnable.CheckedChanged += (s, e) =>
+        {
+            setEnabled(togEnable.Checked);
+            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            BuildServiceCards();
+            BuildTrayMenu();
+        };
+
+        var lblPort = new Label
+        {
+            Text = "Port:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Location = new Point(226, 60),
+            AutoSize = true
+        };
+        var txtPort = CreatePortInput(getPort(), p =>
+        {
+            setPort(p);
+            service.UpdatePort(p);
+        });
+        txtPort.Location = new Point(260, 57);
+
+        var lblAuto = new Label
+        {
+            Text = "Auto-start:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Location = new Point(330, 60),
+            AutoSize = true
+        };
+        var togAuto = new ModernToggle
+        {
+            Checked = getAutoStart(),
+            Location = new Point(395, 58)
+        };
+        togAuto.CheckedChanged += (s, e) =>
+        {
+            setAutoStart(togAuto.Checked);
+            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            BuildTrayMenu();
         };
 
         var btnToggle = new ModernButton
@@ -855,7 +1184,7 @@ public partial class MainForm : Form
             Text = service.Status == ServiceStatus.Running ? "Stop" : "Start",
             IconKind = service.Status == ServiceStatus.Running ? IconKind.Stop : IconKind.Play,
             IconSize = 10,
-            Width = 84,
+            Width = 80,
             Height = 32,
             BorderRadius = 6,
             ShowBorder = false,
@@ -890,7 +1219,7 @@ public partial class MainForm : Form
             Text = "DB Client",
             IconKind = IconKind.Database,
             IconSize = 10,
-            Width = 90,
+            Width = 84,
             Height = 32,
             BorderRadius = 6,
             ShowBorder = true,
@@ -901,14 +1230,44 @@ public partial class MainForm : Form
         };
         btnClient.Click += (s, e) => onOpenClient();
 
+        ModernButton? btnDataDir = null;
+        if (!string.IsNullOrEmpty(dataDirPath))
+        {
+            btnDataDir = new ModernButton
+            {
+                Text = "Data",
+                IconKind = IconKind.Folder,
+                IconSize = 10,
+                Width = 64,
+                Height = 32,
+                BorderRadius = 6,
+                ShowBorder = true,
+                NormalColor = ModernColors.Card,
+                HoverColor = ModernColors.SurfaceHover,
+                ForeColor = ModernColors.TextSecondary,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
+            };
+            btnDataDir.Click += (s, e) =>
+            {
+                if (!Directory.Exists(dataDirPath)) Directory.CreateDirectory(dataDirPath);
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{dataDirPath}\"") { UseShellExecute = true });
+            };
+            card.Controls.Add(btnDataDir);
+        }
+
         void LayoutServiceButtons()
         {
             int cardH = card.Height - 10;
             int rightX = card.Width > 200 ? card.Width - btnToggle.Width - 14 : 500;
             btnToggle.Location = new Point(rightX, (cardH - btnToggle.Height) / 2);
             btnClient.Location = new Point(btnToggle.Left - btnClient.Width - 8, (cardH - btnClient.Height) / 2);
+            if (btnDataDir != null)
+            {
+                btnDataDir.Location = new Point(btnClient.Left - btnDataDir.Width - 8, (cardH - btnDataDir.Height) / 2);
+            }
 
-            int maxDescW = btnClient.Left - lblDesc.Left - 10;
+            int leftLimit = (btnDataDir != null ? btnDataDir.Left : btnClient.Left) - 10;
+            int maxDescW = leftLimit - lblDesc.Left;
             if (maxDescW > 50)
             {
                 lblDesc.MaximumSize = new Size(maxDescW, 20);
@@ -921,6 +1280,12 @@ public partial class MainForm : Form
         card.Controls.Add(pill);
         card.Controls.Add(lblName);
         card.Controls.Add(lblDesc);
+        card.Controls.Add(lblEnable);
+        card.Controls.Add(togEnable);
+        card.Controls.Add(lblPort);
+        card.Controls.Add(txtPort);
+        card.Controls.Add(lblAuto);
+        card.Controls.Add(togAuto);
         card.Controls.Add(btnClient);
         card.Controls.Add(btnToggle);
 
@@ -940,19 +1305,35 @@ public partial class MainForm : Form
         var heroCard = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 120,
-            BackColor = ModernColors.Surface,
+            Height = 156,
+            BackColor = Color.Transparent,
             Margin = new Padding(0, 0, 0, 14),
-            Padding = new Padding(18, 14, 18, 14)
+            Padding = new Padding(16, 8, 16, 16)
         };
         heroCard.Paint += (s, e) =>
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            var rect = new RectangleF(0.5f, 0.5f, heroCard.Width - 1f, heroCard.Height - 1f);
+            float stroke = 1f;
+            float halfStroke = stroke / 2f;
+            float cardH = heroCard.Height - 10f;
+            var rect = new RectangleF(halfStroke, halfStroke, heroCard.Width - stroke, cardH - stroke);
             using var path = CreateRoundedRectangle(rect, 8f);
+            using var bgBrush = new SolidBrush(ModernColors.Surface);
+            g.FillPath(bgBrush, path);
             using var pen = new Pen(ModernColors.BorderSubtle, 1f);
             g.DrawPath(pen, path);
+        };
+
+        var pill = new StatusPill
+        {
+            Status = _mailpit.Status,
+            Location = new Point(14, 20)
+        };
+        _mailpit.StatusChanged += (s, st) =>
+        {
+            if (InvokeRequired) Invoke(() => pill.Status = st);
+            else pill.Status = st;
         };
 
         var lblMailTitle = new Label
@@ -960,54 +1341,247 @@ public partial class MainForm : Form
             Text = "Mailpit Local SMTP & Inbox Server",
             ForeColor = ModernColors.TextPrimary,
             Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
-            Location = new Point(16, 14),
+            Location = new Point(116, 12),
             AutoSize = true
+        };
+
+        var lblMailDesc = new Label
+        {
+            Text = "Captures outgoing SMTP traffic and provides an instant webmail viewer.",
+            ForeColor = ModernColors.TextMuted,
+            Font = new Font("Segoe UI", 8.25f),
+            Location = new Point(117, 34),
+            AutoSize = true
+        };
+
+        // Row 1 (Y=62): Enabled & Auto-Start
+        var lblEnable = new Label
+        {
+            Text = "Enabled:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Location = new Point(117, 62),
+            AutoSize = true
+        };
+        var togEnable = new ModernToggle
+        {
+            Checked = _config.EnableMailpit,
+            Location = new Point(170, 60)
+        };
+        togEnable.CheckedChanged += (s, e) =>
+        {
+            _config.EnableMailpit = togEnable.Checked;
+            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            BuildServiceCards();
+            BuildTrayMenu();
+        };
+
+        var lblAuto = new Label
+        {
+            Text = "Auto-start:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Location = new Point(226, 62),
+            AutoSize = true
+        };
+        var togAuto = new ModernToggle
+        {
+            Checked = _config.AutoStartMailpit,
+            Location = new Point(292, 60)
+        };
+        togAuto.CheckedChanged += (s, e) =>
+        {
+            _config.AutoStartMailpit = togAuto.Checked;
+            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            BuildTrayMenu();
+        };
+
+        // Action Buttons (Right-aligned)
+        var btnToggle = new ModernButton
+        {
+            Text = _mailpit.Status == ServiceStatus.Running ? "Stop" : "Start",
+            IconKind = _mailpit.Status == ServiceStatus.Running ? IconKind.Stop : IconKind.Play,
+            IconSize = 10,
+            Width = 80,
+            Height = 32,
+            BorderRadius = 6,
+            ShowBorder = false,
+            NormalColor = _mailpit.Status == ServiceStatus.Running ? ModernColors.Danger : ModernColors.Success,
+            HoverColor = _mailpit.Status == ServiceStatus.Running ? ModernColors.DangerHover : ModernColors.SuccessHover,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
+        };
+        btnToggle.Click += async (s, e) =>
+        {
+            btnToggle.Enabled = false;
+            if (_mailpit.Status == ServiceStatus.Running) await _mailpit.StopAsync();
+            else await _mailpit.StartAsync();
+            btnToggle.Enabled = true;
+        };
+        _mailpit.StatusChanged += (s, st) =>
+        {
+            void UpdateBtn()
+            {
+                btnToggle.Text = st == ServiceStatus.Running ? "Stop" : "Start";
+                btnToggle.IconKind = st == ServiceStatus.Running ? IconKind.Stop : IconKind.Play;
+                btnToggle.NormalColor = st == ServiceStatus.Running ? ModernColors.Danger : ModernColors.Success;
+                btnToggle.HoverColor = st == ServiceStatus.Running ? ModernColors.DangerHover : ModernColors.SuccessHover;
+            }
+            if (InvokeRequired) Invoke((Action)UpdateBtn);
+            else UpdateBtn();
         };
 
         var btnOpenInbox = new ModernButton
         {
-            Text = "Open Webmail Inbox (:8025)",
+            Text = $"Open Inbox (:{_config.MailpitWebPort})",
             IconKind = IconKind.Mail,
-            IconSize = 11,
-            Width = 190,
+            IconSize = 10,
+            Width = 145,
             Height = 32,
             BorderRadius = 6,
             ShowBorder = false,
             NormalColor = ModernColors.Primary,
             HoverColor = ModernColors.PrimaryHover,
-            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(16, 46)
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
         btnOpenInbox.Click += BtnOpenMailpit_Click;
 
-        var lblMailNote = new Label
+        var btnTestMail = new ModernButton
         {
-            Text = $"SMTP Loopback: 127.0.0.1:{_config.MailpitSmtpPort}  •  Webmail Viewer: http://localhost:{_config.MailpitWebPort}",
-            ForeColor = ModernColors.TextMuted,
-            Font = new Font("Segoe UI", 8.25f),
-            Location = new Point(16, 88),
-            AutoSize = true
+            Text = "Send Test",
+            IconKind = IconKind.Lightning,
+            IconSize = 10,
+            Width = 92,
+            Height = 32,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.Primary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
+        };
+        btnTestMail.Click += async (s, e) =>
+        {
+            btnTestMail.Enabled = false;
+            try
+            {
+                using var tcp = new System.Net.Sockets.TcpClient();
+                await tcp.ConnectAsync("127.0.0.1", _config.MailpitSmtpPort);
+                using var stream = tcp.GetStream();
+                using var reader = new StreamReader(stream);
+                using var writer = new StreamWriter(stream) { AutoFlush = true };
+                await reader.ReadLineAsync();
+                await writer.WriteLineAsync("HELO localhost");
+                await reader.ReadLineAsync();
+                await writer.WriteLineAsync("MAIL FROM:<noreply@liteserver.local>");
+                await reader.ReadLineAsync();
+                await writer.WriteLineAsync("RCPT TO:<dev@liteserver.local>");
+                await reader.ReadLineAsync();
+                await writer.WriteLineAsync("DATA");
+                await reader.ReadLineAsync();
+                await writer.WriteLineAsync($"Subject: Dev Lite Server - Test Mail ({DateTime.Now:HH:mm:ss})\r\nFrom: noreply@liteserver.local\r\nTo: dev@liteserver.local\r\n\r\nHello from Dev Lite Server Mailpit!\r\nSent successfully at {DateTime.Now:yyyy-MM-dd HH:mm:ss}.\r\n.");
+                await reader.ReadLineAsync();
+                await writer.WriteLineAsync("QUIT");
+                MessageBox.Show(this, "Test email captured successfully! Check your Mailpit Inbox.", "Mailpit", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Failed to send test email:\r\n{ex.Message}\r\n\r\nEnsure Mailpit is running on SMTP port {_config.MailpitSmtpPort}.", "Mailpit Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            finally
+            {
+                btnTestMail.Enabled = true;
+            }
         };
 
+        // Forward declare snippet update action
+        Action? updateSnippet = null;
+
+        // Row 2 (Y=100): SMTP & Web Ports
+        var lblSmtp = new Label
+        {
+            Text = "SMTP Port:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Location = new Point(117, 103),
+            AutoSize = true
+        };
+        var txtSmtp = CreatePortInput(_config.MailpitSmtpPort, p =>
+        {
+            _config.MailpitSmtpPort = p;
+            updateSnippet?.Invoke();
+        });
+        txtSmtp.Location = new Point(190, 100);
+
+        var lblWeb = new Label
+        {
+            Text = "Web UI Port:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Location = new Point(260, 103),
+            AutoSize = true
+        };
+        var txtWeb = CreatePortInput(_config.MailpitWebPort, p =>
+        {
+            _config.MailpitWebPort = p;
+            _mailpit.UpdatePort(p);
+            btnOpenInbox.Text = $"Open Inbox (:{p})";
+        });
+        txtWeb.Location = new Point(345, 100);
+
+        void LayoutMailButtons()
+        {
+            int cardH = heroCard.Height - 10;
+            int rightX = heroCard.Width > 200 ? heroCard.Width - btnToggle.Width - 14 : 500;
+            btnToggle.Location = new Point(rightX, (cardH - btnToggle.Height) / 2);
+            btnOpenInbox.Location = new Point(btnToggle.Left - btnOpenInbox.Width - 8, (cardH - btnOpenInbox.Height) / 2);
+            btnTestMail.Location = new Point(btnOpenInbox.Left - btnTestMail.Width - 8, (cardH - btnTestMail.Height) / 2);
+
+            int leftLimit = btnTestMail.Left - 10;
+            int maxDescW = leftLimit - lblMailDesc.Left;
+            if (maxDescW > 50)
+            {
+                lblMailDesc.MaximumSize = new Size(maxDescW, 20);
+                lblMailDesc.AutoEllipsis = true;
+            }
+        }
+        heroCard.Resize += (s, e) => LayoutMailButtons();
+        LayoutMailButtons();
+
+        heroCard.Controls.Add(pill);
         heroCard.Controls.Add(lblMailTitle);
+        heroCard.Controls.Add(lblMailDesc);
+        heroCard.Controls.Add(lblEnable);
+        heroCard.Controls.Add(togEnable);
+        heroCard.Controls.Add(lblAuto);
+        heroCard.Controls.Add(togAuto);
+        heroCard.Controls.Add(lblSmtp);
+        heroCard.Controls.Add(txtSmtp);
+        heroCard.Controls.Add(lblWeb);
+        heroCard.Controls.Add(txtWeb);
+        heroCard.Controls.Add(btnTestMail);
         heroCard.Controls.Add(btnOpenInbox);
-        heroCard.Controls.Add(lblMailNote);
+        heroCard.Controls.Add(btnToggle);
 
         // Env Snippet Card
         var snippetCard = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 160,
-            BackColor = ModernColors.Surface,
+            Height = 170,
+            BackColor = Color.Transparent,
             Margin = new Padding(0, 14, 0, 0),
-            Padding = new Padding(18, 14, 18, 14)
+            Padding = new Padding(16, 12, 16, 16)
         };
         snippetCard.Paint += (s, e) =>
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            var rect = new RectangleF(0.5f, 0.5f, snippetCard.Width - 1f, snippetCard.Height - 1f);
+            float stroke = 1f;
+            float halfStroke = stroke / 2f;
+            float cardH = snippetCard.Height - 10f;
+            var rect = new RectangleF(halfStroke, halfStroke, snippetCard.Width - stroke, cardH - stroke);
             using var path = CreateRoundedRectangle(rect, 8f);
+            using var bgBrush = new SolidBrush(ModernColors.Surface);
+            g.FillPath(bgBrush, path);
             using var pen = new Pen(ModernColors.BorderSubtle, 1f);
             g.DrawPath(pen, path);
         };
@@ -1021,20 +1595,57 @@ public partial class MainForm : Form
             AutoSize = true
         };
 
+        var btnCopyEnv = new ModernButton
+        {
+            Text = "Copy .env",
+            IconKind = IconKind.Folder,
+            IconSize = 10,
+            Width = 86,
+            Height = 26,
+            BorderRadius = 4,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.Primary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Location = new Point(500, 10)
+        };
+
         var txtSnippet = new TextBox
         {
-            Text = $"MAIL_MAILER=smtp\r\nMAIL_HOST=127.0.0.1\r\nMAIL_PORT={_config.MailpitSmtpPort}\r\nMAIL_USERNAME=null\r\nMAIL_PASSWORD=null\r\nMAIL_ENCRYPTION=null",
             Multiline = true,
             ReadOnly = true,
             BackColor = ModernColors.Card,
             ForeColor = ModernColors.TextPrimary,
             BorderStyle = BorderStyle.None,
             Font = new Font("Cascadia Code", 8.5f),
-            Location = new Point(16, 36),
-            Size = new Size(500, 105)
+            Location = new Point(16, 40),
+            Size = new Size(570, 105)
+        };
+
+        void RefreshSnippetText()
+        {
+            txtSnippet.Text = $"MAIL_MAILER=smtp\r\nMAIL_HOST=127.0.0.1\r\nMAIL_PORT={_config.MailpitSmtpPort}\r\nMAIL_USERNAME=null\r\nMAIL_PASSWORD=null\r\nMAIL_ENCRYPTION=null";
+        }
+        RefreshSnippetText();
+        updateSnippet = RefreshSnippetText;
+
+        btnCopyEnv.Click += async (s, e) =>
+        {
+            Clipboard.SetText(txtSnippet.Text);
+            btnCopyEnv.Text = "Copied!";
+            await Task.Delay(1500);
+            btnCopyEnv.Text = "Copy .env";
+        };
+
+        snippetCard.Resize += (s, e) =>
+        {
+            btnCopyEnv.Location = new Point(Math.Max(300, snippetCard.Width - btnCopyEnv.Width - 18), 10);
+            txtSnippet.Width = Math.Max(200, snippetCard.Width - 36);
         };
 
         snippetCard.Controls.Add(lblSnippetTitle);
+        snippetCard.Controls.Add(btnCopyEnv);
         snippetCard.Controls.Add(txtSnippet);
 
         pageMail.Controls.AddRange([snippetCard, heroCard, pnlHeader]);
@@ -1044,6 +1655,51 @@ public partial class MainForm : Form
     // ==========================================
     // UI REUSABLE CARD HELPERS
     // ==========================================
+    private TextBox CreatePortInput(int currentPort, Action<int> onPortSaved)
+    {
+        var txt = new TextBox
+        {
+            Text = currentPort.ToString(),
+            BackColor = ModernColors.Card,
+            ForeColor = ModernColors.Primary,
+            BorderStyle = BorderStyle.FixedSingle,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            TextAlign = HorizontalAlignment.Center,
+            Width = 56,
+            Height = 24
+        };
+
+        void SavePort()
+        {
+            if (int.TryParse(txt.Text.Trim(), out int port) && port > 0 && port <= 65535)
+            {
+                if (port != currentPort)
+                {
+                    currentPort = port;
+                    onPortSaved(port);
+                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                }
+            }
+            else
+            {
+                txt.Text = currentPort.ToString();
+            }
+        }
+
+        txt.Leave += (s, e) => SavePort();
+        txt.KeyDown += (s, e) =>
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                SavePort();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+        };
+
+        return txt;
+    }
+
     private static Panel CreateSectionHeader(string title, string subtitle)
     {
         var pnl = new Panel

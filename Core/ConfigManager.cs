@@ -79,6 +79,36 @@ public class AppConfig
             _ => true
         };
     }
+
+    public void ResetToDefaults()
+    {
+        var d = new AppConfig();
+        AutoStartServices = d.AutoStartServices;
+        AutoStartNginx = d.AutoStartNginx;
+        AutoStartPhp = d.AutoStartPhp;
+        AutoStartMysql = d.AutoStartMysql;
+        AutoStartMailpit = d.AutoStartMailpit;
+        AutoStartPostgresql = d.AutoStartPostgresql;
+        AutoStartRedis = d.AutoStartRedis;
+        CheckUpdatesOnStart = d.CheckUpdatesOnStart;
+        MinimizeToTray = d.MinimizeToTray;
+        StartWithWindows = d.StartWithWindows;
+        EnableNginx = d.EnableNginx;
+        EnablePhp = d.EnablePhp;
+        EnableMysql = d.EnableMysql;
+        EnablePostgresql = d.EnablePostgresql;
+        EnableRedis = d.EnableRedis;
+        EnableMailpit = d.EnableMailpit;
+        ActivePhp = d.ActivePhp;
+        ActiveNode = d.ActiveNode;
+        HttpPort = d.HttpPort;
+        PhpFastCgiPort = d.PhpFastCgiPort;
+        MysqlPort = d.MysqlPort;
+        PostgreSqlPort = d.PostgreSqlPort;
+        RedisPort = d.RedisPort;
+        MailpitSmtpPort = d.MailpitSmtpPort;
+        MailpitWebPort = d.MailpitWebPort;
+    }
 }
 
 public static class ConfigManager
