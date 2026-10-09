@@ -277,96 +277,15 @@ public partial class MainForm : Form
         };
         var cardTray = CreateOptionCard("Minimize to System Tray", "Closing the main window keeps services running in the background tray.", togTray);
 
-        // 4. Auto-start enabled services (Master switch)
+        // 4. Auto-start enabled services on launch
         var togAuto = new ModernToggle { Checked = _config.AutoStartServices };
-        var cardAuto = CreateOptionCard("Auto-start Enabled Services", "Master switch to boot selected services when application opens.", togAuto);
-
-        // 5. Selective Auto-start Matrix Card
-        var pnlMatrix = new Panel
-        {
-            Dock = DockStyle.Top,
-            Height = 100,
-            BackColor = Color.Transparent,
-            Padding = new Padding(16, 6, 16, 12)
-        };
-        pnlMatrix.Paint += (s, e) =>
-        {
-            var g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            float stroke = 1f;
-            float halfStroke = stroke / 2f;
-            float cardH = pnlMatrix.Height - 8f;
-            var rect = new RectangleF(halfStroke, halfStroke, pnlMatrix.Width - stroke, cardH - stroke);
-            using var path = CreateRoundedRectangle(rect, 6f);
-            using var bgBrush = new SolidBrush(ModernColors.Surface);
-            g.FillPath(bgBrush, path);
-            using var pen = new Pen(ModernColors.BorderSubtle, stroke);
-            g.DrawPath(pen, path);
-        };
-
-        var lblMatrixTitle = new Label
-        {
-            Text = "Selective Auto-Start Daemons (applied when master auto-start is active):",
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-            Location = new Point(16, 10),
-            AutoSize = true
-        };
-
-        var flowToggles = new FlowLayoutPanel
-        {
-            Location = new Point(16, 32),
-            Size = new Size(680, 56),
-            BackColor = Color.Transparent,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = true
-        };
-
-        void AddMatrixItem(string name, bool isChecked, Action<bool> onToggle)
-        {
-            var itemPnl = new Panel { Width = 105, Height = 48, Margin = new Padding(0, 0, 8, 4) };
-            var lbl = new Label
-            {
-                Text = name,
-                ForeColor = ModernColors.TextPrimary,
-                Font = new Font("Segoe UI", 8f),
-                Location = new Point(0, 2),
-                AutoSize = true
-            };
-            var tog = new ModernToggle { Checked = isChecked, Location = new Point(0, 20) };
-            tog.CheckedChanged += (s, e) =>
-            {
-                onToggle(tog.Checked);
-                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-                BuildTrayMenu();
-            };
-            itemPnl.Controls.Add(lbl);
-            itemPnl.Controls.Add(tog);
-            flowToggles.Controls.Add(itemPnl);
-        }
-
-        AddMatrixItem("Nginx", _config.AutoStartNginx, v => _config.AutoStartNginx = v);
-        AddMatrixItem("PHP FastCGI", _config.AutoStartPhp, v => _config.AutoStartPhp = v);
-        AddMatrixItem("MySQL", _config.AutoStartMysql, v => _config.AutoStartMysql = v);
-        AddMatrixItem("Mailpit", _config.AutoStartMailpit, v => _config.AutoStartMailpit = v);
-        AddMatrixItem("PostgreSQL", _config.AutoStartPostgresql, v => _config.AutoStartPostgresql = v);
-        AddMatrixItem("Redis", _config.AutoStartRedis, v => _config.AutoStartRedis = v);
-
-        void UpdateMatrixState()
-        {
-            flowToggles.Enabled = togAuto.Checked;
-        }
         togAuto.CheckedChanged += (s, e) =>
         {
             _config.AutoStartServices = togAuto.Checked;
             ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-            UpdateMatrixState();
             BuildTrayMenu();
         };
-        UpdateMatrixState();
-
-        pnlMatrix.Controls.Add(lblMatrixTitle);
-        pnlMatrix.Controls.Add(flowToggles);
+        var cardAuto = CreateOptionCard("Auto-start Enabled Services", "Automatically launch all enabled services when Dev Lite Server opens.", togAuto);
 
         // 6. Action Buttons Bar (Reset Settings & Open config.ini)
         var pnlActions = new Panel
@@ -432,7 +351,7 @@ public partial class MainForm : Form
         pnlActions.Controls.Add(btnResetDefaults);
 
         // Add to general page in reverse dock order so pnlHeader is on top
-        pageGeneral.Controls.AddRange([pnlActions, pnlMatrix, cardAuto, cardTray, cardWin, pnlHeader]);
+        pageGeneral.Controls.AddRange([pnlActions, cardAuto, cardTray, cardWin, pnlHeader]);
         pnlHeader.SendToBack();
     }
 
@@ -900,7 +819,7 @@ public partial class MainForm : Form
             }
         };
 
-        // Row 2: Port & Auto-start configuration
+        // Row 2: Port configuration
         var lblPortTitle = new Label
         {
             Text = "FastCGI Port:",
@@ -915,26 +834,6 @@ public partial class MainForm : Form
             _php.UpdatePort(p);
         });
         txtFastCgiPort.Location = new Point(102, 53);
-
-        var lblAutoTitle = new Label
-        {
-            Text = "Auto-start on Boot:",
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-            Location = new Point(180, 56),
-            AutoSize = true
-        };
-        var togAutoPhp = new ModernToggle
-        {
-            Checked = _config.AutoStartPhp,
-            Location = new Point(300, 53)
-        };
-        togAutoPhp.CheckedChanged += (s, e) =>
-        {
-            _config.AutoStartPhp = togAutoPhp.Checked;
-            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-            BuildTrayMenu();
-        };
 
         var lblPhpDetails = new Label
         {
@@ -952,8 +851,6 @@ public partial class MainForm : Form
         heroCard.Controls.Add(btnOpenExt);
         heroCard.Controls.Add(lblPortTitle);
         heroCard.Controls.Add(txtFastCgiPort);
-        heroCard.Controls.Add(lblAutoTitle);
-        heroCard.Controls.Add(togAutoPhp);
         heroCard.Controls.Add(lblPhpDetails);
 
         // Section: Available PHP Runtimes (Herd Downloader)
@@ -1145,8 +1042,6 @@ public partial class MainForm : Form
             v => _config.EnableMysql = v,
             () => _config.MysqlPort,
             p => _config.MysqlPort = p,
-            () => _config.AutoStartMysql,
-            v => _config.AutoStartMysql = v,
             Path.Combine(_appRoot, "bin", "mysql", "data"),
             () => BtnOpenAdminer_Click(null, EventArgs.Empty));
 
@@ -1158,8 +1053,6 @@ public partial class MainForm : Form
             v => _config.EnablePostgresql = v,
             () => _config.PostgreSqlPort,
             p => _config.PostgreSqlPort = p,
-            () => _config.AutoStartPostgresql,
-            v => _config.AutoStartPostgresql = v,
             Path.Combine(_appRoot, "bin", "postgresql", "data"),
             () => BtnOpenAdminer_Click(null, EventArgs.Empty));
 
@@ -1171,8 +1064,6 @@ public partial class MainForm : Form
             v => _config.EnableRedis = v,
             () => _config.RedisPort,
             p => _config.RedisPort = p,
-            () => _config.AutoStartRedis,
-            v => _config.AutoStartRedis = v,
             null,
             () => TerminalLauncher.OpenTerminal(_appRoot, _config));
 
@@ -1187,8 +1078,6 @@ public partial class MainForm : Form
         Action<bool> setEnabled,
         Func<int> getPort,
         Action<int> setPort,
-        Func<bool> getAutoStart,
-        Action<bool> setAutoStart,
         string? dataDirPath,
         Action onOpenClient)
     {
@@ -1279,26 +1168,6 @@ public partial class MainForm : Form
             service.UpdatePort(p);
         });
         txtPort.Location = new Point(260, 57);
-
-        var lblAuto = new Label
-        {
-            Text = "Auto-start:",
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
-            Location = new Point(330, 60),
-            AutoSize = true
-        };
-        var togAuto = new ModernToggle
-        {
-            Checked = getAutoStart(),
-            Location = new Point(395, 58)
-        };
-        togAuto.CheckedChanged += (s, e) =>
-        {
-            setAutoStart(togAuto.Checked);
-            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-            BuildTrayMenu();
-        };
 
         var btnToggle = new ModernButton
         {
@@ -1444,8 +1313,6 @@ public partial class MainForm : Form
         card.Controls.Add(togEnable);
         card.Controls.Add(lblPort);
         card.Controls.Add(txtPort);
-        card.Controls.Add(lblAuto);
-        card.Controls.Add(togAuto);
         card.Controls.Add(btnClient);
         card.Controls.Add(btnToggle);
 
@@ -1533,26 +1400,6 @@ public partial class MainForm : Form
             _config.EnableMailpit = togEnable.Checked;
             ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
             BuildServiceCards();
-            BuildTrayMenu();
-        };
-
-        var lblAuto = new Label
-        {
-            Text = "Auto-start:",
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
-            Location = new Point(226, 62),
-            AutoSize = true
-        };
-        var togAuto = new ModernToggle
-        {
-            Checked = _config.AutoStartMailpit,
-            Location = new Point(292, 60)
-        };
-        togAuto.CheckedChanged += (s, e) =>
-        {
-            _config.AutoStartMailpit = togAuto.Checked;
-            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
             BuildTrayMenu();
         };
 
@@ -1749,8 +1596,6 @@ public partial class MainForm : Form
         heroCard.Controls.Add(lblMailDesc);
         heroCard.Controls.Add(lblEnable);
         heroCard.Controls.Add(togEnable);
-        heroCard.Controls.Add(lblAuto);
-        heroCard.Controls.Add(togAuto);
         heroCard.Controls.Add(lblSmtp);
         heroCard.Controls.Add(txtSmtp);
         heroCard.Controls.Add(lblWeb);
@@ -2261,9 +2106,8 @@ public partial class MainForm : Form
         }
         trayMenu.Items.Add(nodeSubMenu);
 
-        // Auto-start submenu
-        var autoStartMenu = new ToolStripMenuItem("Auto-start Services");
-        var masterAutoStartItem = new ToolStripMenuItem("Enable Auto-start", null, (s, e) =>
+        // Auto-start Enabled Services on Launch
+        var autoStartItem = new ToolStripMenuItem("Auto-start on Launch", null, (s, e) =>
         {
             _config.AutoStartServices = !_config.AutoStartServices;
             ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
@@ -2272,32 +2116,7 @@ public partial class MainForm : Form
         {
             Checked = _config.AutoStartServices
         };
-        autoStartMenu.DropDownItems.Add(masterAutoStartItem);
-        autoStartMenu.DropDownItems.Add(new ToolStripSeparator());
-
-        void AddServiceAutoStartItem(string label, Func<bool> getter, Action<bool> setter)
-        {
-            var item = new ToolStripMenuItem(label, null, (s, e) =>
-            {
-                bool newVal = !getter();
-                setter(newVal);
-                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-                if (s is ToolStripMenuItem mi) mi.Checked = newVal;
-            })
-            {
-                Checked = getter()
-            };
-            autoStartMenu.DropDownItems.Add(item);
-        }
-
-        AddServiceAutoStartItem("Nginx", () => _config.AutoStartNginx, v => _config.AutoStartNginx = v);
-        AddServiceAutoStartItem("PHP FastCGI", () => _config.AutoStartPhp, v => _config.AutoStartPhp = v);
-        AddServiceAutoStartItem("MySQL", () => _config.AutoStartMysql, v => _config.AutoStartMysql = v);
-        AddServiceAutoStartItem("Mailpit", () => _config.AutoStartMailpit, v => _config.AutoStartMailpit = v);
-        AddServiceAutoStartItem("PostgreSQL", () => _config.AutoStartPostgresql, v => _config.AutoStartPostgresql = v);
-        AddServiceAutoStartItem("Redis", () => _config.AutoStartRedis, v => _config.AutoStartRedis = v);
-
-        trayMenu.Items.Add(autoStartMenu);
+        trayMenu.Items.Add(autoStartItem);
 
         // Enabled services submenu
         var enabledServicesMenu = new ToolStripMenuItem("Enabled Services");
@@ -2413,34 +2232,20 @@ public partial class MainForm : Form
 
     private async Task AutoStartConfiguredServicesAsync()
     {
-        if (_config.EnablePhp && _config.AutoStartPhp && _php.IsInstalled && _php.Status != ServiceStatus.Running)
+        if (!_config.AutoStartServices) return;
+
+        // Auto-start PHP FastCGI first if enabled and installed
+        if (_config.EnablePhp && _php.IsInstalled && _php.Status != ServiceStatus.Running)
         {
             await _php.StartAsync();
         }
 
-        if (_config.EnableNginx && _config.AutoStartNginx && _nginx.IsInstalled && _nginx.Status != ServiceStatus.Running)
+        foreach (var svc in _services)
         {
-            await _nginx.StartAsync();
-        }
-
-        if (_config.EnableMysql && _config.AutoStartMysql && _mysql.IsInstalled && _mysql.Status != ServiceStatus.Running)
-        {
-            await _mysql.StartAsync();
-        }
-
-        if (_config.EnableMailpit && _config.AutoStartMailpit && _mailpit.IsInstalled && _mailpit.Status != ServiceStatus.Running)
-        {
-            await _mailpit.StartAsync();
-        }
-
-        if (_config.EnablePostgresql && _config.AutoStartPostgresql && _postgresql.IsInstalled && _postgresql.Status != ServiceStatus.Running)
-        {
-            await _postgresql.StartAsync();
-        }
-
-        if (_config.EnableRedis && _config.AutoStartRedis && _redis.IsInstalled && _redis.Status != ServiceStatus.Running)
-        {
-            await _redis.StartAsync();
+            if (svc != _php && _config.IsServiceEnabled(svc.Name) && svc.IsInstalled && svc.Status != ServiceStatus.Running)
+            {
+                await svc.StartAsync();
+            }
         }
     }
 

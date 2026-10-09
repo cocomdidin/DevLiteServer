@@ -2,14 +2,8 @@ namespace DevLiteServer.Core;
 
 public class AppConfig
 {
-    // Auto-start configuration (default false: no services auto-start)
+    // Auto-start configuration (launches all enabled services on app start)
     public bool AutoStartServices { get; set; } = false;
-    public bool AutoStartNginx { get; set; } = false;
-    public bool AutoStartPhp { get; set; } = false;
-    public bool AutoStartMysql { get; set; } = false;
-    public bool AutoStartMailpit { get; set; } = false;
-    public bool AutoStartPostgresql { get; set; } = false;
-    public bool AutoStartRedis { get; set; } = false;
 
     public bool CheckUpdatesOnStart { get; set; } = true;
     public bool MinimizeToTray { get; set; } = true;
@@ -65,31 +59,13 @@ public class AppConfig
 
     public bool ShouldAutoStart(string serviceName)
     {
-        if (!AutoStartServices) return false;
-        if (!IsServiceEnabled(serviceName)) return false;
-
-        return serviceName.ToLowerInvariant() switch
-        {
-            "nginx" => AutoStartNginx,
-            "php" or "php-cgi" => AutoStartPhp,
-            "mysql" or "mysqld" => AutoStartMysql,
-            "mailpit" => AutoStartMailpit,
-            "postgresql" or "postgres" => AutoStartPostgresql,
-            "redis" => AutoStartRedis,
-            _ => true
-        };
+        return AutoStartServices && IsServiceEnabled(serviceName);
     }
 
     public void ResetToDefaults()
     {
         var d = new AppConfig();
         AutoStartServices = d.AutoStartServices;
-        AutoStartNginx = d.AutoStartNginx;
-        AutoStartPhp = d.AutoStartPhp;
-        AutoStartMysql = d.AutoStartMysql;
-        AutoStartMailpit = d.AutoStartMailpit;
-        AutoStartPostgresql = d.AutoStartPostgresql;
-        AutoStartRedis = d.AutoStartRedis;
         CheckUpdatesOnStart = d.CheckUpdatesOnStart;
         MinimizeToTray = d.MinimizeToTray;
         StartWithWindows = d.StartWithWindows;
@@ -146,18 +122,6 @@ public static class ConfigManager
                 case "GENERAL":
                     if (key.Equals("AutoStartServices", StringComparison.OrdinalIgnoreCase))
                         config.AutoStartServices = bool.Parse(val);
-                    else if (key.Equals("AutoStartNginx", StringComparison.OrdinalIgnoreCase))
-                        config.AutoStartNginx = bool.Parse(val);
-                    else if (key.Equals("AutoStartPhp", StringComparison.OrdinalIgnoreCase))
-                        config.AutoStartPhp = bool.Parse(val);
-                    else if (key.Equals("AutoStartMysql", StringComparison.OrdinalIgnoreCase))
-                        config.AutoStartMysql = bool.Parse(val);
-                    else if (key.Equals("AutoStartMailpit", StringComparison.OrdinalIgnoreCase))
-                        config.AutoStartMailpit = bool.Parse(val);
-                    else if (key.Equals("AutoStartPostgresql", StringComparison.OrdinalIgnoreCase))
-                        config.AutoStartPostgresql = bool.Parse(val);
-                    else if (key.Equals("AutoStartRedis", StringComparison.OrdinalIgnoreCase))
-                        config.AutoStartRedis = bool.Parse(val);
                     else if (key.Equals("CheckUpdatesOnStart", StringComparison.OrdinalIgnoreCase))
                         config.CheckUpdatesOnStart = bool.Parse(val);
                     else if (key.Equals("MinimizeToTray", StringComparison.OrdinalIgnoreCase))
@@ -167,13 +131,8 @@ public static class ConfigManager
                     break;
 
                 case "AUTOSTART":
-                    if (key.Equals("Enabled", StringComparison.OrdinalIgnoreCase)) config.AutoStartServices = bool.Parse(val);
-                    else if (key.Equals("Nginx", StringComparison.OrdinalIgnoreCase)) config.AutoStartNginx = bool.Parse(val);
-                    else if (key.Equals("Php", StringComparison.OrdinalIgnoreCase)) config.AutoStartPhp = bool.Parse(val);
-                    else if (key.Equals("Mysql", StringComparison.OrdinalIgnoreCase)) config.AutoStartMysql = bool.Parse(val);
-                    else if (key.Equals("Mailpit", StringComparison.OrdinalIgnoreCase)) config.AutoStartMailpit = bool.Parse(val);
-                    else if (key.Equals("Postgresql", StringComparison.OrdinalIgnoreCase)) config.AutoStartPostgresql = bool.Parse(val);
-                    else if (key.Equals("Redis", StringComparison.OrdinalIgnoreCase)) config.AutoStartRedis = bool.Parse(val);
+                    if (key.Equals("Enabled", StringComparison.OrdinalIgnoreCase) || key.Equals("AutoStartServices", StringComparison.OrdinalIgnoreCase))
+                        config.AutoStartServices = bool.Parse(val);
                     break;
 
                 case "SERVICES":
@@ -215,14 +174,6 @@ public static class ConfigManager
             $"MinimizeToTray={config.MinimizeToTray.ToString().ToLower()}",
             $"AutoStartServices={config.AutoStartServices.ToString().ToLower()}",
             $"CheckUpdatesOnStart={config.CheckUpdatesOnStart.ToString().ToLower()}",
-            "",
-            "[AutoStart]",
-            $"Nginx={config.AutoStartNginx.ToString().ToLower()}",
-            $"Php={config.AutoStartPhp.ToString().ToLower()}",
-            $"Mysql={config.AutoStartMysql.ToString().ToLower()}",
-            $"Mailpit={config.AutoStartMailpit.ToString().ToLower()}",
-            $"Postgresql={config.AutoStartPostgresql.ToString().ToLower()}",
-            $"Redis={config.AutoStartRedis.ToString().ToLower()}",
             "",
             "[Services]",
             $"Nginx={config.EnableNginx.ToString().ToLower()}",
