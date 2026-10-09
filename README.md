@@ -37,6 +37,8 @@ Unlike traditional solutions, Dev Lite Server does not install Windows Services 
   Run from anywhere (`C:\DevLiteServer`, a secondary SSD, or a USB drive). No Windows services registered, no leftover registry entries.
 - 🛡️ **Win32 Job Object Process Supervision**:
   All child daemon processes are assigned to a kernel Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. Even in the event of an abrupt crash, zero orphan daemons remain.
+- 🔒 **Single-Instance Mutex & Focus Activation**:
+  Prevents duplicate application instances. Double-clicking desktop or portable shortcuts while minimized automatically restores and focuses the active window.
 - 🔄 **Nginx & FastCGI Auto-Pairing**:
   Eliminates `502 Bad Gateway` errors. Starting Nginx automatically boots upstream `php-cgi.exe` workers with auto-recovery loops (`PHP_FCGI_MAX_REQUESTS`).
 - 💻 **Isolated Developer Terminal**:

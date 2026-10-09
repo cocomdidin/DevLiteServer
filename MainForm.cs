@@ -387,11 +387,30 @@ public partial class MainForm : Form
 
     private void NotifyIcon_DoubleClick(object? sender, EventArgs e) => RestoreFromTray();
 
-    private void RestoreFromTray()
+    public void RestoreFromTray()
     {
-        Show();
-        WindowState = FormWindowState.Normal;
+        if (!Visible)
+        {
+            Show();
+        }
+
+        if (WindowState == FormWindowState.Minimized)
+        {
+            WindowState = FormWindowState.Normal;
+        }
+
+        SingleInstance.ForceForeground(Handle);
         BringToFront();
+        Activate();
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == SingleInstance.WmShowFirstInstance)
+        {
+            RestoreFromTray();
+        }
+        base.WndProc(ref m);
     }
 
     private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)

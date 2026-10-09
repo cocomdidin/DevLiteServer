@@ -134,6 +134,7 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
    - **Quick Action Bar**: [Start All] [Stop All] [Open /www] [Sync Hosts] [Mail Web UI] [Terminal] [Database (Adminer)].
    - **Runtime Manager Tab**: Panel untuk melihat, mengunduh, dan menghapus versi PHP & Node.js dengan indikator download progress.
 2. **System Tray Integration**:
+   - **Single-Instance Enforcement**: Named Mutex + Win32 Registered Window Message mencegah aplikasi terbuka dobel; dobel-klik shortcut desktop/portable otomatis me-restore dan memfokuskan jendela yang sedang diminimize ke tray.
    - Klik kanan ikon tray membuka Context Menu:
      - PHP Version -> Pilih versi terinstall
      - Node Version -> Pilih versi terinstall
