@@ -49,7 +49,7 @@ public static class UpdateChecker
 
     public static async Task<UpdateInfo?> CheckForUpdatesAsync(
         string repoOwner = "cocomdidin",
-        string repoName = "LocalLiteServer",
+        string repoName = "DevLiteServer",
         CancellationToken cancellationToken = default)
     {
         string currentVerStr = GetCurrentVersionString();

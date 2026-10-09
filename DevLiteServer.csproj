@@ -13,6 +13,7 @@
     <Description>Fast, portable, lightweight local web development environment for Windows (WEMP stack)</Description>
     <Company>Dev Lite Server</Company>
     <Version>1.0.0</Version>
+    <ApplicationIcon>assets\app.ico</ApplicationIcon>
     <NoWarn>$(NoWarn);WFO1000</NoWarn>
   </PropertyGroup>
 

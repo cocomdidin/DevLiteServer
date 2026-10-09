@@ -27,6 +27,11 @@ public class UpdateDialog : Form
         _beforeInstallShutdown = beforeInstallShutdown;
 
         Text = "Dev Lite Server Update";
+        try
+        {
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
+        }
+        catch { }
         Size = new Size(540, 470);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;

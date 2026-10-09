@@ -67,8 +67,21 @@ public partial class MainForm : Form
             lblStatusText.ForeColor = ModernColors.TextSecondary;
         }
 
-        notifyIcon.Icon = SystemIcons.Application;
-        Icon = SystemIcons.Application;
+        try
+        {
+            string iconFile = Path.Combine(_appRoot, "assets", "app.ico");
+            Icon appIcon = File.Exists(iconFile)
+                ? new Icon(iconFile)
+                : (Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application);
+
+            notifyIcon.Icon = appIcon;
+            Icon = appIcon;
+        }
+        catch
+        {
+            notifyIcon.Icon = SystemIcons.Application;
+            Icon = SystemIcons.Application;
+        }
 
         // Wire service status updates to toggle Adminer button
         _nginx.StatusChanged += (_, _) => UpdateAdminerState();

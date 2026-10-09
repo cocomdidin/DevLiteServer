@@ -9,7 +9,7 @@ An open-source, modern alternative to Laragon and XAMPP powered by .NET 10 LTS a
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0%20LTS-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![Windows](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20x64-0078D6?logo=windows)](https://microsoft.com/windows)
-[![Release](https://img.shields.io/github/v/release/cocomdidin/LocalLiteServer?color=success&include_prereleases)](https://github.com/cocomdidin/LocalLiteServer/releases)
+[![Release](https://img.shields.io/github/v/release/cocomdidin/DevLiteServer?color=success&include_prereleases)](https://github.com/cocomdidin/DevLiteServer/releases)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits)](COMMIT_CONVENTION.md)
 
 [Features](#-key-features) •
@@ -71,13 +71,13 @@ Unlike traditional solutions, Dev Lite Server does not install Windows Services 
 ## 🚀 Quick Start
 
 ### Option A: Windows Installer (Recommended)
-1. Download the latest `DevLiteServer-Setup-vX.Y.Z.exe` from [GitHub Releases](https://github.com/cocomdidin/LocalLiteServer/releases).
+1. Download the latest `DevLiteServer-Setup-vX.Y.Z.exe` from [GitHub Releases](https://github.com/cocomdidin/DevLiteServer/releases).
 2. Double-click the installer and choose your destination (default: `C:\DevLiteServer`).
 3. Launch **Dev Lite Server** from the Desktop shortcut or Start Menu.
 4. Open your browser and navigate to `http://localhost`.
 
 ### Option B: Portable ZIP
-1. Download `DevLiteServer-vX.Y.Z-portable.zip` from [GitHub Releases](https://github.com/cocomdidin/LocalLiteServer/releases).
+1. Download `DevLiteServer-vX.Y.Z-portable.zip` from [GitHub Releases](https://github.com/cocomdidin/DevLiteServer/releases).
 2. Extract the archive to any folder.
 3. Run `DevLiteServer.exe`.
 
@@ -89,6 +89,7 @@ Unlike traditional solutions, Dev Lite Server does not install Windows Services 
 C:\DevLiteServer/
 ├── DevLiteServer.exe          # .NET 10 application supervisor
 ├── config.ini                 # Active ports, versions, and service flags
+├── assets/                    # Application icons (app.ico, app.png)
 ├── bin/
 │   ├── nginx/                 # Nginx binaries and configurations
 │   ├── php/
@@ -145,8 +146,8 @@ C:\DevLiteServer/
 
 ### 1. Clone the Repository
 ```powershell
-git clone https://github.com/cocomdidin/LocalLiteServer.git
-cd LocalLiteServer
+git clone https://github.com/cocomdidin/DevLiteServer.git
+cd DevLiteServer
 ```
 
 ### 2. Provision Runtime Binaries

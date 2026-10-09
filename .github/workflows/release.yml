@@ -58,6 +58,7 @@ jobs:
           Copy-Item -Path "templates" -Destination "dist/app/templates" -Recurse -Force
           Copy-Item -Path "tools" -Destination "dist/app/tools" -Recurse -Force
           Copy-Item -Path "www" -Destination "dist/app/www" -Recurse -Force
+          Copy-Item -Path "assets" -Destination "dist/app/assets" -Recurse -Force
           Copy-Item -Path "config.ini" -Destination "dist/app/config.ini" -Force
           Copy-Item -Path "bin" -Destination "dist/app/bin" -Recurse -Force
 
