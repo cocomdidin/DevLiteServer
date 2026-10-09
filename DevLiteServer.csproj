@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -6,11 +6,12 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>LocalLiteServer</AssemblyName>
-    <Title>Local Lite Server</Title>
-    <Product>Local Lite Server</Product>
+    <AssemblyName>DevLiteServer</AssemblyName>
+    <RootNamespace>DevLiteServer</RootNamespace>
+    <Title>Dev Lite Server</Title>
+    <Product>Dev Lite Server</Product>
     <Description>Fast, portable, lightweight local web development environment for Windows (WEMP stack)</Description>
-    <Company>Local Lite Server</Company>
+    <Company>Dev Lite Server</Company>
     <Version>1.0.0</Version>
     <NoWarn>$(NoWarn);WFO1000</NoWarn>
   </PropertyGroup>

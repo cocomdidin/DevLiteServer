@@ -1,4 +1,4 @@
-namespace LiteServer;
+namespace DevLiteServer;
 
 static class Program
 {

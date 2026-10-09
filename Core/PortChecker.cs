@@ -1,6 +1,6 @@
 using System.Net.NetworkInformation;
 
-namespace LiteServer.Core;
+namespace DevLiteServer.Core;
 
 public static class PortChecker
 {

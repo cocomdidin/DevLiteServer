@@ -1,4 +1,4 @@
-namespace LiteServer.Core;
+namespace DevLiteServer.Core;
 
 public static class TemplateEngine
 {

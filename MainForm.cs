@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using LiteServer.Core;
-using LiteServer.Services;
-using LiteServer.UI;
+using DevLiteServer.Core;
+using DevLiteServer.Services;
+using DevLiteServer.UI;
 
-namespace LiteServer;
+namespace DevLiteServer;
 
 public partial class MainForm : Form
 {
@@ -167,7 +167,7 @@ public partial class MainForm : Form
     {
         trayMenu.Items.Clear();
 
-        trayMenu.Items.Add("Open Local Lite Server", null, (s, e) => RestoreFromTray());
+        trayMenu.Items.Add("Open Dev Lite Server", null, (s, e) => RestoreFromTray());
         trayMenu.Items.Add(new ToolStripSeparator());
 
         trayMenu.Items.Add("Start All Services", null, async (s, e) => await StartAllServicesAsync());
@@ -387,7 +387,7 @@ public partial class MainForm : Form
         {
             e.Cancel = true;
             Hide();
-            notifyIcon.ShowBalloonTip(1500, "Local Lite Server", "Local Lite Server is running in system tray.", ToolTipIcon.Info);
+            notifyIcon.ShowBalloonTip(1500, "Dev Lite Server", "Dev Lite Server is running in system tray.", ToolTipIcon.Info);
         }
     }
 }

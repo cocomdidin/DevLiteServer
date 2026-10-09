@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace LiteServer.Core;
+namespace DevLiteServer.Core;
 
 public static class TerminalLauncher
 {
@@ -60,7 +60,7 @@ public static class TerminalLauncher
 
         if (usePowerShell)
         {
-            psi.Arguments = "-NoExit -Command \"Write-Host 'Local Lite Server Isolated Terminal' -ForegroundColor Cyan; Write-Host 'Environment: PHP, Node, Git, Composer, MySQL loaded.' -ForegroundColor Gray\"";
+            psi.Arguments = "-NoExit -Command \"Write-Host 'Dev Lite Server Isolated Terminal' -ForegroundColor Cyan; Write-Host 'Environment: PHP, Node, Git, Composer, MySQL loaded.' -ForegroundColor Gray\"";
         }
 
         Process.Start(psi);

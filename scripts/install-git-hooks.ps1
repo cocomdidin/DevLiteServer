@@ -20,7 +20,7 @@ $HookFile = Join-Path $GitHooksDir "commit-msg"
 
 $HookContent = @'
 #!/bin/sh
-# Local Lite Server - Commit Message Linter for SemVer integrity
+# Dev Lite Server - Commit Message Linter for SemVer integrity
 
 commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9_\-\.]+\))?!?: .{1,100}$'
 merge_regex='^Merge .*'

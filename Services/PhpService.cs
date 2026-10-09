@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using LiteServer.Core;
+using DevLiteServer.Core;
 
-namespace LiteServer.Services;
+namespace DevLiteServer.Services;
 
 public class PhpService : BaseService
 {

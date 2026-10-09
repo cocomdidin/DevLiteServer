@@ -3,7 +3,7 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.Json;
 
-namespace LiteServer.Core;
+namespace DevLiteServer.Core;
 
 public record UpdateInfo(
     string CurrentVersion,
@@ -23,7 +23,7 @@ public static class UpdateChecker
     static UpdateChecker()
     {
         HttpClient.DefaultRequestHeaders.UserAgent.Add(
-            new ProductInfoHeaderValue("LocalLiteServer", GetCurrentVersionString())
+            new ProductInfoHeaderValue("DevLiteServer", GetCurrentVersionString())
         );
         HttpClient.Timeout = TimeSpan.FromSeconds(20);
     }

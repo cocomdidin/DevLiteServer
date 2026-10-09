@@ -1,4 +1,4 @@
-namespace LiteServer.Core;
+namespace DevLiteServer.Core;
 
 public static class AppPaths
 {
@@ -25,7 +25,7 @@ public static class AppPaths
         string? probe = current;
         while (!string.IsNullOrEmpty(probe))
         {
-            if (File.Exists(Path.Combine(probe, "LocalLiteServer.csproj")))
+            if (File.Exists(Path.Combine(probe, "DevLiteServer.csproj")))
             {
                 _cachedRoot = probe;
                 return _cachedRoot;
@@ -35,7 +35,7 @@ public static class AppPaths
 
         // 2. Check Environment.CurrentDirectory
         string cwd = Environment.CurrentDirectory;
-        if (File.Exists(Path.Combine(cwd, "LocalLiteServer.csproj")))
+        if (File.Exists(Path.Combine(cwd, "DevLiteServer.csproj")))
         {
             _cachedRoot = cwd;
             return _cachedRoot;

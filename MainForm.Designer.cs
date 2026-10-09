@@ -1,6 +1,6 @@
-using LiteServer.UI;
+using DevLiteServer.UI;
 
-namespace LiteServer;
+namespace DevLiteServer;
 
 partial class MainForm
 {
@@ -68,7 +68,7 @@ partial class MainForm
         headerPanel.BackColor = ModernColors.Surface;
         headerPanel.Padding = new Padding(20, 12, 20, 12);
 
-        lblBrandTitle.Text = "⚡ Local Lite Server";
+        lblBrandTitle.Text = "⚡ Dev Lite Server";
         lblBrandTitle.ForeColor = ModernColors.Primary;
         lblBrandTitle.Font = new Font("Segoe UI", 13.5f, FontStyle.Bold);
         lblBrandTitle.AutoSize = true;
@@ -175,7 +175,7 @@ partial class MainForm
         footerPanel.BackColor = ModernColors.Surface;
         footerPanel.Padding = new Padding(16, 4, 16, 4);
 
-        lblStatusText.Text = "Ready - Local Lite Server Portable Environment";
+        lblStatusText.Text = "Ready - Dev Lite Server Portable Environment";
         lblStatusText.ForeColor = ModernColors.TextSecondary;
         lblStatusText.Font = new Font("Segoe UI", 8f);
         lblStatusText.Dock = DockStyle.Fill;
@@ -185,7 +185,7 @@ partial class MainForm
         //
         // notifyIcon
         //
-        notifyIcon.Text = "Local Lite Server";
+        notifyIcon.Text = "Dev Lite Server";
         notifyIcon.Visible = true;
         notifyIcon.DoubleClick += NotifyIcon_DoubleClick;
 
@@ -197,7 +197,7 @@ partial class MainForm
         BackColor = ModernColors.Background;
         ClientSize = new Size(710, 470);
         MinimumSize = new Size(710, 420);
-        Text = "Local Lite Server - Portable Web Environment";
+        Text = "Dev Lite Server - Portable Web Environment";
         StartPosition = FormStartPosition.CenterScreen;
 
         Controls.Add(cardContainer);

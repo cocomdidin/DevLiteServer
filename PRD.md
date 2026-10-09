@@ -2,13 +2,13 @@
 
 ## 1. Ringkasan Proyek (Project Overview)
 
-- **Nama Produk**: Local Lite Server
+- **Nama Produk**: Dev Lite Server
 - **Tipe Aplikasi**: Windows Desktop Utility (System Tray Application)
 - **Lisensi**: 100% Free & Open-Source Software (FOSS) - MIT License
 - **Target OS**: Windows 10 & Windows 11 (64-bit)
 - **Tech Stack Inti**: C# WinForms (.NET 10 LTS - `net10.0-windows`)
 - **Model Distribusi**:
-  - **Starter Bundle (Out-of-the-Box)**: Paket ZIP portabel (~200 MB) berisi `LocalLiteServer.exe`, Nginx, PHP 8.4 NTS, Node.js v24 x64, Git for Windows (Portable/MinGit), MySQL 8.4, Mailpit, Composer, dan Adminer. Siap pakai langsung tanpa koneksi internet.
+  - **Starter Bundle (Out-of-the-Box)**: Paket ZIP portabel (~200 MB) berisi `DevLiteServer.exe`, Nginx, PHP 8.4 NTS, Node.js v24 x64, Git for Windows (Portable/MinGit), MySQL 8.4, Mailpit, Composer, dan Adminer. Siap pakai langsung tanpa koneksi internet.
   - **Herd-Style Downloader**: Modul built-in untuk download versi tambahan/alternatif PHP (7.4, 8.1, 8.2, 8.3) dan Node.js (v20, v22, dst.) langsung dari sumber resmi.
 - **Tujuan Utama**: Lingkungan pengembangan web lokal super cepat, portabel, modular, zero-registry, dan always-free. Alternatif modern pengganti Laragon (v7+ berbayar) dan XAMPP, dengan kemampuan package downloader mandiri ala Laravel Herd.
 
@@ -80,8 +80,8 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
 ## 5. Struktur Direktori Aplikasi (Portable Architecture)
 
 ```text
-/LocalLiteServer
-│  LocalLiteServer.exe          (C# WinForms .NET 10 Single Executable)
+/DevLiteServer
+│  DevLiteServer.exe          (C# WinForms .NET 10 Single Executable)
 │  config.ini                   (Port, versi aktif, dan flag service)
 │
 ├─/bin

@@ -1,6 +1,6 @@
 # Commit Message Convention
 
-Proyek **Local Lite Server** menerapkan standar [Conventional Commits v1.0.0](https://www.conventionalcommits.org/) yang terintegrasi langsung dengan Semantic Versioning otomatis pada CI/CD GitHub Actions.
+Proyek **Dev Lite Server** menerapkan standar [Conventional Commits v1.0.0](https://www.conventionalcommits.org/) yang terintegrasi langsung dengan Semantic Versioning otomatis pada CI/CD GitHub Actions.
 
 ---
 
@@ -19,7 +19,7 @@ Proyek **Local Lite Server** menerapkan standar [Conventional Commits v1.0.0](ht
 ```text
 feat(installer): add inno setup windows installer script
 
-- Generate LocalLiteServer-Setup-vX.Y.Z.exe for clean double-click installation
+- Generate DevLiteServer-Setup-vX.Y.Z.exe for clean double-click installation
 - Support desktop shortcut and uninstaller
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>

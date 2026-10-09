@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using LiteServer.Core;
+using DevLiteServer.Core;
 
-namespace LiteServer.UI;
+namespace DevLiteServer.UI;
 
 public class UpdateDialog : Form
 {
@@ -26,7 +26,7 @@ public class UpdateDialog : Form
         _info = info;
         _beforeInstallShutdown = beforeInstallShutdown;
 
-        Text = "Local Lite Server Update";
+        Text = "Dev Lite Server Update";
         Size = new Size(540, 470);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -55,7 +55,7 @@ public class UpdateDialog : Form
         _lblSub = new Label
         {
             Text = _info.IsUpdateAvailable
-                ? $"Local Lite Server {_info.ReleaseName} is ready to install."
+                ? $"Dev Lite Server {_info.ReleaseName} is ready to install."
                 : $"You are running the latest version (v{_info.CurrentVersion}).",
             Font = new Font("Segoe UI", 9f),
             ForeColor = ModernColors.TextSecondary,
@@ -211,7 +211,7 @@ public class UpdateDialog : Form
 
         _downloadCts = new CancellationTokenSource();
 
-        string tempInstaller = Path.Combine(Path.GetTempPath(), $"LocalLiteServer-Setup-v{_info.LatestVersion}.exe");
+        string tempInstaller = Path.Combine(Path.GetTempPath(), $"DevLiteServer-Setup-v{_info.LatestVersion}.exe");
 
         var progress = new Progress<int>(pct =>
         {
@@ -262,7 +262,7 @@ public class UpdateDialog : Form
 
         var confirm = MessageBox.Show(
             this,
-            "Update installer is ready.\n\nLocal Lite Server will now close running daemons and launch the update setup wizard.\n\nDo you want to proceed?",
+            "Update installer is ready.\n\nDev Lite Server will now close running daemons and launch the update setup wizard.\n\nDo you want to proceed?",
             "Confirm Update Installation",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Question

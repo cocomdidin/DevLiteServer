@@ -1,4 +1,4 @@
-# Local Lite Server - Workspace Rules & Commit Convention
+# Dev Lite Server - Workspace Rules & Commit Convention
 
 ## Semantic Versioning & Commit Rules
 

@@ -1,4 +1,4 @@
-namespace LiteServer.UI;
+namespace DevLiteServer.UI;
 
 public static class ModernColors
 {

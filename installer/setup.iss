@@ -1,7 +1,7 @@
-#define MyAppName "Local Lite Server"
-#define MyAppPublisher "Local Lite Server Team"
+#define MyAppName "Dev Lite Server"
+#define MyAppPublisher "Dev Lite Server Team"
 #define MyAppURL "https://github.com/cocomdidin/LocalLiteServer"
-#define MyAppExeName "LocalLiteServer.exe"
+#define MyAppExeName "DevLiteServer.exe"
 
 #ifndef MyAppVersion
   #define MyAppVersion "1.0.0"
@@ -20,11 +20,11 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName=C:\LocalLiteServer
+DefaultDirName=C:\DevLiteServer
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=..\dist\installer
-OutputBaseFilename=LocalLiteServer-Setup-v{#MyAppVersion}
+OutputBaseFilename=DevLiteServer-Setup-v{#MyAppVersion}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

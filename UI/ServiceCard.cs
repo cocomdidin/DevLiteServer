@@ -1,7 +1,7 @@
 using System.Drawing.Drawing2D;
-using LiteServer.Services;
+using DevLiteServer.Services;
 
-namespace LiteServer.UI;
+namespace DevLiteServer.UI;
 
 public class ServiceCard : Panel
 {

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace LiteServer.Core;
+namespace DevLiteServer.Core;
 
 /// <summary>
 /// Wraps Win32 Job Object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE flag.

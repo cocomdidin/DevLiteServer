@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
 
-namespace LiteServer.UI;
+namespace DevLiteServer.UI;
 
 public class ModernButton : Button
 {

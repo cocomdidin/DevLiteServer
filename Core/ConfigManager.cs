@@ -1,4 +1,4 @@
-namespace LiteServer.Core;
+namespace DevLiteServer.Core;
 
 public class AppConfig
 {
@@ -106,7 +106,7 @@ public static class ConfigManager
         var lines = new List<string>
         {
             "[General]",
-            $"AppName=Local Lite Server",
+            $"AppName=Dev Lite Server",
             $"StartWithWindows={config.StartWithWindows.ToString().ToLower()}",
             $"MinimizeToTray={config.MinimizeToTray.ToString().ToLower()}",
             $"AutoStartServices={config.AutoStartServices.ToString().ToLower()}",

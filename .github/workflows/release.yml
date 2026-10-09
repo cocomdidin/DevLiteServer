@@ -50,7 +50,7 @@ jobs:
       - name: Publish .NET Application
         shell: pwsh
         run: |
-          dotnet publish LocalLiteServer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:Version=${{ steps.semver.outputs.version }} -o ./dist/app
+          dotnet publish DevLiteServer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:Version=${{ steps.semver.outputs.version }} -o ./dist/app
 
       - name: Assemble Distribution Bundle
         shell: pwsh
@@ -65,7 +65,7 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path "dist/release")) { New-Item -ItemType Directory -Force -Path "dist/release" | Out-Null }
-          Compress-Archive -Path "dist/app/*" -DestinationPath "dist/release/LocalLiteServer-v${{ steps.semver.outputs.version }}-portable.zip" -CompressionLevel Optimal
+          Compress-Archive -Path "dist/app/*" -DestinationPath "dist/release/DevLiteServer-v${{ steps.semver.outputs.version }}-portable.zip" -CompressionLevel Optimal
 
       - name: Install Inno Setup
         shell: pwsh
@@ -83,12 +83,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v${{ steps.semver.outputs.version }}"
-          name: "Local Lite Server v${{ steps.semver.outputs.version }}"
+          name: "Dev Lite Server v${{ steps.semver.outputs.version }}"
           draft: false
           prerelease: false
           generate_release_notes: true
           files: |
-            dist/release/LocalLiteServer-Setup-v${{ steps.semver.outputs.version }}.exe
-            dist/release/LocalLiteServer-v${{ steps.semver.outputs.version }}-portable.zip
+            dist/release/DevLiteServer-Setup-v${{ steps.semver.outputs.version }}.exe
+            dist/release/DevLiteServer-v${{ steps.semver.outputs.version }}-portable.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

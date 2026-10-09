@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Automated provisioner for Local Lite Server portable binaries.
+    Automated provisioner for Dev Lite Server portable binaries.
 .DESCRIPTION
     Downloads official, clean binaries for Nginx, PHP 8.4, Node.js v24, Git, MySQL 8.4,
     Mailpit, and Composer into the portable /bin/ and /tools/ directory structure.
@@ -41,7 +41,7 @@ function Download-And-Extract {
     if (-not (Test-Path $ZipPath)) {
         Write-Host "[$Name] Downloading from: $Url" -ForegroundColor Gray
         $client = New-Object System.Net.WebClient
-        $client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) LocalLiteServer/1.0")
+        $client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) DevLiteServer/1.0")
         $client.DownloadFile($Url, $ZipPath)
         Write-Host "[$Name] Download complete." -ForegroundColor Green
     } else {

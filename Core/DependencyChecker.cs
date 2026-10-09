@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace LiteServer.Core;
+namespace DevLiteServer.Core;
 
 public static class DependencyChecker
 {

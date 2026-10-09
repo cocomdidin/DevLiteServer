@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Local Lite Server - Local Environment</title>
+    <title>Dev Lite Server - Local Environment</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -97,8 +97,8 @@
 </head>
 <body>
     <div class="card">
-        <span class="badge">Local Lite Server Running</span>
-        <h1>Welcome to Local Lite Server</h1>
+        <span class="badge">Dev Lite Server Running</span>
+        <h1>Welcome to Dev Lite Server</h1>
         <p>Your portable local web development environment is running smoothly.</p>
 
         <div class="grid">

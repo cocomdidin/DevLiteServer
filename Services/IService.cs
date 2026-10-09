@@ -1,4 +1,4 @@
-namespace LiteServer.Services;
+namespace DevLiteServer.Services;
 
 public enum ServiceStatus
 {
