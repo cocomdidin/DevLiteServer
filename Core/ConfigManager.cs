@@ -96,8 +96,21 @@ public static class ConfigManager
         var config = new AppConfig();
         if (!File.Exists(iniPath))
         {
-            Save(iniPath, config);
-            return config;
+            string defaultTemplate = iniPath + ".default";
+            if (File.Exists(defaultTemplate))
+            {
+                try
+                {
+                    File.Copy(defaultTemplate, iniPath, false);
+                }
+                catch { }
+            }
+
+            if (!File.Exists(iniPath))
+            {
+                Save(iniPath, config);
+                return config;
+            }
         }
 
         string currentSection = "";

@@ -40,7 +40,17 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; 1. Core application binaries, assets, tools, templates (always updated on install)
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "config.ini,config.ini.default,sites.json,www\*,ssl\*,bin\mysql\*\data\*,bin\postgresql\*\data\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; 2. Default configuration file (installed ONLY if not existing, never deleted on uninstall)
+Source: "{#SourceDir}\config.ini"; DestDir: "{app}"; Flags: onlyifdoesntexist uninsneveruninstall
+
+; 3. Configuration template reference
+Source: "{#SourceDir}\config.ini.default"; DestDir: "{app}"; Flags: ignoreversion
+
+; 4. Default www starter files (installed ONLY if not existing, never deleted on uninstall)
+Source: "{#SourceDir}\www\*"; DestDir: "{app}\www"; Flags: onlyifdoesntexist recursesubdirs createallsubdirs uninsneveruninstall
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"

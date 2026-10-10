@@ -62,13 +62,23 @@ jobs:
           Copy-Item -Path "www" -Destination "dist/app/www" -Recurse -Force
           Copy-Item -Path "assets" -Destination "dist/app/assets" -Recurse -Force
           Copy-Item -Path "config.ini" -Destination "dist/app/config.ini" -Force
+          Copy-Item -Path "config.ini.default" -Destination "dist/app/config.ini.default" -Force
           Copy-Item -Path "bin" -Destination "dist/app/bin" -Recurse -Force
+
+          # Clean runtime artifacts / database directories from distribution bundle
+          Get-ChildItem -Path "dist/app/bin" -Recurse -Directory -Filter "data" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+          if (Test-Path "dist/app/bin/php/current") { cmd /c rmdir "dist\app\bin\php\current" }
 
       - name: Package Portable Zip
         shell: pwsh
         run: |
           if (-not (Test-Path "dist/release")) { New-Item -ItemType Directory -Force -Path "dist/release" | Out-Null }
-          Compress-Archive -Path "dist/app/*" -DestinationPath "dist/release/DevLiteServer-v${{ steps.semver.outputs.version }}-portable.zip" -CompressionLevel Optimal
+          $portableTemp = "dist/portable_bundle"
+          if (Test-Path $portableTemp) { Remove-Item -Recurse -Force $portableTemp }
+          Copy-Item -Path "dist/app" -Destination $portableTemp -Recurse -Force
+          if (Test-Path "$portableTemp/config.ini") { Remove-Item -Force "$portableTemp/config.ini" }
+          Compress-Archive -Path "$portableTemp/*" -DestinationPath "dist/release/DevLiteServer-v${{ steps.semver.outputs.version }}-portable.zip" -CompressionLevel Optimal
+          Remove-Item -Recurse -Force $portableTemp
 
       - name: Install Inno Setup
         shell: pwsh
