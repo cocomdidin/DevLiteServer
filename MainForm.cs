@@ -33,6 +33,7 @@ public partial class MainForm : Form
     private Label _lblNodeTitle = null!;
     private Action? _refreshSqlServerCard;
     private Action? _refreshNodePackages;
+    private Action? _refreshPhpPackages;
 
     public MainForm(bool startMinimized = false)
     {
@@ -1053,24 +1054,7 @@ public partial class MainForm : Form
         {
             if (_cmbPhpVersions.SelectedItem is string newVer && !newVer.Equals(_config.ActivePhp, StringComparison.OrdinalIgnoreCase))
             {
-                _config.ActivePhp = newVer;
-                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-                PhpService.UpdateCurrentJunction(_appRoot, newVer);
-                VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
-                if (_php.Status == ServiceStatus.Running)
-                {
-                    lblStatusText.Text = $"Switching PHP to {newVer}...";
-                    await _php.RestartAsync();
-                    if (_nginx.Status == ServiceStatus.Running)
-                    {
-                        await _nginx.RestartAsync();
-                    }
-                    lblStatusText.Text = $"Switched to PHP {newVer}.";
-                }
-                RefreshSitesList();
-                RefreshPhpPackagesList();
-                BuildTrayMenu();
-                _refreshSqlServerCard?.Invoke();
+                await SwitchActivePhpAsync(newVer);
             }
         };
 
@@ -1205,23 +1189,15 @@ public partial class MainForm : Form
             {
                 var card = new PackageRowCard(pkg, _appRoot, _config, async () =>
                 {
-                    PhpService.UpdateCurrentJunction(_appRoot, _config.ActivePhp);
-                    RefreshPhpVersionsCombo();
-                    RefreshPhpPackagesList();
-                    BuildTrayMenu();
-                    _refreshSqlServerCard?.Invoke();
-                    if (_php.Status == ServiceStatus.Running)
-                    {
-                        lblStatusText.Text = $"Applying PHP {_config.ActivePhp}...";
-                        await _php.RestartAsync();
-                        lblStatusText.Text = $"PHP {_config.ActivePhp} active.";
-                    }
+                    await SwitchActivePhpAsync(_config.ActivePhp);
                 });
                 cards.Add(card);
             }
             cards.Reverse();
             _pnlPhpPackages.Controls.AddRange(cards.ToArray());
         }
+
+        _refreshPhpPackages = RefreshPhpPackagesList;
         RefreshPhpPackagesList();
 
         pagePhp.Controls.AddRange([_pnlPhpPackages, pnlPhpPacksHeader, cardSqlServer, heroCard, pnlHeader]);
@@ -2591,6 +2567,39 @@ public partial class MainForm : Form
         }
     }
 
+    private async Task SwitchActivePhpAsync(string newVersion)
+    {
+        if (string.IsNullOrWhiteSpace(newVersion)) return;
+
+        _config.ActivePhp = newVersion;
+        ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+        PhpService.UpdateCurrentJunction(_appRoot, newVersion);
+        VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
+
+        if (_php.Status == ServiceStatus.Running)
+        {
+            lblStatusText.Text = $"Switching PHP to {newVersion}...";
+            await _php.RestartAsync();
+
+            if (_nginx.Status == ServiceStatus.Running)
+            {
+                bool reloaded = await _nginx.ReloadAsync();
+                if (!reloaded)
+                {
+                    await _nginx.RestartAsync();
+                }
+            }
+            lblStatusText.Text = $"Switched to PHP {newVersion}.";
+        }
+
+        RefreshPhpVersionsCombo();
+        RefreshSitesList();
+        _refreshPhpPackages?.Invoke();
+        BuildServiceCards();
+        BuildTrayMenu();
+        _refreshSqlServerCard?.Invoke();
+    }
+
     private void RefreshPhpVersionsCombo()
     {
         if (_cmbPhpVersions == null) return;
@@ -2734,23 +2743,7 @@ public partial class MainForm : Form
         {
             var item = new ToolStripMenuItem(dirName, null, async (s, e) =>
             {
-                _config.ActivePhp = dirName;
-                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-                PhpService.UpdateCurrentJunction(_appRoot, dirName);
-                VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
-                if (_php.Status == ServiceStatus.Running)
-                {
-                    await _php.RestartAsync();
-                    if (_nginx.Status == ServiceStatus.Running)
-                    {
-                        await _nginx.RestartAsync();
-                    }
-                }
-                RefreshPhpVersionsCombo();
-                RefreshSitesList();
-                BuildServiceCards();
-                BuildTrayMenu();
-                _refreshSqlServerCard?.Invoke();
+                await SwitchActivePhpAsync(dirName);
             })
             {
                 Checked = dirName.Equals(_config.ActivePhp, StringComparison.OrdinalIgnoreCase)

@@ -329,7 +329,7 @@ public class PhpService : BaseService
 
         psi.EnvironmentVariables["PHP_FCGI_MAX_REQUESTS"] = "5000";
 
-        CurrentProcess = LaunchProcess(psi);
+        CurrentProcess = LaunchProcess(psi, true);
     }
 
     private void StartExtraWorkerProcess(PhpWorkerInfo worker)
@@ -348,7 +348,7 @@ public class PhpService : BaseService
 
         psi.EnvironmentVariables["PHP_FCGI_MAX_REQUESTS"] = "5000";
 
-        worker.Process = LaunchProcess(psi);
+        worker.Process = LaunchProcess(psi, false);
     }
 
     private async Task SupervisorLoopAsync(CancellationToken token)
@@ -401,11 +401,14 @@ public class PhpService : BaseService
         Status = ServiceStatus.Stopping;
         _supervisorCts?.Cancel();
 
-        // Terminate extra workers
+        var portsToWait = new List<int> { Port };
+
+        // 1. Terminate extra workers
         lock (_extraWorkers)
         {
             foreach (var worker in _extraWorkers.Values)
             {
+                portsToWait.Add(worker.Port);
                 try
                 {
                     worker.Cts.Cancel();
@@ -419,6 +422,7 @@ public class PhpService : BaseService
             _extraWorkers.Clear();
         }
 
+        // 2. Terminate main process
         try
         {
             if (CurrentProcess != null && !CurrentProcess.HasExited)
@@ -431,9 +435,53 @@ public class PhpService : BaseService
         finally
         {
             CurrentProcess = null;
-            Status = ServiceStatus.Stopped;
         }
 
+        // 3. Force-kill any lingering/orphaned php-cgi processes inside LiteServer bin/php
+        KillLingeringPhpProcesses();
+
+        // 4. Await port release for all workers so new PHP instances don't encounter port collisions
+        foreach (var p in portsToWait.Distinct())
+        {
+            await WaitForPortReleaseAsync(p, 2000);
+        }
+
+        Status = ServiceStatus.Stopped;
         return true;
+    }
+
+    private void KillLingeringPhpProcesses()
+    {
+        try
+        {
+            string phpBinRoot = Path.Combine(AppRoot, "bin", "php");
+            foreach (var proc in Process.GetProcessesByName("php-cgi"))
+            {
+                try
+                {
+                    string? exePath = proc.MainModule?.FileName;
+                    if (!string.IsNullOrEmpty(exePath) && exePath.StartsWith(phpBinRoot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        proc.Kill(true);
+                        proc.WaitForExit(1000);
+                    }
+                }
+                catch
+                {
+                    try { proc.Kill(true); } catch { }
+                }
+            }
+        }
+        catch { }
+    }
+
+    private static async Task WaitForPortReleaseAsync(int port, int timeoutMs = 2000)
+    {
+        int elapsed = 0;
+        while (PortChecker.IsPortOccupied(port) && elapsed < timeoutMs)
+        {
+            await Task.Delay(100);
+            elapsed += 100;
+        }
     }
 }

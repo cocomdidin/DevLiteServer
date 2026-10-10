@@ -59,9 +59,14 @@ public abstract class BaseService : IService
 
     protected async Task<bool> CheckAndResolvePortAsync(int currentPort, Action<int> applyPort)
     {
-        if (!PortChecker.IsPortOccupied(currentPort))
+        // Give port up to 2.5 seconds to be released by OS if recently closed/stopped
+        for (int i = 0; i < 25; i++)
         {
-            return true;
+            if (!PortChecker.IsPortOccupied(currentPort))
+            {
+                return true;
+            }
+            await Task.Delay(100);
         }
 
         if (PortConflictResolver != null)
@@ -85,11 +90,11 @@ public abstract class BaseService : IService
     public virtual async Task<bool> RestartAsync()
     {
         await StopAsync();
-        await Task.Delay(500);
+        await Task.Delay(200);
         return await StartAsync();
     }
 
-    protected Process? LaunchProcess(ProcessStartInfo psi)
+    protected Process? LaunchProcess(ProcessStartInfo psi, bool setAsCurrentProcess = true)
     {
         psi.CreateNoWindow = true;
         psi.UseShellExecute = false;
@@ -98,7 +103,10 @@ public abstract class BaseService : IService
         if (proc != null)
         {
             Job.AssignProcess(proc);
-            CurrentProcess = proc;
+            if (setAsCurrentProcess)
+            {
+                CurrentProcess = proc;
+            }
         }
         return proc;
     }

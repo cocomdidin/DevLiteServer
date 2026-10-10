@@ -159,18 +159,45 @@ public class NginxService : BaseService
         VirtualHostManager.GenerateVhostsConfig(AppRoot, _config, confDir);
     }
 
+    public async Task<bool> ReloadAsync()
+    {
+        if (Status != ServiceStatus.Running) return false;
+        try
+        {
+            GenerateConfig();
+            string nginxExe = GetNginxExe();
+            if (File.Exists(nginxExe))
+            {
+                string prefix = GetNginxDirectory().Replace('\\', '/').TrimEnd('/') + "/";
+                var reloadPsi = new ProcessStartInfo
+                {
+                    FileName = nginxExe,
+                    Arguments = $"-s reload -p \"{prefix}\"",
+                    WorkingDirectory = GetNginxDirectory(),
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+                var reloadProc = Process.Start(reloadPsi);
+                if (reloadProc != null)
+                {
+                    await reloadProc.WaitForExitAsync();
+                    return true;
+                }
+            }
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public override async Task<bool> StopAsync()
     {
         Status = ServiceStatus.Stopping;
 
         try
         {
-            // Auto-stop upstream PHP FastCGI worker if running
-            if (DependentPhpService != null && DependentPhpService.Status == ServiceStatus.Running)
-            {
-                await DependentPhpService.StopAsync();
-            }
-
             string nginxExe = GetNginxExe();
             if (File.Exists(nginxExe))
             {
