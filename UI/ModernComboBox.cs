@@ -82,6 +82,12 @@ public class ModernComboBox : ComboBox
         Invalidate();
     }
 
+    protected override void OnDropDown(EventArgs e)
+    {
+        base.OnDropDown(e);
+        Invalidate();
+    }
+
     protected override void OnDropDownClosed(EventArgs e)
     {
         base.OnDropDownClosed(e);
@@ -92,15 +98,6 @@ public class ModernComboBox : ComboBox
     {
         base.OnSelectedIndexChanged(e);
         Invalidate();
-    }
-
-    protected override void OnMouseDown(MouseEventArgs e)
-    {
-        base.OnMouseDown(e);
-        if (e.Button == MouseButtons.Left && Enabled)
-        {
-            DroppedDown = !DroppedDown;
-        }
     }
 
     protected override void OnPaint(PaintEventArgs e)

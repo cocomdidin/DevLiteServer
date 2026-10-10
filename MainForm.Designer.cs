@@ -363,6 +363,12 @@ partial class MainForm
         footerPanel.Resize += (s, e) =>
         {
             lblStatsText.Location = new Point(footerPanel.ClientSize.Width - lblStatsText.Width - 20, 7);
+            int maxStatusW = lblStatsText.Left - lblStatusText.Left - 12;
+            if (maxStatusW > 50)
+            {
+                lblStatusText.MaximumSize = new Size(maxStatusW, 18);
+                lblStatusText.AutoEllipsis = true;
+            }
         };
 
         lblStatusText.Text = "Ready - Dev Lite Server Portable Environment";

@@ -38,7 +38,7 @@ public class ServiceCard : Panel
         switch (service.Name.ToLowerInvariant())
         {
             case "nginx":
-                _categoryTag = "Web Server (HTTP + PHP)";
+                _categoryTag = "Web Server";
                 _webUrl = $"http://localhost:{service.Port}";
                 break;
             case "php":
@@ -47,23 +47,23 @@ public class ServiceCard : Panel
                 _webUrl = null;
                 break;
             case "mysql":
-                _categoryTag = "Database Engine";
+                _categoryTag = "MySQL Database";
                 _webUrl = null;
                 break;
             case "mailpit":
-                _categoryTag = "Mail Inbox & SMTP";
+                _categoryTag = "Mail & SMTP";
                 _webUrl = $"http://localhost:{service.Port}";
                 break;
             case "postgresql":
-                _categoryTag = "Relational DB";
+                _categoryTag = "PostgreSQL DB";
                 _webUrl = null;
                 break;
             case "redis":
-                _categoryTag = "In-Memory Cache";
+                _categoryTag = "Redis Cache";
                 _webUrl = null;
                 break;
             default:
-                _categoryTag = "Background Service";
+                _categoryTag = "Service";
                 _webUrl = null;
                 break;
         }
@@ -87,6 +87,7 @@ public class ServiceCard : Panel
             ForeColor = ModernColors.TextPrimary,
             Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
             AutoSize = true,
+            AutoEllipsis = true,
             Location = new Point(62, 10)
         };
 
@@ -97,6 +98,7 @@ public class ServiceCard : Panel
             ForeColor = ModernColors.TextMuted,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Regular),
             AutoSize = true,
+            AutoEllipsis = true,
             Location = new Point(63, 32)
         };
 
@@ -316,7 +318,13 @@ public class ServiceCard : Panel
         if (_cmbVersions != null)
         {
             _cmbVersions.Location = new Point(rightOffset - _cmbVersions.Width, (cardH - _cmbVersions.Height) / 2);
+            rightOffset = _cmbVersions.Left - 10;
         }
+
+        // 5. Constrain Title & Subtitle so they NEVER collide with right controls
+        int maxTextW = Math.Max(40, rightOffset - _lblTitle.Left - 10);
+        _lblTitle.MaximumSize = new Size(maxTextW, 22);
+        _lblSub.MaximumSize = new Size(maxTextW, 20);
     }
 
     protected override void OnMouseEnter(EventArgs e)
