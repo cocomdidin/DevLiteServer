@@ -31,6 +31,7 @@ public partial class MainForm : Form
     private Panel _pnlNodePackages = null!;
     private ModernComboBox _cmbPhpVersions = null!;
     private Label _lblNodeTitle = null!;
+    private Action? _refreshSqlServerCard;
 
     public MainForm(bool startMinimized = false)
     {
@@ -984,6 +985,7 @@ public partial class MainForm : Form
     private void PopulatePhpPage()
     {
         pagePhp.Padding = new Padding(24, 16, 24, 20);
+        pagePhp.AutoScroll = true;
 
         var pnlHeader = CreateSectionHeader("PHP FastCGI Runtime", "Multi-version PHP environment managed by FastCGI worker supervisor.");
 
@@ -1065,6 +1067,7 @@ public partial class MainForm : Form
                 RefreshSitesList();
                 RefreshPhpPackagesList();
                 BuildTrayMenu();
+                _refreshSqlServerCard?.Invoke();
             }
         };
 
@@ -1162,7 +1165,7 @@ public partial class MainForm : Form
 
         var lblPhpDetails = new Label
         {
-            Text = "Loopback Address: 127.0.0.1  •  Pool: Max 5000 requests with instant worker respawn\nDefault extensions: curl, mysqli, pdo_mysql, pdo_pgsql, pgsql, redis, mbstring, openssl, zip",
+            Text = "Loopback Address: 127.0.0.1  •  Pool: Max 5000 requests with instant worker respawn\nLaravel extensions: curl, fileinfo, gd, intl, mbstring, exif, mysqli, openssl, pdo, pgsql, sqlite, soap, sockets, sodium, zip",
             ForeColor = ModernColors.TextMuted,
             Font = new Font("Segoe UI", 8.25f),
             Location = new Point(16, 92),
@@ -1177,6 +1180,8 @@ public partial class MainForm : Form
         heroCard.Controls.Add(lblPortTitle);
         heroCard.Controls.Add(txtFastCgiPort);
         heroCard.Controls.Add(lblPhpDetails);
+
+        var cardSqlServer = CreateSqlServerCard();
 
         // Section: Available PHP Runtimes (Herd Downloader)
         var pnlPhpPacksHeader = CreateSectionHeader("Available PHP Runtimes (Official windows.php.net)", "1-click download, auto-extract, and configure PHP versions.");
@@ -1200,6 +1205,7 @@ public partial class MainForm : Form
                     RefreshPhpVersionsCombo();
                     RefreshPhpPackagesList();
                     BuildTrayMenu();
+                    _refreshSqlServerCard?.Invoke();
                     if (_php.Status == ServiceStatus.Running)
                     {
                         lblStatusText.Text = $"Applying PHP {_config.ActivePhp}...";
@@ -1214,11 +1220,210 @@ public partial class MainForm : Form
         }
         RefreshPhpPackagesList();
 
-        pagePhp.Controls.AddRange([_pnlPhpPackages, pnlPhpPacksHeader, heroCard, pnlHeader]);
+        pagePhp.Controls.AddRange([_pnlPhpPackages, pnlPhpPacksHeader, cardSqlServer, heroCard, pnlHeader]);
         pnlHeader.SendToBack();
         heroCard.SendToBack();
+        cardSqlServer.SendToBack();
         pnlPhpPacksHeader.SendToBack();
         _pnlPhpPackages.SendToBack();
+    }
+
+    private Panel CreateSqlServerCard()
+    {
+        var card = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 82,
+            BackColor = ModernColors.Surface,
+            Margin = new Padding(0, 0, 0, 14),
+            Padding = new Padding(16, 12, 16, 12)
+        };
+
+        card.Paint += (s, e) =>
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var rect = new RectangleF(0.5f, 0.5f, card.Width - 1f, card.Height - 1f);
+            using var path = CreateRoundedRectangle(rect, 8f);
+            using var pen = new Pen(ModernColors.BorderSubtle, 1f);
+            g.DrawPath(pen, path);
+
+            // Icon Badge (34x34)
+            var badgeRect = new RectangleF(14f, 15f, 34f, 34f);
+            using var badgePath = CreateRoundedRectangle(badgeRect, 6f);
+            using var badgeBg = new SolidBrush(ModernColors.Card);
+            using var badgeBorder = new Pen(ModernColors.BorderSubtle, 1f);
+            g.FillPath(badgeBg, badgePath);
+            g.DrawPath(badgeBorder, badgePath);
+
+            var iconRect = new RectangleF(22f, 23f, 18f, 18f);
+            VectorIcons.Draw(g, IconKind.Database, iconRect, ModernColors.Primary);
+        };
+
+        var lblTitle = new Label
+        {
+            Text = "Microsoft SQL Server Drivers",
+            ForeColor = ModernColors.TextPrimary,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            Location = new Point(60, 14),
+            AutoSize = true
+        };
+
+        var lblStatus = new Label
+        {
+            ForeColor = ModernColors.TextMuted,
+            Font = new Font("Segoe UI", 8.25f),
+            Location = new Point(61, 38),
+            AutoSize = true
+        };
+
+        var btnInstallSqlSrv = new ModernButton
+        {
+            Width = 110,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
+        };
+
+        var btnInstallOdbc = new ModernButton
+        {
+            Width = 115,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
+        };
+
+        void RefreshCardState()
+        {
+            string phpDir = _php.GetPhpDirectory();
+            bool isPhpSrvInstalled = SqlServerDriverManager.IsPhpDriverInstalled(phpDir);
+            bool isOdbcInstalled = SqlServerDriverManager.IsOdbcDriverInstalled(out string? odbcName);
+
+            string srvStatus = isPhpSrvInstalled ? "sqlsrv: Ready" : "sqlsrv: Not Installed";
+            string odbcStatus = isOdbcInstalled ? $"{odbcName ?? "ODBC Driver"} Ready" : "MS ODBC: Missing";
+            lblStatus.Text = $"{srvStatus}  •  {odbcStatus}";
+
+            if (isPhpSrvInstalled)
+            {
+                btnInstallSqlSrv.Text = "Remove sqlsrv";
+                btnInstallSqlSrv.IconKind = IconKind.Trash;
+                btnInstallSqlSrv.ForeColor = ModernColors.Danger;
+                btnInstallSqlSrv.NormalColor = ModernColors.Card;
+                btnInstallSqlSrv.HoverColor = Color.FromArgb(40, 20, 30);
+            }
+            else
+            {
+                btnInstallSqlSrv.Text = "Install sqlsrv";
+                btnInstallSqlSrv.IconKind = IconKind.Download;
+                btnInstallSqlSrv.ForeColor = ModernColors.Primary;
+                btnInstallSqlSrv.NormalColor = ModernColors.Card;
+                btnInstallSqlSrv.HoverColor = ModernColors.SurfaceHover;
+            }
+
+            if (isOdbcInstalled)
+            {
+                btnInstallOdbc.Text = "ODBC Ready";
+                btnInstallOdbc.IconKind = IconKind.Check;
+                btnInstallOdbc.ForeColor = ModernColors.Success;
+                btnInstallOdbc.Enabled = false;
+                btnInstallOdbc.NormalColor = ModernColors.Card;
+            }
+            else
+            {
+                btnInstallOdbc.Text = "Install ODBC 18";
+                btnInstallOdbc.IconKind = IconKind.Download;
+                btnInstallOdbc.ForeColor = ModernColors.Warning;
+                btnInstallOdbc.Enabled = true;
+                btnInstallOdbc.NormalColor = ModernColors.Card;
+                btnInstallOdbc.HoverColor = ModernColors.SurfaceHover;
+            }
+
+            int right = card.ClientSize.Width - 16;
+            btnInstallOdbc.Location = new Point(right - btnInstallOdbc.Width, 24);
+            btnInstallSqlSrv.Location = new Point(btnInstallOdbc.Left - btnInstallSqlSrv.Width - 8, 24);
+        }
+
+        _refreshSqlServerCard = RefreshCardState;
+
+        btnInstallSqlSrv.Click += async (s, e) =>
+        {
+            btnInstallSqlSrv.Enabled = false;
+            string phpDir = _php.GetPhpDirectory();
+            bool isInstalled = SqlServerDriverManager.IsPhpDriverInstalled(phpDir);
+
+            if (isInstalled)
+            {
+                SqlServerDriverManager.RemovePhpDrivers(phpDir);
+                if (_php.Status == ServiceStatus.Running)
+                {
+                    await _php.RestartAsync();
+                }
+                lblStatusText.Text = "Removed SQL Server drivers from PHP.";
+            }
+            else
+            {
+                lblStatusText.Text = "Downloading SQL Server drivers...";
+                string tempDir = Path.Combine(_appRoot, "build", "temp_downloads");
+                var (success, msg) = await SqlServerDriverManager.InstallPhpDriversAsync(
+                    phpDir,
+                    _config.ActivePhp,
+                    tempDir,
+                    new Progress<string>(p => lblStatusText.Text = p));
+
+                lblStatusText.Text = msg;
+                if (success && _php.Status == ServiceStatus.Running)
+                {
+                    await _php.RestartAsync();
+                }
+            }
+
+            btnInstallSqlSrv.Enabled = true;
+            RefreshCardState();
+        };
+
+        btnInstallOdbc.Click += async (s, e) =>
+        {
+            btnInstallOdbc.Enabled = false;
+            lblStatusText.Text = "Downloading Microsoft ODBC Driver 18...";
+            string tempDir = Path.Combine(_appRoot, "build", "temp_downloads");
+            var (success, msg) = await SqlServerDriverManager.InstallOdbcDriverAsync(
+                tempDir,
+                new Progress<string>(p => lblStatusText.Text = p));
+
+            lblStatusText.Text = msg;
+            btnInstallOdbc.Enabled = true;
+            RefreshCardState();
+        };
+
+        card.Resize += (s, e) =>
+        {
+            int right = card.ClientSize.Width - 16;
+            btnInstallOdbc.Location = new Point(right - btnInstallOdbc.Width, 24);
+            btnInstallSqlSrv.Location = new Point(btnInstallOdbc.Left - btnInstallSqlSrv.Width - 8, 24);
+
+            int maxW = btnInstallSqlSrv.Left - lblTitle.Left - 10;
+            if (maxW > 50)
+            {
+                lblTitle.MaximumSize = new Size(maxW, 20);
+                lblStatus.MaximumSize = new Size(maxW, 20);
+                lblTitle.AutoEllipsis = true;
+                lblStatus.AutoEllipsis = true;
+            }
+        };
+
+        card.Controls.Add(lblTitle);
+        card.Controls.Add(lblStatus);
+        card.Controls.Add(btnInstallSqlSrv);
+        card.Controls.Add(btnInstallOdbc);
+
+        RefreshCardState();
+        return card;
     }
 
     // ------------------------------------------

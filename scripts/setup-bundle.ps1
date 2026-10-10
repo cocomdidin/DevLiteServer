@@ -96,26 +96,80 @@ function Setup-Php {
     $iniDev = Join-Path $target "php.ini-development"
     $iniTarget = Join-Path $target "php.ini"
 
+    $laravelExts = @(
+        "bcmath", "curl", "fileinfo", "gd", "gd2", "intl", "mbstring", "exif",
+        "mysqli", "openssl", "pdo_mysql", "pdo_pgsql", "pgsql",
+        "pdo_sqlite", "sqlite3", "soap", "sockets", "sodium", "zip"
+    )
+
     if ((Test-Path $iniDev) -and (-not (Test-Path $iniTarget))) {
-        Write-Host "[PHP 8.4] Generating initial php.ini with common extensions..." -ForegroundColor Gray
+        Write-Host "[PHP 8.4] Generating initial php.ini with Laravel minimum requirements..." -ForegroundColor Gray
         $content = Get-Content $iniDev -Raw
 
         # Uncomment extension directory
         $content = $content -replace ';extension_dir = "ext"', 'extension_dir = "ext"'
 
-        # Uncomment required extensions for Laravel, WordPress, standard web apps
-        $extensions = @("curl", "fileinfo", "mbstring", "mysqli", "openssl", "pdo_mysql", "pdo_sqlite", "sqlite3")
-        foreach ($ext in $extensions) {
+        # Uncomment required extensions for Laravel & modern web apps
+        foreach ($ext in $laravelExts) {
             $content = $content -replace ";extension=$ext", "extension=$ext"
+            $content = $content -replace ";extension=php_$ext.dll", "extension=php_$ext.dll"
+        }
+
+        # Enable Microsoft SQL Server drivers if DLLs are present in ext/
+        $extDir = Join-Path $target "ext"
+        $hasSqlSrv = (Test-Path (Join-Path $extDir "php_sqlsrv.dll")) -or (Test-Path (Join-Path $extDir "php_pdo_sqlsrv.dll"))
+        if ($hasSqlSrv) {
+            $content = $content -replace ';extension=sqlsrv', 'extension=sqlsrv'
+            $content = $content -replace ';extension=pdo_sqlsrv', 'extension=pdo_sqlsrv'
+            if (-not ($content -match '(?m)^extension\s*=\s*(php_)?pdo_sqlsrv')) {
+                $content += "`r`n; Microsoft SQL Server Drivers`r`nextension=pdo_sqlsrv`r`n"
+            }
+            if (-not ($content -match '(?m)^extension\s*=\s*(php_)?sqlsrv')) {
+                $content += "extension=sqlsrv`r`n"
+            }
         }
 
         # Max upload and memory tweaks for local dev
         $content = $content -replace 'upload_max_filesize = 2M', 'upload_max_filesize = 128M'
         $content = $content -replace 'post_max_size = 8M', 'post_max_size = 128M'
         $content = $content -replace 'memory_limit = 128M', 'memory_limit = 512M'
+        $content = $content -replace 'max_execution_time = 30', 'max_execution_time = 300'
 
         Set-Content -Path $iniTarget -Value $content
         Write-Host "[PHP 8.4] php.ini configured." -ForegroundColor Green
+    } elseif (Test-Path $iniTarget) {
+        $content = Get-Content $iniTarget -Raw
+        $changed = $false
+
+        if ($content -match ';extension_dir = "ext"') {
+            $content = $content -replace ';extension_dir = "ext"', 'extension_dir = "ext"'
+            $changed = $true
+        }
+
+        foreach ($ext in $laravelExts) {
+            if ($content -match ";extension=$ext") {
+                $content = $content -replace ";extension=$ext", "extension=$ext"
+                $changed = $true
+            }
+        }
+
+        $extDir = Join-Path $target "ext"
+        $hasSqlSrv = (Test-Path (Join-Path $extDir "php_sqlsrv.dll")) -or (Test-Path (Join-Path $extDir "php_pdo_sqlsrv.dll"))
+        if ($hasSqlSrv) {
+            if ($content -match ';extension=sqlsrv') {
+                $content = $content -replace ';extension=sqlsrv', 'extension=sqlsrv'
+                $changed = $true
+            }
+            if ($content -match ';extension=pdo_sqlsrv') {
+                $content = $content -replace ';extension=pdo_sqlsrv', 'extension=pdo_sqlsrv'
+                $changed = $true
+            }
+        }
+
+        if ($changed) {
+            Set-Content -Path $iniTarget -Value $content
+            Write-Host "[PHP 8.4] Updated existing php.ini with Laravel extensions." -ForegroundColor Green
+        }
     }
 }
 

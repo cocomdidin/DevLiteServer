@@ -58,6 +58,7 @@ extension_dir = "{{PHP_EXT_DIR}}"
 extension=curl
 extension=fileinfo
 extension=gd
+extension=intl
 extension=mbstring
 extension=exif
 extension=mysqli
@@ -71,6 +72,10 @@ extension=sodium
 extension=sqlite3
 extension=pdo_sqlite
 extension=zip
+
+; Microsoft SQL Server Drivers (Install on-demand via PHP tab)
+;extension=pdo_sqlsrv
+;extension=sqlsrv
 
 [CLI Server]
 cli_server.color = On

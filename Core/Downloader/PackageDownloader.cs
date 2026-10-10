@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Text.RegularExpressions;
 
 namespace DevLiteServer.Core.Downloader;
 
@@ -165,33 +166,61 @@ public static class PackageDownloader
         }
     }
 
-    private static void ConfigurePhpIni(string phpDir)
+    public static void ConfigurePhpIni(string phpDir)
     {
         string iniTarget = Path.Combine(phpDir, "php.ini");
-        if (File.Exists(iniTarget)) return;
-
         string iniDev = Path.Combine(phpDir, "php.ini-development");
         string iniProd = Path.Combine(phpDir, "php.ini-production");
         string? sourceIni = File.Exists(iniDev) ? iniDev : (File.Exists(iniProd) ? iniProd : null);
 
-        if (sourceIni == null) return;
-
-        string content = File.ReadAllText(sourceIni);
+        string content;
+        if (!File.Exists(iniTarget))
+        {
+            if (sourceIni == null) return;
+            content = File.ReadAllText(sourceIni);
+        }
+        else
+        {
+            content = File.ReadAllText(iniTarget);
+        }
 
         // Uncomment extension_dir
         content = content.Replace(";extension_dir = \"ext\"", "extension_dir = \"ext\"");
+        content = content.Replace(";extension_dir = \"./ext\"", "extension_dir = \"ext\"");
 
-        // Enable common extensions for modern web development (Laravel, WordPress, etc.)
+        // Enable required extensions for Laravel & modern web development
         string[] extensions =
         [
-            "curl", "fileinfo", "mbstring", "mysqli", "openssl",
-            "pdo_mysql", "pdo_pgsql", "pgsql", "pdo_sqlite", "sqlite3",
-            "gd", "zip"
+            "bcmath", "curl", "fileinfo", "gd", "gd2", "intl", "mbstring", "exif",
+            "mysqli", "openssl", "pdo_mysql", "pdo_pgsql", "pgsql",
+            "pdo_sqlite", "sqlite3", "soap", "sockets", "sodium", "zip"
         ];
 
         foreach (var ext in extensions)
         {
             content = content.Replace($";extension={ext}", $"extension={ext}");
+            content = content.Replace($";extension=php_{ext}.dll", $"extension=php_{ext}.dll");
+        }
+
+        // Enable Microsoft SQL Server drivers ONLY if DLLs exist in ext/
+        string extDir = Path.Combine(phpDir, "ext");
+        bool hasSqlSrv = File.Exists(Path.Combine(extDir, "php_sqlsrv.dll")) || File.Exists(Path.Combine(extDir, "php_pdo_sqlsrv.dll"));
+        if (hasSqlSrv)
+        {
+            content = content.Replace(";extension=sqlsrv", "extension=sqlsrv");
+            content = content.Replace(";extension=pdo_sqlsrv", "extension=pdo_sqlsrv");
+            content = content.Replace(";extension=php_sqlsrv.dll", "extension=php_sqlsrv.dll");
+            content = content.Replace(";extension=php_pdo_sqlsrv.dll", "extension=php_pdo_sqlsrv.dll");
+
+            if (!Regex.IsMatch(content, @"(?m)^extension\s*=\s*(php_)?pdo_sqlsrv"))
+            {
+                content += "\r\n; Microsoft SQL Server Driver for PHP (PDO)\r\nextension=pdo_sqlsrv\r\n";
+            }
+
+            if (!Regex.IsMatch(content, @"(?m)^extension\s*=\s*(php_)?sqlsrv"))
+            {
+                content += "; Microsoft SQL Server Driver for PHP\r\nextension=sqlsrv\r\n";
+            }
         }
 
         // Tweak developer limits

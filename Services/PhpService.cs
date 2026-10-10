@@ -224,12 +224,19 @@ public class PhpService : BaseService
         string phpIni = Path.Combine(phpDir, "php.ini");
         string templatePath = Path.Combine(AppRoot, "templates", "php.ini.tpl");
 
-        // If php.ini does not exist, compile from template if available
-        if (!File.Exists(phpIni) && File.Exists(templatePath))
+        // If php.ini does not exist, compile from template if available, otherwise configure from development ini
+        if (!File.Exists(phpIni))
         {
-            string extDir = Path.Combine(phpDir, "ext");
-            var variables = TemplateEngine.CreateVariables(AppRoot, _config, extDir);
-            TemplateEngine.ProcessTemplate(templatePath, phpIni, variables);
+            if (File.Exists(templatePath))
+            {
+                string extDir = Path.Combine(phpDir, "ext");
+                var variables = TemplateEngine.CreateVariables(AppRoot, _config, extDir);
+                TemplateEngine.ProcessTemplate(templatePath, phpIni, variables);
+            }
+            else
+            {
+                DevLiteServer.Core.Downloader.PackageDownloader.ConfigurePhpIni(phpDir);
+            }
         }
     }
 
