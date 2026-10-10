@@ -9,7 +9,7 @@ public class PortConflictDialog : Form
     private readonly int _conflictedPort;
     private int _selectedPort;
 
-    private readonly NumericUpDown _numPort;
+    private readonly ModernTextBox _txtPort;
     private readonly ModernButton _btnReassign;
     private readonly ModernButton _btnCancel;
 
@@ -117,17 +117,17 @@ public class PortConflictDialog : Form
             AutoSize = true
         };
 
-        _numPort = new NumericUpDown
+        _txtPort = new ModernTextBox
         {
-            Minimum = 1,
-            Maximum = 65535,
-            Value = suggestedPort,
-            Location = new Point(88, 54),
-            Width = 110,
+            Text = suggestedPort.ToString(),
+            Location = new Point(88, 52),
+            Width = 100,
+            Height = 28,
+            BorderRadius = 6,
             BackColor = ModernColors.Surface,
-            ForeColor = ModernColors.TextPrimary,
+            ForeColor = ModernColors.Primary,
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            BorderStyle = BorderStyle.FixedSingle
+            TextAlign = HorizontalAlignment.Center
         };
 
         var lblAvailableStatus = new Label
@@ -135,7 +135,7 @@ public class PortConflictDialog : Form
             Text = $"✓ Port {suggestedPort} is free",
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
             ForeColor = ModernColors.Success,
-            Location = new Point(210, 56),
+            Location = new Point(198, 56),
             AutoSize = true
         };
 
@@ -156,9 +156,12 @@ public class PortConflictDialog : Form
         };
         _btnReassign.Click += (s, e) =>
         {
-            _selectedPort = (int)_numPort.Value;
-            DialogResult = DialogResult.OK;
-            Close();
+            if (int.TryParse(_txtPort.Text.Trim(), out int p) && p > 0 && p <= 65535)
+            {
+                _selectedPort = p;
+                DialogResult = DialogResult.OK;
+                Close();
+            }
         };
 
         _btnCancel = new ModernButton
@@ -182,20 +185,28 @@ public class PortConflictDialog : Form
             Close();
         };
 
-        _numPort.ValueChanged += (s, e) =>
+        _txtPort.TextChanged += (s, e) =>
         {
-            int p = (int)_numPort.Value;
-            if (PortChecker.IsPortOccupied(p))
+            if (int.TryParse(_txtPort.Text.Trim(), out int p) && p > 0 && p <= 65535)
             {
-                lblAvailableStatus.Text = $"✗ Port {p} is also occupied";
-                lblAvailableStatus.ForeColor = ModernColors.Danger;
-                _btnReassign.Enabled = false;
+                if (PortChecker.IsPortOccupied(p))
+                {
+                    lblAvailableStatus.Text = $"✗ Port {p} is occupied";
+                    lblAvailableStatus.ForeColor = ModernColors.Danger;
+                    _btnReassign.Enabled = false;
+                }
+                else
+                {
+                    lblAvailableStatus.Text = $"✓ Port {p} is free";
+                    lblAvailableStatus.ForeColor = ModernColors.Success;
+                    _btnReassign.Enabled = true;
+                }
             }
             else
             {
-                lblAvailableStatus.Text = $"✓ Port {p} is free";
-                lblAvailableStatus.ForeColor = ModernColors.Success;
-                _btnReassign.Enabled = true;
+                lblAvailableStatus.Text = "✗ Invalid port";
+                lblAvailableStatus.ForeColor = ModernColors.Danger;
+                _btnReassign.Enabled = false;
             }
         };
 
@@ -210,7 +221,7 @@ public class PortConflictDialog : Form
 
         bodyCard.Controls.Add(lblExplanation);
         bodyCard.Controls.Add(lblInputTag);
-        bodyCard.Controls.Add(_numPort);
+        bodyCard.Controls.Add(_txtPort);
         bodyCard.Controls.Add(lblAvailableStatus);
         bodyCard.Controls.Add(lblHint);
 

@@ -29,7 +29,7 @@ public partial class MainForm : Form
     private FlowLayoutPanel _pnlSitesContainer = null!;
     private Panel _pnlPhpPackages = null!;
     private Panel _pnlNodePackages = null!;
-    private ComboBox _cmbPhpVersions = null!;
+    private ModernComboBox _cmbPhpVersions = null!;
     private Label _lblNodeTitle = null!;
 
     public MainForm(bool startMinimized = false)
@@ -966,14 +966,15 @@ public partial class MainForm : Form
         };
 
         // ComboBox versions
-        _cmbPhpVersions = new ComboBox
+        _cmbPhpVersions = new ModernComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             BackColor = ModernColors.Card,
             ForeColor = ModernColors.TextPrimary,
-            FlatStyle = FlatStyle.Flat,
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+            BorderRadius = 6,
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
             Width = 140,
+            Height = 28,
             Location = new Point(110, 13)
         };
 
@@ -1000,12 +1001,18 @@ public partial class MainForm : Form
             {
                 _config.ActivePhp = newVer;
                 ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
                 if (_php.Status == ServiceStatus.Running)
                 {
                     lblStatusText.Text = $"Switching PHP to {newVer}...";
                     await _php.RestartAsync();
+                    if (_nginx.Status == ServiceStatus.Running)
+                    {
+                        await _nginx.RestartAsync();
+                    }
                     lblStatusText.Text = $"Switched to PHP {newVer}.";
                 }
+                RefreshSitesList();
                 RefreshPhpPackagesList();
                 BuildTrayMenu();
             }
@@ -1965,18 +1972,18 @@ public partial class MainForm : Form
     // ==========================================
     // UI REUSABLE CARD HELPERS
     // ==========================================
-    private TextBox CreatePortInput(int currentPort, Action<int> onPortSaved)
+    private ModernTextBox CreatePortInput(int currentPort, Action<int> onPortSaved)
     {
-        var txt = new TextBox
+        var txt = new ModernTextBox
         {
             Text = currentPort.ToString(),
             BackColor = ModernColors.Card,
             ForeColor = ModernColors.Primary,
-            BorderStyle = BorderStyle.FixedSingle,
+            BorderRadius = 6,
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
             TextAlign = HorizontalAlignment.Center,
-            Width = 56,
-            Height = 24
+            Width = 60,
+            Height = 26
         };
 
         void SavePort()
@@ -2241,12 +2248,18 @@ public partial class MainForm : Form
                 {
                     _config.ActivePhp = newVersion;
                     ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                    VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
                     if (_php.Status == ServiceStatus.Running)
                     {
                         lblStatusText.Text = $"Switching PHP to {newVersion}...";
                         await _php.RestartAsync();
+                        if (_nginx.Status == ServiceStatus.Running)
+                        {
+                            await _nginx.RestartAsync();
+                        }
                         lblStatusText.Text = $"Switched to PHP {newVersion}.";
                     }
+                    RefreshSitesList();
                     BuildTrayMenu();
                 }
             );
@@ -2324,10 +2337,16 @@ public partial class MainForm : Form
                 {
                     _config.ActivePhp = dirName;
                     ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                    VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
                     if (_php.Status == ServiceStatus.Running)
                     {
                         await _php.RestartAsync();
+                        if (_nginx.Status == ServiceStatus.Running)
+                        {
+                            await _nginx.RestartAsync();
+                        }
                     }
+                    RefreshSitesList();
                     BuildServiceCards();
                     BuildTrayMenu();
                 })

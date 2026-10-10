@@ -10,10 +10,10 @@ public class SiteEditDialog : Form
     private readonly AppConfig _config;
     private readonly SiteItem? _existingSite;
 
-    private readonly TextBox _txtPath;
-    private readonly TextBox _txtDomain;
-    private readonly ComboBox _cmbDocRoot;
-    private readonly ComboBox _cmbPhp;
+    private readonly ModernTextBox _txtPath;
+    private readonly ModernTextBox _txtDomain;
+    private readonly ModernComboBox _cmbDocRoot;
+    private readonly ModernComboBox _cmbPhp;
     private readonly CheckBox _chkSsl;
     private readonly Label _lblError;
 
@@ -94,14 +94,14 @@ public class SiteEditDialog : Form
         };
         top += labelH + 2;
 
-        _txtPath = new TextBox
+        _txtPath = new ModernTextBox
         {
             Location = new Point(24, top),
             Width = fieldW - 90,
             Height = fieldH,
             BackColor = ModernColors.Card,
             ForeColor = ModernColors.TextPrimary,
-            BorderStyle = BorderStyle.FixedSingle,
+            BorderRadius = 6,
             Text = existingSite?.PhysicalPath ?? ""
         };
 
@@ -113,7 +113,7 @@ public class SiteEditDialog : Form
             Location = new Point(_txtPath.Right + 8, top - 1),
             Width = 82,
             Height = fieldH,
-            BorderRadius = 5,
+            BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
@@ -134,14 +134,14 @@ public class SiteEditDialog : Form
         };
         top += labelH + 2;
 
-        _txtDomain = new TextBox
+        _txtDomain = new ModernTextBox
         {
             Location = new Point(24, top),
             Width = fieldW,
             Height = fieldH,
             BackColor = ModernColors.Card,
             ForeColor = ModernColors.TextPrimary,
-            BorderStyle = BorderStyle.FixedSingle,
+            BorderRadius = 6,
             Text = existingSite?.Domain ?? ""
         };
         top += fieldH + spacing;
@@ -157,33 +157,17 @@ public class SiteEditDialog : Form
         };
         top += labelH + 2;
 
-        _cmbDocRoot = new ComboBox
+        _cmbDocRoot = new ModernComboBox
         {
             Location = new Point(24, top),
             Width = fieldW,
             Height = fieldH,
-            DropDownStyle = ComboBoxStyle.DropDown,
+            DropDownStyle = ComboBoxStyle.DropDownList,
             BackColor = ModernColors.Card,
             ForeColor = ModernColors.TextPrimary,
-            FlatStyle = FlatStyle.Flat
+            BorderRadius = 6
         };
-        _cmbDocRoot.Items.AddRange(["[Project Root]", "public", "htdocs"]);
-        if (existingSite != null)
-        {
-            if (string.Equals(existingSite.DocumentRoot, existingSite.PhysicalPath, StringComparison.OrdinalIgnoreCase))
-            {
-                _cmbDocRoot.SelectedItem = "[Project Root]";
-            }
-            else
-            {
-                string rel = Path.GetRelativePath(existingSite.PhysicalPath, existingSite.DocumentRoot);
-                _cmbDocRoot.Text = rel;
-            }
-        }
-        else
-        {
-            _cmbDocRoot.SelectedIndex = 0;
-        }
+        PopulateDocRoots(existingSite?.PhysicalPath, existingSite?.DocumentRoot);
         top += fieldH + spacing;
 
         // 4. PHP Version Dropdown
@@ -197,7 +181,7 @@ public class SiteEditDialog : Form
         };
         top += labelH + 2;
 
-        _cmbPhp = new ComboBox
+        _cmbPhp = new ModernComboBox
         {
             Location = new Point(24, top),
             Width = fieldW,
@@ -205,7 +189,7 @@ public class SiteEditDialog : Form
             DropDownStyle = ComboBoxStyle.DropDownList,
             BackColor = ModernColors.Card,
             ForeColor = ModernColors.TextPrimary,
-            FlatStyle = FlatStyle.Flat
+            BorderRadius = 6
         };
         _cmbPhp.Items.Add($"Default (Active: {_config.ActivePhp})");
 
@@ -345,21 +329,52 @@ public class SiteEditDialog : Form
                 _txtDomain.Text = $"{folderName.ToLowerInvariant()}.test";
             }
 
-            // Auto-detect public/ or htdocs/
-            string pub = Path.Combine(fbd.SelectedPath, "public");
-            string htd = Path.Combine(fbd.SelectedPath, "htdocs");
-            if (Directory.Exists(pub))
+            PopulateDocRoots(fbd.SelectedPath);
+        }
+    }
+
+    private void PopulateDocRoots(string? projectPath, string? selectedRoot = null)
+    {
+        _cmbDocRoot.Items.Clear();
+        _cmbDocRoot.Items.Add("[Project Root]");
+
+        var options = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "public", "htdocs" };
+        if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
+        {
+            try
             {
-                _cmbDocRoot.SelectedItem = "public";
+                foreach (var d in Directory.GetDirectories(projectPath))
+                {
+                    string name = Path.GetFileName(d);
+                    if (!name.StartsWith('.')) options.Add(name);
+                }
             }
-            else if (Directory.Exists(htd))
+            catch { }
+        }
+
+        foreach (var opt in options.OrderBy(s => s))
+        {
+            _cmbDocRoot.Items.Add(opt);
+        }
+
+        if (!string.IsNullOrEmpty(projectPath) && !string.IsNullOrEmpty(selectedRoot))
+        {
+            if (string.Equals(selectedRoot, projectPath, StringComparison.OrdinalIgnoreCase))
             {
-                _cmbDocRoot.SelectedItem = "htdocs";
+                _cmbDocRoot.SelectedItem = "[Project Root]";
             }
             else
             {
-                _cmbDocRoot.SelectedIndex = 0;
+                string rel = Path.GetRelativePath(projectPath, selectedRoot);
+                if (!_cmbDocRoot.Items.Contains(rel)) _cmbDocRoot.Items.Add(rel);
+                _cmbDocRoot.SelectedItem = rel;
             }
+        }
+        else
+        {
+            if (_cmbDocRoot.Items.Contains("public")) _cmbDocRoot.SelectedItem = "public";
+            else if (_cmbDocRoot.Items.Contains("htdocs")) _cmbDocRoot.SelectedItem = "htdocs";
+            else _cmbDocRoot.SelectedIndex = 0;
         }
     }
 
@@ -393,7 +408,7 @@ public class SiteEditDialog : Form
 
         // Calculate document root
         string docRoot = path;
-        string selDoc = _cmbDocRoot.Text.Trim();
+        string selDoc = _cmbDocRoot.SelectedItem?.ToString() ?? _cmbDocRoot.Text.Trim();
         if (!string.IsNullOrEmpty(selDoc) && !selDoc.Equals("[Project Root]", StringComparison.OrdinalIgnoreCase))
         {
             string subDir = Path.Combine(path, selDoc);

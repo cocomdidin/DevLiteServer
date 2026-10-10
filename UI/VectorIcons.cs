@@ -23,7 +23,8 @@ public enum IconKind
     Trash,
     Plus,
     Lock,
-    Pencil
+    Pencil,
+    ChevronDown
 }
 
 public static class VectorIcons
@@ -328,6 +329,17 @@ public static class VectorIcons
                     g.DrawLine(pen, x + (w * 0.25f), y + (h * 0.75f), x + (w * 0.72f), y + (h * 0.28f));
                     g.DrawLine(pen, x + (w * 0.25f), y + (h * 0.75f), x + (w * 0.18f), y + (h * 0.82f));
                     g.DrawLine(pen, x + (w * 0.18f), y + (h * 0.82f), x + (w * 0.32f), y + (h * 0.82f));
+                }
+                break;
+
+            case IconKind.ChevronDown:
+                {
+                    float cy = y + (h * 0.40f);
+                    float span = w * 0.32f;
+                    float depth = h * 0.22f;
+                    float cx = x + (w * 0.5f);
+                    g.DrawLine(pen, cx - span, cy, cx, cy + depth);
+                    g.DrawLine(pen, cx, cy + depth, cx + span, cy);
                 }
                 break;
         }

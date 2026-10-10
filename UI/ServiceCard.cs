@@ -17,7 +17,7 @@ public class ServiceCard : Panel
     private readonly ModernButton? _btnBrowse;
     private readonly Label _lblTitle;
     private readonly Label _lblSub;
-    private readonly ComboBox? _cmbVersions;
+    private readonly ModernComboBox? _cmbVersions;
     private bool _isHovered;
 
     public IService Service => _service;
@@ -139,14 +139,15 @@ public class ServiceCard : Panel
         // Version dropdown if available (e.g. PHP)
         if (versions != null && versions.Length > 0)
         {
-            _cmbVersions = new ComboBox
+            _cmbVersions = new ModernComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 BackColor = ModernColors.Card,
                 ForeColor = ModernColors.TextPrimary,
-                FlatStyle = FlatStyle.Flat,
+                BorderRadius = 6,
                 Font = new Font("Segoe UI", 8.5f),
                 Width = 100,
+                Height = 28,
                 Location = new Point(240, 18)
             };
             _cmbVersions.Items.AddRange(versions);

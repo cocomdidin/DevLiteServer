@@ -188,7 +188,9 @@ public static class VirtualHostManager
 
             // Determine FastCGI port for this site
             int phpPort = config.PhpFastCgiPort;
-            if (!string.IsNullOrEmpty(site.PhpVersion) && !site.PhpVersion.Equals("default", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(site.PhpVersion) &&
+                !site.PhpVersion.Equals("default", StringComparison.OrdinalIgnoreCase) &&
+                !site.PhpVersion.Equals(config.ActivePhp, StringComparison.OrdinalIgnoreCase))
             {
                 string customPhpExe = Path.Combine(appRoot, "bin", "php", site.PhpVersion, "php-cgi.exe");
                 if (File.Exists(customPhpExe))

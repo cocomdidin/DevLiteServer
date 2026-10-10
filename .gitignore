@@ -33,7 +33,8 @@ bin/postgresql/data/*
 !bin/mysql/data/.gitkeep
 !bin/postgresql/data/.gitkeep
 
-# User web root projects
+# User web root projects & sites data
 www/*
 !www/.gitkeep
 !www/index.php
+sites.json

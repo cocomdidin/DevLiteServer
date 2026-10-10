@@ -11,7 +11,7 @@ public class UpdateDialog : Form
     private readonly Label _lblTitle;
     private readonly Label _lblSub;
     private readonly Label _lblVersionBadges;
-    private readonly TextBox _txtNotes;
+    private readonly ModernTextBox _txtNotes;
     private readonly ProgressBar _progressBar;
     private readonly Label _lblStatus;
 
@@ -91,19 +91,19 @@ public class UpdateDialog : Form
             AutoSize = true
         };
 
-        _txtNotes = new TextBox
+        _txtNotes = new ModernTextBox
         {
             Multiline = true,
             ReadOnly = true,
-            ScrollBars = ScrollBars.Vertical,
             Location = new Point(24, 138),
             Size = new Size(476, 175),
+            BorderRadius = 6,
             BackColor = ModernColors.Card,
             ForeColor = ModernColors.TextSecondary,
-            BorderStyle = BorderStyle.FixedSingle,
             Font = new Font("Segoe UI", 9f),
             Text = string.IsNullOrWhiteSpace(_info.ReleaseNotes) ? "No detailed release notes provided." : _info.ReleaseNotes.Replace("\n", "\r\n")
         };
+        _txtNotes.InnerTextBox.ScrollBars = ScrollBars.Vertical;
 
         _lblStatus = new Label
         {

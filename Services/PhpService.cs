@@ -143,8 +143,31 @@ public class PhpService : BaseService
             .Where(v => !string.IsNullOrWhiteSpace(v) &&
                         !v.Equals("default", StringComparison.OrdinalIgnoreCase) &&
                         !v.Equals(_config.ActivePhp, StringComparison.OrdinalIgnoreCase))
-            .Distinct(StringComparer.OrdinalIgnoreCase);
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // 1. Terminate any worker whose version is no longer needed by any site
+        lock (_extraWorkers)
+        {
+            var unneeded = _extraWorkers.Keys.Where(v => !requiredVersions.Contains(v)).ToList();
+            foreach (var version in unneeded)
+            {
+                if (_extraWorkers.Remove(version, out var worker))
+                {
+                    try
+                    {
+                        worker.Cts.Cancel();
+                        if (worker.Process != null && !worker.Process.HasExited)
+                        {
+                            worker.Process.Kill(true);
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+
+        // 2. Start workers that are actively needed
         foreach (var version in requiredVersions)
         {
             await EnsureWorkerForVersionAsync(version);
