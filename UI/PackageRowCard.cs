@@ -154,10 +154,12 @@ public class PackageRowCard : Panel
             if (_pkg.Category.Equals("PHP", StringComparison.OrdinalIgnoreCase))
             {
                 _config.ActivePhp = _pkg.FolderName;
+                PhpService.UpdateCurrentJunction(_appRoot, _pkg.FolderName);
             }
             else
             {
                 _config.ActiveNode = _pkg.FolderName;
+                NodeManager.UpdateCurrentJunction(_appRoot, _pkg.FolderName);
             }
 
             ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);

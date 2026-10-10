@@ -8,6 +8,7 @@ public class AppConfig
     public bool CheckUpdatesOnStart { get; set; } = true;
     public bool MinimizeToTray { get; set; } = true;
     public bool StartWithWindows { get; set; } = false;
+    public bool RegisterUserPath { get; set; } = false;
 
     // Enabled services
     public bool EnableNginx { get; set; } = true;
@@ -70,6 +71,7 @@ public class AppConfig
         CheckUpdatesOnStart = d.CheckUpdatesOnStart;
         MinimizeToTray = d.MinimizeToTray;
         StartWithWindows = d.StartWithWindows;
+        RegisterUserPath = d.RegisterUserPath;
         EnableNginx = d.EnableNginx;
         EnablePhp = d.EnablePhp;
         EnableMysql = d.EnableMysql;
@@ -143,6 +145,8 @@ public static class ConfigManager
                         config.MinimizeToTray = bool.Parse(val);
                     else if (key.Equals("StartWithWindows", StringComparison.OrdinalIgnoreCase))
                         config.StartWithWindows = bool.Parse(val);
+                    else if (key.Equals("RegisterUserPath", StringComparison.OrdinalIgnoreCase))
+                        config.RegisterUserPath = bool.Parse(val);
                     break;
 
                 case "AUTOSTART":
@@ -190,6 +194,7 @@ public static class ConfigManager
             $"MinimizeToTray={config.MinimizeToTray.ToString().ToLower()}",
             $"AutoStartServices={config.AutoStartServices.ToString().ToLower()}",
             $"CheckUpdatesOnStart={config.CheckUpdatesOnStart.ToString().ToLower()}",
+            $"RegisterUserPath={config.RegisterUserPath.ToString().ToLower()}",
             "",
             "[Services]",
             $"Nginx={config.EnableNginx.ToString().ToLower()}",

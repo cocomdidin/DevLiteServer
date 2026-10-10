@@ -33,9 +33,18 @@ public static class TerminalLauncher
             if (Directory.Exists(phpDir)) pathEntries.Add(phpDir);
         }
 
-        // 2. Node.js active version
-        string nodeDir = Path.Combine(appRoot, "bin", "nodejs", config.ActiveNode);
-        if (Directory.Exists(nodeDir)) pathEntries.Add(nodeDir);
+        // 2. Node.js active version (via NTFS junction for dynamic switching across running terminals)
+        NodeManager.UpdateCurrentJunction(appRoot, config.ActiveNode);
+        string currentNodeJunction = Path.Combine(appRoot, "bin", "nodejs", "current");
+        if (Directory.Exists(currentNodeJunction))
+        {
+            pathEntries.Add(currentNodeJunction);
+        }
+        else
+        {
+            string nodeDir = Path.Combine(appRoot, "bin", "nodejs", config.ActiveNode);
+            if (Directory.Exists(nodeDir)) pathEntries.Add(nodeDir);
+        }
 
         // 3. Git Portable
         string gitCmdDir = Path.Combine(appRoot, "bin", "git", "cmd");

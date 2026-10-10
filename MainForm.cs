@@ -32,6 +32,7 @@ public partial class MainForm : Form
     private ModernComboBox _cmbPhpVersions = null!;
     private Label _lblNodeTitle = null!;
     private Action? _refreshSqlServerCard;
+    private Action? _refreshNodePackages;
 
     public MainForm(bool startMinimized = false)
     {
@@ -53,6 +54,8 @@ public partial class MainForm : Form
 
         _php = new PhpService(_appRoot, _job, _config);
         PhpService.UpdateCurrentJunction(_appRoot, _config.ActivePhp);
+        NodeManager.UpdateCurrentJunction(_appRoot, _config.ActiveNode);
+        if (_config.RegisterUserPath) UserEnvironmentManager.SetRegistration(_appRoot, true);
         _nginx = new NginxService(_appRoot, _job, _config, _php);
         _mysql = new MySqlService(_appRoot, _job, _config);
         _mailpit = new MailpitService(_appRoot, _job, _config);
@@ -289,6 +292,19 @@ public partial class MainForm : Form
         };
         var cardAuto = CreateOptionCard("Auto-start Enabled Services", "Automatically launch all enabled services when Dev Lite Server opens.", togAuto);
 
+        // 5. Register LiteServer tools to Windows User PATH
+        var togUserPath = new ModernToggle { Checked = _config.RegisterUserPath };
+        togUserPath.CheckedChanged += (s, e) =>
+        {
+            _config.RegisterUserPath = togUserPath.Checked;
+            UserEnvironmentManager.SetRegistration(_appRoot, _config.RegisterUserPath);
+            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            lblStatusText.Text = _config.RegisterUserPath
+                ? "Registered PHP, Node, and Composer to Windows User PATH."
+                : "Removed LiteServer tools from Windows User PATH.";
+        };
+        var cardUserPath = CreateOptionCard("Register to Windows User PATH", "Enables any external terminal or IDE (CMD, PowerShell, VS Code) to access PHP, Node, and Composer globally without Administrator privileges.", togUserPath);
+
         // 6. Action Buttons Bar (Reset Settings & Open config.ini)
         var pnlActions = new Panel
         {
@@ -353,7 +369,7 @@ public partial class MainForm : Form
         pnlActions.Controls.Add(btnResetDefaults);
 
         // Add to settings page in reverse dock order so pnlHeader is on top
-        pageSettings.Controls.AddRange([pnlActions, cardAuto, cardTray, cardWin, pnlHeader]);
+        pageSettings.Controls.AddRange([pnlActions, cardUserPath, cardAuto, cardTray, cardWin, pnlHeader]);
         pnlHeader.SendToBack();
     }
 
@@ -1420,6 +1436,7 @@ public partial class MainForm : Form
     private void PopulateNodePage()
     {
         pageNode.Padding = new Padding(24, 16, 24, 20);
+        pageNode.AutoScroll = true;
 
         var pnlHeader = CreateSectionHeader("Node.js & JavaScript Runtime", "Portable Node.js environment with NPM & NPX pre-configured.");
 
@@ -1441,9 +1458,20 @@ public partial class MainForm : Form
             g.DrawPath(pen, path);
         };
 
+        var (sysFound, sysPath, sysVer) = NodeManager.DetectSystemNode();
+
+        string GetNodeTitleText()
+        {
+            if (_config.ActiveNode.Equals("system", StringComparison.OrdinalIgnoreCase))
+            {
+                return sysFound ? $"Active Runtime: System Node ({sysVer})" : "Active Runtime: System Node (Windows)";
+            }
+            return $"Active Runtime: {_config.ActiveNode}";
+        }
+
         _lblNodeTitle = new Label
         {
-            Text = $"Active Runtime: {_config.ActiveNode}",
+            Text = GetNodeTitleText(),
             ForeColor = ModernColors.TextPrimary,
             Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
             Location = new Point(16, 14),
@@ -1483,8 +1511,16 @@ public partial class MainForm : Form
         };
         btnOpenNodeFolder.Click += (s, e) =>
         {
-            string nodeDir = Path.Combine(_appRoot, "bin", "nodejs", _config.ActiveNode);
-            if (!Directory.Exists(nodeDir)) nodeDir = Path.Combine(_appRoot, "bin", "nodejs");
+            string nodeDir;
+            if (_config.ActiveNode.Equals("system", StringComparison.OrdinalIgnoreCase))
+            {
+                nodeDir = sysFound ? sysPath : Path.Combine(_appRoot, "bin", "nodejs");
+            }
+            else
+            {
+                nodeDir = Path.Combine(_appRoot, "bin", "nodejs", _config.ActiveNode);
+                if (!Directory.Exists(nodeDir)) nodeDir = Path.Combine(_appRoot, "bin", "nodejs");
+            }
             if (Directory.Exists(nodeDir))
             {
                 Process.Start(new ProcessStartInfo("explorer.exe", $"\"{nodeDir}\"") { UseShellExecute = true });
@@ -1493,7 +1529,7 @@ public partial class MainForm : Form
 
         var lblNodeNote = new Label
         {
-            Text = "Node.js, npm, and npx are accessible via Dev Lite Server Isolated Terminal.\nNo global Windows PATH modification is made.",
+            Text = "Node.js, npm, and npx are dynamically managed via bin\\nodejs\\current.\nActive version applies immediately across all terminals without restarting.",
             ForeColor = ModernColors.TextMuted,
             Font = new Font("Segoe UI", 8.25f),
             Location = new Point(16, 88),
@@ -1504,6 +1540,103 @@ public partial class MainForm : Form
         heroCard.Controls.Add(btnOpenNodeTerminal);
         heroCard.Controls.Add(btnOpenNodeFolder);
         heroCard.Controls.Add(lblNodeNote);
+
+        // Section: System Node Card (Windows Global)
+        Panel? cardSystemNode = null;
+        Action? updateSystemCard = null;
+
+        if (sysFound)
+        {
+            cardSystemNode = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 74,
+                BackColor = Color.Transparent,
+                Padding = new Padding(14, 6, 14, 10)
+            };
+
+            updateSystemCard = () =>
+            {
+                cardSystemNode.Controls.Clear();
+                bool isSystemActive = _config.ActiveNode.Equals("system", StringComparison.OrdinalIgnoreCase);
+
+                var pill = new StatusPill
+                {
+                    Status = isSystemActive ? ServiceStatus.Running : ServiceStatus.Stopped,
+                    Location = new Point(14, 18)
+                };
+
+                var lblTitle = new Label
+                {
+                    Text = "System Node.js (Windows)",
+                    ForeColor = ModernColors.TextPrimary,
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                    Location = new Point(116, 12),
+                    AutoSize = true
+                };
+
+                var lblTag = new Label
+                {
+                    Text = $"Global Windows Runtime ({sysVer})  •  {sysPath}",
+                    ForeColor = isSystemActive ? ModernColors.Primary : ModernColors.TextMuted,
+                    Font = new Font("Segoe UI", 8.25f),
+                    Location = new Point(117, 34),
+                    AutoSize = true
+                };
+
+                var btnSwitch = new ModernButton
+                {
+                    Text = isSystemActive ? "Active" : "Use",
+                    IconKind = isSystemActive ? IconKind.Check : IconKind.Play,
+                    IconSize = 10,
+                    Width = 78,
+                    Height = 30,
+                    BorderRadius = 6,
+                    ShowBorder = true,
+                    NormalColor = isSystemActive ? Color.FromArgb(16, 40, 32) : ModernColors.Card,
+                    HoverColor = ModernColors.SurfaceHover,
+                    ForeColor = isSystemActive ? ModernColors.Success : ModernColors.TextPrimary,
+                    Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                    Enabled = !isSystemActive
+                };
+
+                int cardH = cardSystemNode.Height - 8;
+                btnSwitch.Location = new Point(cardSystemNode.Width - 14 - btnSwitch.Width, (cardH - btnSwitch.Height) / 2);
+
+                btnSwitch.Click += (s, e) =>
+                {
+                    _config.ActiveNode = "system";
+                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                    NodeManager.UpdateCurrentJunction(_appRoot, "system");
+                    _lblNodeTitle.Text = GetNodeTitleText();
+                    _refreshNodePackages?.Invoke();
+                    BuildTrayMenu();
+                    lblStatusText.Text = $"System Node.js ({sysVer}) active.";
+                };
+
+                cardSystemNode.Controls.AddRange([pill, lblTitle, lblTag, btnSwitch]);
+                cardSystemNode.Invalidate();
+            };
+
+            cardSystemNode.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                float stroke = 1f;
+                float halfStroke = stroke / 2f;
+                float cardH = cardSystemNode.Height - 8f;
+                var rect = new RectangleF(halfStroke, halfStroke, cardSystemNode.Width - stroke, cardH - stroke);
+                using var path = CreateRoundedRectangle(rect, 6f);
+                using var bg = new SolidBrush(ModernColors.Surface);
+                g.FillPath(bg, path);
+                bool isActive = _config.ActiveNode.Equals("system", StringComparison.OrdinalIgnoreCase);
+                using var pen = new Pen(isActive ? Color.FromArgb(56, 189, 248, 120) : ModernColors.BorderSubtle, stroke);
+                g.DrawPath(pen, path);
+            };
+
+            updateSystemCard();
+        }
 
         // Section: Available Node.js Runtimes (Herd Downloader)
         var pnlNodePacksHeader = CreateSectionHeader("Available Node.js Runtimes (Official nodejs.org)", "1-click download and extract portable Node.js, NPM, and NPX runtimes.");
@@ -1524,8 +1657,10 @@ public partial class MainForm : Form
             {
                 var card = new PackageRowCard(pkg, _appRoot, _config, () =>
                 {
-                    _lblNodeTitle.Text = $"Active Runtime: {_config.ActiveNode}";
+                    NodeManager.UpdateCurrentJunction(_appRoot, _config.ActiveNode);
+                    _lblNodeTitle.Text = GetNodeTitleText();
                     RefreshNodePackagesList();
+                    updateSystemCard?.Invoke();
                     BuildTrayMenu();
                     lblStatusText.Text = $"Node.js {_config.ActiveNode} active.";
                 });
@@ -1534,13 +1669,23 @@ public partial class MainForm : Form
             cards.Reverse();
             _pnlNodePackages.Controls.AddRange(cards.ToArray());
         }
+
+        _refreshNodePackages = () =>
+        {
+            _lblNodeTitle.Text = GetNodeTitleText();
+            RefreshNodePackagesList();
+            updateSystemCard?.Invoke();
+        };
+
         RefreshNodePackagesList();
 
-        pageNode.Controls.AddRange([_pnlNodePackages, pnlNodePacksHeader, heroCard, pnlHeader]);
-        pnlHeader.SendToBack();
-        heroCard.SendToBack();
-        pnlNodePacksHeader.SendToBack();
-        _pnlNodePackages.SendToBack();
+        var nodeControls = new List<Control> { _pnlNodePackages, pnlNodePacksHeader };
+        if (cardSystemNode != null) nodeControls.Add(cardSystemNode);
+        nodeControls.Add(heroCard);
+        nodeControls.Add(pnlHeader);
+
+        pageNode.Controls.AddRange(nodeControls.ToArray());
+        foreach (var c in nodeControls) c.SendToBack();
     }
 
     // ------------------------------------------
@@ -2616,24 +2761,43 @@ public partial class MainForm : Form
 
         // Node Version submenu
         var nodeSubMenu = new ToolStripMenuItem("Node Version");
-        string nodeRoot = Path.Combine(_appRoot, "bin", "nodejs");
-        if (Directory.Exists(nodeRoot))
+        var (sysNodeFound, _, sysNodeVer) = NodeManager.DetectSystemNode();
+        if (sysNodeFound)
         {
-            foreach (var dir in Directory.GetDirectories(nodeRoot))
+            var sysItem = new ToolStripMenuItem($"System Node ({sysNodeVer})", null, (s, e) =>
             {
-                string dirName = Path.GetFileName(dir);
-                var item = new ToolStripMenuItem(dirName, null, (s, e) =>
-                {
-                    _config.ActiveNode = dirName;
-                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-                    if (_lblNodeTitle != null) _lblNodeTitle.Text = $"Active Runtime: {_config.ActiveNode}";
-                    BuildTrayMenu();
-                })
-                {
-                    Checked = dirName.Equals(_config.ActiveNode, StringComparison.OrdinalIgnoreCase)
-                };
-                nodeSubMenu.DropDownItems.Add(item);
-            }
+                _config.ActiveNode = "system";
+                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                NodeManager.UpdateCurrentJunction(_appRoot, "system");
+                if (_lblNodeTitle != null) _lblNodeTitle.Text = $"Active Runtime: System Node ({sysNodeVer})";
+                _refreshNodePackages?.Invoke();
+                BuildTrayMenu();
+                lblStatusText.Text = $"System Node.js ({sysNodeVer}) active.";
+            })
+            {
+                Checked = _config.ActiveNode.Equals("system", StringComparison.OrdinalIgnoreCase)
+            };
+            nodeSubMenu.DropDownItems.Add(sysItem);
+            nodeSubMenu.DropDownItems.Add(new ToolStripSeparator());
+        }
+
+        var installedNodeVersions = NodeManager.GetInstalledVersions(_appRoot);
+        foreach (var dirName in installedNodeVersions)
+        {
+            var item = new ToolStripMenuItem(dirName, null, (s, e) =>
+            {
+                _config.ActiveNode = dirName;
+                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                NodeManager.UpdateCurrentJunction(_appRoot, dirName);
+                if (_lblNodeTitle != null) _lblNodeTitle.Text = $"Active Runtime: {_config.ActiveNode}";
+                _refreshNodePackages?.Invoke();
+                BuildTrayMenu();
+                lblStatusText.Text = $"Node.js {dirName} active.";
+            })
+            {
+                Checked = dirName.Equals(_config.ActiveNode, StringComparison.OrdinalIgnoreCase)
+            };
+            nodeSubMenu.DropDownItems.Add(item);
         }
         trayMenu.Items.Add(nodeSubMenu);
 
