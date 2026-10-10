@@ -64,6 +64,10 @@ public class NginxService : BaseService
                 return false;
             }
         }
+        else if (DependentPhpService != null && DependentPhpService.Status == ServiceStatus.Running)
+        {
+            await DependentPhpService.EnsureWorkersForConfiguredSitesAsync();
+        }
 
         string nginxExe = GetNginxExe();
         if (!File.Exists(nginxExe))

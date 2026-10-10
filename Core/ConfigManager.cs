@@ -23,6 +23,7 @@ public class AppConfig
 
     // Ports
     public int HttpPort { get; set; } = 80;
+    public int HttpsPort { get; set; } = 443;
     public int PhpFastCgiPort { get; set; } = 9000;
     public int MysqlPort { get; set; } = 3306;
     public int PostgreSqlPort { get; set; } = 5432;
@@ -78,6 +79,7 @@ public class AppConfig
         ActivePhp = d.ActivePhp;
         ActiveNode = d.ActiveNode;
         HttpPort = d.HttpPort;
+        HttpsPort = d.HttpsPort;
         PhpFastCgiPort = d.PhpFastCgiPort;
         MysqlPort = d.MysqlPort;
         PostgreSqlPort = d.PostgreSqlPort;
@@ -151,6 +153,7 @@ public static class ConfigManager
 
                 case "PORTS":
                     if (key.Equals("HttpPort", StringComparison.OrdinalIgnoreCase)) config.HttpPort = int.Parse(val);
+                    else if (key.Equals("HttpsPort", StringComparison.OrdinalIgnoreCase)) config.HttpsPort = int.Parse(val);
                     else if (key.Equals("PhpFastCgiPort", StringComparison.OrdinalIgnoreCase)) config.PhpFastCgiPort = int.Parse(val);
                     else if (key.Equals("MysqlPort", StringComparison.OrdinalIgnoreCase)) config.MysqlPort = int.Parse(val);
                     else if (key.Equals("PostgreSqlPort", StringComparison.OrdinalIgnoreCase)) config.PostgreSqlPort = int.Parse(val);
@@ -189,6 +192,7 @@ public static class ConfigManager
             "",
             "[Ports]",
             $"HttpPort={config.HttpPort}",
+            $"HttpsPort={config.HttpsPort}",
             $"PhpFastCgiPort={config.PhpFastCgiPort}",
             $"MysqlPort={config.MysqlPort}",
             $"PostgreSqlPort={config.PostgreSqlPort}",

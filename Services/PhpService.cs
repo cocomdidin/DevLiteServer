@@ -1,12 +1,22 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using DevLiteServer.Core;
 
 namespace DevLiteServer.Services;
+
+public class PhpWorkerInfo
+{
+    public string Version { get; set; } = "";
+    public int Port { get; set; }
+    public Process? Process { get; set; }
+    public CancellationTokenSource Cts { get; set; } = new();
+}
 
 public class PhpService : BaseService
 {
     private readonly AppConfig _config;
     private CancellationTokenSource? _supervisorCts;
+    private readonly Dictionary<string, PhpWorkerInfo> _extraWorkers = new(StringComparer.OrdinalIgnoreCase);
 
     public override string Name => "PHP (FastCGI)";
     public override int Port => _config.PhpFastCgiPort;
@@ -22,6 +32,38 @@ public class PhpService : BaseService
     {
         _config = config;
         CheckInstallation();
+    }
+
+    public static int GetPortForVersion(string version, int defaultPort = 9000)
+    {
+        if (string.IsNullOrWhiteSpace(version) || version.Equals("default", StringComparison.OrdinalIgnoreCase))
+        {
+            return defaultPort;
+        }
+
+        var match = Regex.Match(version, @"(\d+)\.(\d+)");
+        if (match.Success && int.TryParse(match.Groups[1].Value, out int major) && int.TryParse(match.Groups[2].Value, out int minor))
+        {
+            return 9000 + (major * 10) + minor; // e.g. 8.4 -> 9084, 8.2 -> 9082, 7.4 -> 9074
+        }
+
+        return 9100 + Math.Abs(version.GetHashCode() % 100);
+    }
+
+    public static List<string> GetInstalledVersions(string appRoot)
+    {
+        var list = new List<string>();
+        string phpRoot = Path.Combine(appRoot, "bin", "php");
+        if (!Directory.Exists(phpRoot)) return list;
+
+        foreach (var dir in Directory.GetDirectories(phpRoot))
+        {
+            if (File.Exists(Path.Combine(dir, "php-cgi.exe")))
+            {
+                list.Add(Path.GetFileName(dir));
+            }
+        }
+        return list;
     }
 
     public string GetPhpDirectory()
@@ -66,7 +108,7 @@ public class PhpService : BaseService
 
         try
         {
-            EnsureConfig();
+            EnsureConfig(GetPhpDirectory());
             StartWorker();
             _ = Task.Run(() => SupervisorLoopAsync(_supervisorCts.Token));
 
@@ -79,6 +121,9 @@ public class PhpService : BaseService
                 return false;
             }
 
+            // Start secondary PHP workers for configured sites
+            await EnsureWorkersForConfiguredSitesAsync();
+
             Status = ServiceStatus.Running;
             return true;
         }
@@ -90,9 +135,69 @@ public class PhpService : BaseService
         }
     }
 
-    private void EnsureConfig()
+    public async Task EnsureWorkersForConfiguredSitesAsync()
     {
-        string phpDir = GetPhpDirectory();
+        var sites = VirtualHostManager.GetAllSites(AppRoot);
+        var requiredVersions = sites
+            .Select(s => s.PhpVersion)
+            .Where(v => !string.IsNullOrWhiteSpace(v) &&
+                        !v.Equals("default", StringComparison.OrdinalIgnoreCase) &&
+                        !v.Equals(_config.ActivePhp, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var version in requiredVersions)
+        {
+            await EnsureWorkerForVersionAsync(version);
+        }
+    }
+
+    public async Task<bool> EnsureWorkerForVersionAsync(string version)
+    {
+        if (string.IsNullOrWhiteSpace(version) ||
+            version.Equals("default", StringComparison.OrdinalIgnoreCase) ||
+            version.Equals(_config.ActivePhp, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        lock (_extraWorkers)
+        {
+            if (_extraWorkers.TryGetValue(version, out var existing) && existing.Process != null && !existing.Process.HasExited)
+            {
+                return true;
+            }
+        }
+
+        string versionDir = Path.Combine(AppRoot, "bin", "php", version);
+        string phpCgi = Path.Combine(versionDir, "php-cgi.exe");
+        if (!File.Exists(phpCgi))
+        {
+            return false;
+        }
+
+        int port = GetPortForVersion(version, Port);
+        EnsureConfig(versionDir);
+
+        var worker = new PhpWorkerInfo
+        {
+            Version = version,
+            Port = port
+        };
+
+        StartExtraWorkerProcess(worker);
+
+        lock (_extraWorkers)
+        {
+            _extraWorkers[version] = worker;
+        }
+
+        _ = Task.Run(() => ExtraWorkerSupervisorLoopAsync(worker, worker.Cts.Token));
+        await Task.Delay(200);
+        return worker.Process != null && !worker.Process.HasExited;
+    }
+
+    private void EnsureConfig(string phpDir)
+    {
         string phpIni = Path.Combine(phpDir, "php.ini");
         string templatePath = Path.Combine(AppRoot, "templates", "php.ini.tpl");
 
@@ -124,6 +229,25 @@ public class PhpService : BaseService
         CurrentProcess = LaunchProcess(psi);
     }
 
+    private void StartExtraWorkerProcess(PhpWorkerInfo worker)
+    {
+        string versionDir = Path.Combine(AppRoot, "bin", "php", worker.Version);
+        string phpCgi = Path.Combine(versionDir, "php-cgi.exe");
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = phpCgi,
+            Arguments = $"-b 127.0.0.1:{worker.Port}",
+            WorkingDirectory = versionDir,
+            RedirectStandardOutput = false,
+            RedirectStandardError = false
+        };
+
+        psi.EnvironmentVariables["PHP_FCGI_MAX_REQUESTS"] = "5000";
+
+        worker.Process = LaunchProcess(psi);
+    }
+
     private async Task SupervisorLoopAsync(CancellationToken token)
     {
         while (!token.IsCancellationRequested)
@@ -147,10 +271,50 @@ public class PhpService : BaseService
         }
     }
 
+    private async Task ExtraWorkerSupervisorLoopAsync(PhpWorkerInfo worker, CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            if (Status == ServiceStatus.Running)
+            {
+                if (worker.Process == null || worker.Process.HasExited)
+                {
+                    StartExtraWorkerProcess(worker);
+                }
+            }
+            try
+            {
+                await Task.Delay(1000, token);
+            }
+            catch (TaskCanceledException)
+            {
+                break;
+            }
+        }
+    }
+
     public override async Task<bool> StopAsync()
     {
         Status = ServiceStatus.Stopping;
         _supervisorCts?.Cancel();
+
+        // Terminate extra workers
+        lock (_extraWorkers)
+        {
+            foreach (var worker in _extraWorkers.Values)
+            {
+                try
+                {
+                    worker.Cts.Cancel();
+                    if (worker.Process != null && !worker.Process.HasExited)
+                    {
+                        worker.Process.Kill(true);
+                    }
+                }
+                catch { }
+            }
+            _extraWorkers.Clear();
+        }
 
         try
         {
@@ -160,10 +324,7 @@ public class PhpService : BaseService
                 await CurrentProcess.WaitForExitAsync();
             }
         }
-        catch
-        {
-            // Ignore error on kill
-        }
+        catch { }
         finally
         {
             CurrentProcess = null;

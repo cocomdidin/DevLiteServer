@@ -20,7 +20,10 @@ public enum IconKind
     Gear,
     Warning,
     Download,
-    Trash
+    Trash,
+    Plus,
+    Lock,
+    Pencil
 }
 
 public static class VectorIcons
@@ -287,6 +290,44 @@ public static class VectorIcons
                     // Inner lines
                     g.DrawLine(pen, x + (w * 0.42f), ly + (h * 0.15f), x + (w * 0.42f), byBot - (h * 0.10f));
                     g.DrawLine(pen, x + (w * 0.58f), ly + (h * 0.15f), x + (w * 0.58f), byBot - (h * 0.10f));
+                }
+                break;
+
+            case IconKind.Plus:
+                {
+                    g.DrawLine(pen, x + (w * 0.5f), y + (h * 0.2f), x + (w * 0.5f), y + (h * 0.8f));
+                    g.DrawLine(pen, x + (w * 0.2f), y + (h * 0.5f), x + (w * 0.8f), y + (h * 0.5f));
+                }
+                break;
+
+            case IconKind.Lock:
+                {
+                    float lbw = w * 0.58f;
+                    float lbh = h * 0.44f;
+                    float lbx = x + (w * 0.21f);
+                    float lby = y + (h * 0.44f);
+                    using (var bodyPath = CreateRoundedRect(new RectangleF(lbx, lby, lbw, lbh), 2.5f))
+                    {
+                        g.DrawPath(pen, bodyPath);
+                    }
+                    // Keyhole dot
+                    g.FillEllipse(brush, x + (w * 0.5f) - 1.5f, y + (h * 0.60f), 3f, 3f);
+                    // Shackle
+                    float shkW = w * 0.36f;
+                    float shkX = x + (w * 0.32f);
+                    float shkY = y + (h * 0.18f);
+                    g.DrawArc(pen, shkX, shkY, shkW, shkW, 180, 180);
+                    g.DrawLine(pen, shkX, shkY + (shkW * 0.5f), shkX, lby);
+                    g.DrawLine(pen, shkX + shkW, shkY + (shkW * 0.5f), shkX + shkW, lby);
+                }
+                break;
+
+            case IconKind.Pencil:
+                {
+                    // Diagonal pencil stroke
+                    g.DrawLine(pen, x + (w * 0.25f), y + (h * 0.75f), x + (w * 0.72f), y + (h * 0.28f));
+                    g.DrawLine(pen, x + (w * 0.25f), y + (h * 0.75f), x + (w * 0.18f), y + (h * 0.82f));
+                    g.DrawLine(pen, x + (w * 0.18f), y + (h * 0.82f), x + (w * 0.32f), y + (h * 0.82f));
                 }
                 break;
         }

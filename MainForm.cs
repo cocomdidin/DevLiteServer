@@ -369,6 +369,37 @@ public partial class MainForm : Form
             Padding = new Padding(0, 0, 0, 12)
         };
 
+        var btnAddSite = new ModernButton
+        {
+            Text = "+ Add Site",
+            IconKind = IconKind.Plus,
+            IconSize = 10,
+            Width = 96,
+            Height = 32,
+            BorderRadius = 6,
+            ShowBorder = false,
+            NormalColor = ModernColors.Success,
+            HoverColor = ModernColors.SuccessHover,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(0, 4)
+        };
+        btnAddSite.Click += async (s, e) =>
+        {
+            using var dlg = new SiteEditDialog(_appRoot, _config);
+            if (dlg.ShowDialog(this) == DialogResult.OK && dlg.ResultSite != null)
+            {
+                VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
+                _ = _php.EnsureWorkersForConfiguredSitesAsync();
+                if (_nginx.Status == ServiceStatus.Running)
+                {
+                    await _nginx.RestartAsync();
+                }
+                RefreshSitesList();
+                lblStatusText.Text = $"Site '{dlg.ResultSite.Domain}' configured.";
+                lblStatusText.ForeColor = ModernColors.Success;
+            }
+        };
+
         var btnOpenFolder = new ModernButton
         {
             Text = "Open /www Folder",
@@ -381,7 +412,7 @@ public partial class MainForm : Form
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(0, 4)
+            Location = new Point(102, 4)
         };
         btnOpenFolder.Click += BtnOpenWww_Click;
 
@@ -397,7 +428,7 @@ public partial class MainForm : Form
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(140, 4)
+            Location = new Point(243, 4)
         };
         btnRefresh.Click += (s, e) => RefreshSitesList();
 
@@ -413,7 +444,7 @@ public partial class MainForm : Form
             NormalColor = ModernColors.Primary,
             HoverColor = ModernColors.PrimaryHover,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(256, 4)
+            Location = new Point(359, 4)
         };
         btnSyncHosts.Click += async (s, e) =>
         {
@@ -451,7 +482,7 @@ public partial class MainForm : Form
             HoverColor = ModernColors.SurfaceHover,
             ForeColor = ModernColors.TextSecondary,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(366, 4)
+            Location = new Point(470, 4)
         };
         btnOpenConf.Click += (s, e) =>
         {
@@ -462,9 +493,23 @@ public partial class MainForm : Form
             }
         };
 
+        var lblHttps = new Label
+        {
+            Text = "HTTPS:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            AutoSize = true
+        };
+        var txtHttps = CreatePortInput(_config.HttpsPort, p =>
+        {
+            _config.HttpsPort = p;
+            VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
+            RefreshSitesList();
+        });
+
         var lblHttp = new Label
         {
-            Text = "HTTP Port:",
+            Text = "HTTP:",
             ForeColor = ModernColors.TextSecondary,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
             AutoSize = true
@@ -478,19 +523,25 @@ public partial class MainForm : Form
 
         void LayoutSitesTop()
         {
-            int rX = pnlTop.ClientSize.Width > 150 ? pnlTop.ClientSize.Width - txtHttp.Width - 10 : 500;
-            txtHttp.Location = new Point(rX, 8);
-            lblHttp.Location = new Point(txtHttp.Left - lblHttp.Width - 6, 12);
+            int rX = pnlTop.ClientSize.Width > 200 ? pnlTop.ClientSize.Width - txtHttps.Width - 10 : 640;
+            txtHttps.Location = new Point(rX, 8);
+            lblHttps.Location = new Point(txtHttps.Left - lblHttps.Width - 5, 12);
+
+            txtHttp.Location = new Point(lblHttps.Left - txtHttp.Width - 14, 8);
+            lblHttp.Location = new Point(txtHttp.Left - lblHttp.Width - 5, 12);
         }
         pnlTop.Resize += (s, e) => LayoutSitesTop();
         LayoutSitesTop();
 
+        pnlTop.Controls.Add(btnAddSite);
         pnlTop.Controls.Add(btnOpenFolder);
         pnlTop.Controls.Add(btnRefresh);
         pnlTop.Controls.Add(btnSyncHosts);
         pnlTop.Controls.Add(btnOpenConf);
         pnlTop.Controls.Add(lblHttp);
         pnlTop.Controls.Add(txtHttp);
+        pnlTop.Controls.Add(lblHttps);
+        pnlTop.Controls.Add(txtHttps);
 
         _pnlSitesContainer = new FlowLayoutPanel
         {
@@ -529,28 +580,27 @@ public partial class MainForm : Form
         int cardWidth = _pnlSitesContainer.ClientSize.Width > 400 ? _pnlSitesContainer.ClientSize.Width - 10 : 620;
 
         // 1. Root Localhost Site
-        var rootCard = CreateSiteCard("localhost", $"http://localhost:{_config.HttpPort}", wwwDir, cardWidth, "Default Root");
+        var rootCard = CreateRootSiteCard(cardWidth, wwwDir);
         _pnlSitesContainer.Controls.Add(rootCard);
 
-        // 2. Subproject directories in /www with automatic *.test vhost support
-        var vhosts = VirtualHostManager.DetectVirtualHosts(_appRoot);
-        foreach (var vhost in vhosts)
+        // 2. All managed sites (both in /www and external)
+        var sites = VirtualHostManager.GetAllSites(_appRoot);
+        foreach (var site in sites)
         {
-            string url = $"http://{vhost.Domain}:{_config.HttpPort}";
-            string note = vhost.HasPublicSubfolder ? "Virtual Host (public/)" : "Virtual Host";
-            var siteCard = CreateSiteCard(vhost.Domain, url, vhost.PhysicalPath, cardWidth, note);
+            var siteCard = CreateManagedSiteCard(site, cardWidth);
             _pnlSitesContainer.Controls.Add(siteCard);
         }
     }
 
-    private Panel CreateSiteCard(string name, string url, string folderPath, int width, string? badgeText = null)
+    private Panel CreateRootSiteCard(int width, string wwwDir)
     {
+        string url = $"http://localhost:{_config.HttpPort}";
         var card = new Panel
         {
             Width = width,
-            Height = 68,
+            Height = 72,
             BackColor = Color.Transparent,
-            Margin = new Padding(0),
+            Margin = new Padding(0, 0, 0, 10),
             Padding = new Padding(12, 6, 12, 16)
         };
 
@@ -568,32 +618,32 @@ public partial class MainForm : Form
             using var pen = new Pen(ModernColors.BorderSubtle, stroke);
             g.DrawPath(pen, path);
 
-            // Globe badge
-            var badgeRect = new RectangleF(12, (cardH - 34) / 2f, 34, 34);
+            // Badge
+            var badgeRect = new RectangleF(14, (cardH - 34) / 2f, 34, 34);
             using var badgeBg = new SolidBrush(ModernColors.Card);
             using var badgeBorder = new Pen(ModernColors.BorderSubtle, 1f);
             g.FillEllipse(badgeBg, badgeRect);
             g.DrawEllipse(badgeBorder, badgeRect);
 
-            var iconRect = new RectangleF(20, (cardH - 34) / 2f + 8, 18, 18);
-            VectorIcons.Draw(g, IconKind.Globe, iconRect, ModernColors.Primary);
+            var iconRect = new RectangleF(22, (cardH - 34) / 2f + 8, 18, 18);
+            VectorIcons.Draw(g, IconKind.Server, iconRect, ModernColors.Primary);
         };
 
         var lblName = new Label
         {
-            Text = name,
+            Text = "localhost",
             ForeColor = ModernColors.TextPrimary,
-            Font = new Font("Segoe UI", 9.75f, FontStyle.Bold),
-            Location = new Point(56, 9),
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            Location = new Point(60, 10),
             AutoSize = true
         };
 
         var lblUrl = new Label
         {
-            Text = !string.IsNullOrEmpty(badgeText) ? $"{url}  •  {badgeText}  •  {folderPath}" : $"{url}  •  {folderPath}",
+            Text = $"{url}  •  Default Web Root  •  {wwwDir}",
             ForeColor = ModernColors.TextMuted,
-            Font = new Font("Segoe UI", 8f),
-            Location = new Point(57, 31),
+            Font = new Font("Segoe UI", 8.25f),
+            Location = new Point(61, 33),
             AutoSize = true
         };
 
@@ -632,10 +682,10 @@ public partial class MainForm : Form
         };
         btnOpenDir.Click += (s, e) =>
         {
-            try { Process.Start(new ProcessStartInfo("explorer.exe", folderPath) { UseShellExecute = true }); } catch { }
+            try { Process.Start(new ProcessStartInfo("explorer.exe", wwwDir) { UseShellExecute = true }); } catch { }
         };
 
-        void LayoutSiteButtons()
+        void LayoutRootSiteButtons()
         {
             int cardH = card.Height - 10;
             int rightX = card.Width > 200 ? card.Width - btnBrowse.Width - 14 : 500;
@@ -649,11 +699,229 @@ public partial class MainForm : Form
                 lblUrl.AutoEllipsis = true;
             }
         }
+        card.Resize += (s, e) => LayoutRootSiteButtons();
+        LayoutRootSiteButtons();
+
+        card.Controls.Add(lblName);
+        card.Controls.Add(lblUrl);
+        card.Controls.Add(btnOpenDir);
+        card.Controls.Add(btnBrowse);
+
+        return card;
+    }
+
+    private Panel CreateManagedSiteCard(SiteItem site, int width)
+    {
+        string scheme = site.SslEnabled ? "https" : "http";
+        int port = site.SslEnabled ? _config.HttpsPort : _config.HttpPort;
+        string portSuffix = (site.SslEnabled && port == 443) || (!site.SslEnabled && port == 80) ? "" : $":{port}";
+        string url = $"{scheme}://{site.Domain}{portSuffix}";
+
+        var card = new Panel
+        {
+            Width = width,
+            Height = 72,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 10),
+            Padding = new Padding(12, 6, 12, 16)
+        };
+
+        card.Paint += (s, e) =>
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            float stroke = 1f;
+            float halfStroke = stroke / 2f;
+            float cardH = card.Height - 10f;
+            var rect = new RectangleF(halfStroke, halfStroke, card.Width - stroke, cardH - stroke);
+            using var path = CreateRoundedRectangle(rect, 6f);
+            using var bgBrush = new SolidBrush(ModernColors.Surface);
+            g.FillPath(bgBrush, path);
+            using var pen = new Pen(ModernColors.BorderSubtle, stroke);
+            g.DrawPath(pen, path);
+
+            // Icon circle badge
+            var badgeRect = new RectangleF(14, (cardH - 34) / 2f, 34, 34);
+            using var badgeBg = new SolidBrush(site.SslEnabled ? Color.FromArgb(16, 36, 32) : ModernColors.Card);
+            using var badgeBorder = new Pen(site.SslEnabled ? Color.FromArgb(34, 197, 94, 120) : ModernColors.BorderSubtle, 1f);
+            g.FillEllipse(badgeBg, badgeRect);
+            g.DrawEllipse(badgeBorder, badgeRect);
+
+            var iconRect = new RectangleF(22, (cardH - 34) / 2f + 8, 18, 18);
+            if (site.SslEnabled)
+            {
+                VectorIcons.Draw(g, IconKind.Lock, iconRect, ModernColors.Success);
+            }
+            else
+            {
+                VectorIcons.Draw(g, IconKind.Globe, iconRect, ModernColors.Primary);
+            }
+        };
+
+        var lblName = new Label
+        {
+            Text = site.Domain,
+            ForeColor = ModernColors.TextPrimary,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            Location = new Point(60, 10),
+            AutoSize = true
+        };
+
+        string phpDesc = string.IsNullOrEmpty(site.PhpVersion) || site.PhpVersion.Equals("default", StringComparison.OrdinalIgnoreCase)
+            ? $"PHP {_config.ActivePhp} (Default)"
+            : site.PhpVersion;
+
+        string sslDesc = site.SslEnabled ? "SSL (443)" : "HTTP";
+        string locationDesc = site.IsExternal ? "External" : (site.HasPublicSubfolder ? "public/" : "Local");
+
+        var lblUrl = new Label
+        {
+            Text = $"{url}  •  {sslDesc}  •  {phpDesc}  •  {locationDesc}  •  {site.DocumentRoot}",
+            ForeColor = ModernColors.TextMuted,
+            Font = new Font("Segoe UI", 8.25f),
+            Location = new Point(61, 33),
+            AutoSize = true
+        };
+
+        var btnBrowse = new ModernButton
+        {
+            Text = "Open",
+            IconKind = IconKind.Globe,
+            IconSize = 10,
+            Width = 68,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = site.SslEnabled ? ModernColors.Success : ModernColors.Primary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+        };
+        btnBrowse.Click += (s, e) =>
+        {
+            try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
+        };
+
+        var btnOpenDir = new ModernButton
+        {
+            Text = "Folder",
+            IconKind = IconKind.Folder,
+            IconSize = 10,
+            Width = 68,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+        };
+        btnOpenDir.Click += (s, e) =>
+        {
+            try { Process.Start(new ProcessStartInfo("explorer.exe", site.PhysicalPath) { UseShellExecute = true }); } catch { }
+        };
+
+        var btnEdit = new ModernButton
+        {
+            Text = "Edit",
+            IconKind = IconKind.Pencil,
+            IconSize = 10,
+            Width = 60,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+        };
+        btnEdit.Click += async (s, e) =>
+        {
+            using var dlg = new SiteEditDialog(_appRoot, _config, site);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
+                _ = _php.EnsureWorkersForConfiguredSitesAsync();
+                if (_nginx.Status == ServiceStatus.Running)
+                {
+                    await _nginx.RestartAsync();
+                }
+                RefreshSitesList();
+                lblStatusText.Text = $"Site '{site.Domain}' updated.";
+                lblStatusText.ForeColor = ModernColors.Success;
+            }
+        };
+
+        ModernButton? btnDelete = null;
+        if (site.IsExternal)
+        {
+            btnDelete = new ModernButton
+            {
+                Text = "Remove",
+                IconKind = IconKind.Trash,
+                IconSize = 10,
+                Width = 68,
+                Height = 28,
+                BorderRadius = 5,
+                ShowBorder = true,
+                BorderLineColor = Color.FromArgb(244, 63, 94, 120),
+                NormalColor = ModernColors.Card,
+                HoverColor = Color.FromArgb(45, 20, 28),
+                ForeColor = Color.FromArgb(254, 205, 211),
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+            };
+            btnDelete.Click += async (s, e) =>
+            {
+                var ans = MessageBox.Show(this,
+                    $"Unlink external site '{site.Domain}' from Dev Lite Server?\n\nProject files on disk will not be deleted.",
+                    "Remove External Site",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (ans == DialogResult.Yes)
+                {
+                    VirtualHostManager.DeleteSite(_appRoot, site.Id);
+                    VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
+                    if (_nginx.Status == ServiceStatus.Running)
+                    {
+                        await _nginx.RestartAsync();
+                    }
+                    RefreshSitesList();
+                    lblStatusText.Text = $"External site '{site.Domain}' unlinked.";
+                    lblStatusText.ForeColor = ModernColors.Success;
+                }
+            };
+            card.Controls.Add(btnDelete);
+        }
+
+        void LayoutSiteButtons()
+        {
+            int cardH = card.Height - 10;
+            int rightX = card.Width > 200 ? card.Width - btnBrowse.Width - 14 : 500;
+            btnBrowse.Location = new Point(rightX, (cardH - btnBrowse.Height) / 2);
+            btnOpenDir.Location = new Point(btnBrowse.Left - btnOpenDir.Width - 6, (cardH - btnOpenDir.Height) / 2);
+            btnEdit.Location = new Point(btnOpenDir.Left - btnEdit.Width - 6, (cardH - btnEdit.Height) / 2);
+
+            int leftBoundary = btnEdit.Left;
+            if (btnDelete != null)
+            {
+                btnDelete.Location = new Point(btnEdit.Left - btnDelete.Width - 6, (cardH - btnDelete.Height) / 2);
+                leftBoundary = btnDelete.Left;
+            }
+
+            int maxUrlW = leftBoundary - lblUrl.Left - 10;
+            if (maxUrlW > 50)
+            {
+                lblUrl.MaximumSize = new Size(maxUrlW, 20);
+                lblUrl.AutoEllipsis = true;
+            }
+        }
         card.Resize += (s, e) => LayoutSiteButtons();
         LayoutSiteButtons();
 
         card.Controls.Add(lblName);
         card.Controls.Add(lblUrl);
+        card.Controls.Add(btnEdit);
         card.Controls.Add(btnOpenDir);
         card.Controls.Add(btnBrowse);
 
