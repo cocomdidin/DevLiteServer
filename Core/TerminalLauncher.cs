@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using DevLiteServer.Services;
 
 namespace DevLiteServer.Core;
 
@@ -19,9 +20,18 @@ public static class TerminalLauncher
 
         var pathEntries = new List<string>();
 
-        // 1. PHP active version
-        string phpDir = Path.Combine(appRoot, "bin", "php", config.ActivePhp);
-        if (Directory.Exists(phpDir)) pathEntries.Add(phpDir);
+        // 1. PHP active version (via NTFS junction for dynamic switching across running terminals)
+        PhpService.UpdateCurrentJunction(appRoot, config.ActivePhp);
+        string currentJunction = Path.Combine(appRoot, "bin", "php", "current");
+        if (Directory.Exists(currentJunction))
+        {
+            pathEntries.Add(currentJunction);
+        }
+        else
+        {
+            string phpDir = Path.Combine(appRoot, "bin", "php", config.ActivePhp);
+            if (Directory.Exists(phpDir)) pathEntries.Add(phpDir);
+        }
 
         // 2. Node.js active version
         string nodeDir = Path.Combine(appRoot, "bin", "nodejs", config.ActiveNode);

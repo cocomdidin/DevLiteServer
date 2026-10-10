@@ -58,12 +58,83 @@ public class PhpService : BaseService
 
         foreach (var dir in Directory.GetDirectories(phpRoot))
         {
+            string name = Path.GetFileName(dir);
+            if (string.Equals(name, "current", StringComparison.OrdinalIgnoreCase)) continue;
+
             if (File.Exists(Path.Combine(dir, "php-cgi.exe")))
             {
-                list.Add(Path.GetFileName(dir));
+                list.Add(name);
             }
         }
         return list;
+    }
+
+    public static bool UpdateCurrentJunction(string appRoot, string activeVersion)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(activeVersion) || string.Equals(activeVersion, "current", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            string phpRoot = Path.Combine(appRoot, "bin", "php");
+            if (!Directory.Exists(phpRoot)) return false;
+
+            string targetDir = Path.Combine(phpRoot, activeVersion);
+            if (!Directory.Exists(targetDir)) return false;
+
+            string junctionPath = Path.Combine(phpRoot, "current");
+
+            if (Path.Exists(junctionPath))
+            {
+                var dirInfo = new DirectoryInfo(junctionPath);
+                if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                {
+                    try
+                    {
+                        string? currentTarget = dirInfo.LinkTarget;
+                        if (!string.IsNullOrEmpty(currentTarget) &&
+                            string.Equals(Path.GetFullPath(currentTarget), Path.GetFullPath(targetDir), StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+
+                        dirInfo.Delete();
+                    }
+                    catch
+                    {
+                        var psiRm = new ProcessStartInfo
+                        {
+                            FileName = "cmd.exe",
+                            Arguments = $"/c rmdir \"{junctionPath}\"",
+                            CreateNoWindow = true,
+                            UseShellExecute = false
+                        };
+                        using var procRm = Process.Start(psiRm);
+                        procRm?.WaitForExit(2000);
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c mklink /J \"{junctionPath}\" \"{targetDir}\"",
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            using var proc = Process.Start(psi);
+            proc?.WaitForExit(3000);
+
+            return Directory.Exists(junctionPath);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     public string GetPhpDirectory()
@@ -75,7 +146,9 @@ public class PhpService : BaseService
             string rootPhp = Path.Combine(AppRoot, "bin", "php");
             if (Directory.Exists(rootPhp))
             {
-                var dirs = Directory.GetDirectories(rootPhp);
+                var dirs = Directory.GetDirectories(rootPhp)
+                    .Where(d => !string.Equals(Path.GetFileName(d), "current", StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
                 if (dirs.Length > 0)
                 {
                     return dirs[0];

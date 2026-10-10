@@ -52,6 +52,7 @@ public partial class MainForm : Form
         _job = new JobObject();
 
         _php = new PhpService(_appRoot, _job, _config);
+        PhpService.UpdateCurrentJunction(_appRoot, _config.ActivePhp);
         _nginx = new NginxService(_appRoot, _job, _config, _php);
         _mysql = new MySqlService(_appRoot, _job, _config);
         _mailpit = new MailpitService(_appRoot, _job, _config);
@@ -1030,21 +1031,6 @@ public partial class MainForm : Form
             Location = new Point(110, 13)
         };
 
-        void RefreshPhpVersionsCombo()
-        {
-            _cmbPhpVersions.Items.Clear();
-            string phpRoot = Path.Combine(_appRoot, "bin", "php");
-            if (Directory.Exists(phpRoot))
-            {
-                var dirs = Directory.GetDirectories(phpRoot).Select(Path.GetFileName).Where(s => !string.IsNullOrEmpty(s)).ToArray();
-                if (dirs.Length > 0) _cmbPhpVersions.Items.AddRange(dirs!);
-            }
-            if (_cmbPhpVersions.Items.Count == 0) _cmbPhpVersions.Items.Add(_config.ActivePhp);
-            if (_cmbPhpVersions.Items.Contains(_config.ActivePhp))
-                _cmbPhpVersions.SelectedItem = _config.ActivePhp;
-            else if (_cmbPhpVersions.Items.Count > 0)
-                _cmbPhpVersions.SelectedIndex = 0;
-        }
         RefreshPhpVersionsCombo();
 
         _cmbPhpVersions.SelectedIndexChanged += async (s, e) =>
@@ -1053,6 +1039,7 @@ public partial class MainForm : Form
             {
                 _config.ActivePhp = newVer;
                 ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                PhpService.UpdateCurrentJunction(_appRoot, newVer);
                 VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
                 if (_php.Status == ServiceStatus.Running)
                 {
@@ -1202,6 +1189,7 @@ public partial class MainForm : Form
             {
                 var card = new PackageRowCard(pkg, _appRoot, _config, async () =>
                 {
+                    PhpService.UpdateCurrentJunction(_appRoot, _config.ActivePhp);
                     RefreshPhpVersionsCombo();
                     RefreshPhpPackagesList();
                     BuildTrayMenu();
@@ -2458,16 +2446,24 @@ public partial class MainForm : Form
         }
     }
 
+    private void RefreshPhpVersionsCombo()
+    {
+        if (_cmbPhpVersions == null) return;
+        _cmbPhpVersions.Items.Clear();
+        var versions = PhpService.GetInstalledVersions(_appRoot);
+        if (versions.Count > 0) _cmbPhpVersions.Items.AddRange(versions.ToArray());
+        if (_cmbPhpVersions.Items.Count == 0) _cmbPhpVersions.Items.Add(_config.ActivePhp);
+        if (_cmbPhpVersions.Items.Contains(_config.ActivePhp))
+            _cmbPhpVersions.SelectedItem = _config.ActivePhp;
+        else if (_cmbPhpVersions.Items.Count > 0)
+            _cmbPhpVersions.SelectedIndex = 0;
+    }
+
     private void BuildServiceCards()
     {
         cardContainer.Controls.Clear();
 
-        var phpVersions = new List<string>();
-        string phpRoot = Path.Combine(_appRoot, "bin", "php");
-        if (Directory.Exists(phpRoot))
-        {
-            phpVersions.AddRange(Directory.GetDirectories(phpRoot).Select(Path.GetFileName).Where(s => !string.IsNullOrEmpty(s))!);
-        }
+        var phpVersions = PhpService.GetInstalledVersions(_appRoot);
         if (phpVersions.Count == 0)
         {
             phpVersions.Add(_config.ActivePhp);
@@ -2588,34 +2584,33 @@ public partial class MainForm : Form
 
         // PHP Version submenu
         var phpSubMenu = new ToolStripMenuItem("PHP Version");
-        string phpRoot = Path.Combine(_appRoot, "bin", "php");
-        if (Directory.Exists(phpRoot))
+        var installedPhps = PhpService.GetInstalledVersions(_appRoot);
+        foreach (var dirName in installedPhps)
         {
-            foreach (var dir in Directory.GetDirectories(phpRoot))
+            var item = new ToolStripMenuItem(dirName, null, async (s, e) =>
             {
-                string dirName = Path.GetFileName(dir);
-                var item = new ToolStripMenuItem(dirName, null, async (s, e) =>
+                _config.ActivePhp = dirName;
+                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                PhpService.UpdateCurrentJunction(_appRoot, dirName);
+                VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
+                if (_php.Status == ServiceStatus.Running)
                 {
-                    _config.ActivePhp = dirName;
-                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-                    VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
-                    if (_php.Status == ServiceStatus.Running)
+                    await _php.RestartAsync();
+                    if (_nginx.Status == ServiceStatus.Running)
                     {
-                        await _php.RestartAsync();
-                        if (_nginx.Status == ServiceStatus.Running)
-                        {
-                            await _nginx.RestartAsync();
-                        }
+                        await _nginx.RestartAsync();
                     }
-                    RefreshSitesList();
-                    BuildServiceCards();
-                    BuildTrayMenu();
-                })
-                {
-                    Checked = dirName.Equals(_config.ActivePhp, StringComparison.OrdinalIgnoreCase)
-                };
-                phpSubMenu.DropDownItems.Add(item);
-            }
+                }
+                RefreshPhpVersionsCombo();
+                RefreshSitesList();
+                BuildServiceCards();
+                BuildTrayMenu();
+                _refreshSqlServerCard?.Invoke();
+            })
+            {
+                Checked = dirName.Equals(_config.ActivePhp, StringComparison.OrdinalIgnoreCase)
+            };
+            phpSubMenu.DropDownItems.Add(item);
         }
         trayMenu.Items.Add(phpSubMenu);
 
