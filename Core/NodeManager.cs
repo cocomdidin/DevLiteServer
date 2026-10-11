@@ -106,40 +106,42 @@ public static class NodeManager
 
             string junctionPath = Path.Combine(nodeRoot, "current");
 
-            if (Path.Exists(junctionPath))
+            // Check if existing junction already points to targetDir
+            try
             {
                 var dirInfo = new DirectoryInfo(junctionPath);
                 if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
                 {
-                    try
+                    string? currentTarget = dirInfo.LinkTarget;
+                    if (!string.IsNullOrEmpty(currentTarget) &&
+                        string.Equals(Path.GetFullPath(currentTarget), Path.GetFullPath(targetDir), StringComparison.OrdinalIgnoreCase))
                     {
-                        string? currentTarget = dirInfo.LinkTarget;
-                        if (!string.IsNullOrEmpty(currentTarget) &&
-                            string.Equals(Path.GetFullPath(currentTarget), Path.GetFullPath(targetDir), StringComparison.OrdinalIgnoreCase))
-                        {
-                            return true;
-                        }
-
-                        dirInfo.Delete();
+                        return true;
                     }
-                    catch
-                    {
-                        var psiRm = new ProcessStartInfo
-                        {
-                            FileName = "cmd.exe",
-                            Arguments = $"/c rmdir \"{junctionPath}\"",
-                            CreateNoWindow = true,
-                            UseShellExecute = false
-                        };
-                        using var procRm = Process.Start(psiRm);
-                        procRm?.WaitForExit(2000);
-                    }
-                }
-                else
-                {
-                    return false;
                 }
             }
+            catch { }
+
+            // Clean up any existing junction or dangling reparse point
+            try
+            {
+                if (Directory.Exists(junctionPath) || File.Exists(junctionPath))
+                {
+                    Directory.Delete(junctionPath);
+                }
+            }
+            catch { }
+
+            // Ensure removed via rmdir if still lingering (e.g. broken junction)
+            var psiRm = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c rmdir \"{junctionPath}\"",
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            using var procRm = Process.Start(psiRm);
+            procRm?.WaitForExit(2000);
 
             var psi = new ProcessStartInfo
             {

@@ -10,7 +10,6 @@ public class PackageRowCard : Panel
     private readonly PackageItem _pkg;
     private readonly string _appRoot;
     private readonly AppConfig _config;
-    private readonly Action _onChanged;
 
     private readonly StatusPill _pill;
     private readonly Label _lblTitle;
@@ -22,13 +21,21 @@ public class PackageRowCard : Panel
 
     private CancellationTokenSource? _cts;
     private bool _isDownloading = false;
+    private readonly Action? _onChanged;
+    private readonly Func<PackageItem, Task>? _onSwitchAsync;
 
-    public PackageRowCard(PackageItem pkg, string appRoot, AppConfig config, Action onChanged)
+    public PackageRowCard(
+        PackageItem pkg,
+        string appRoot,
+        AppConfig config,
+        Action? onChanged = null,
+        Func<PackageItem, Task>? onSwitchAsync = null)
     {
         _pkg = pkg;
         _appRoot = appRoot;
         _config = config;
         _onChanged = onChanged;
+        _onSwitchAsync = onSwitchAsync;
 
         Dock = DockStyle.Top;
         Height = 74;
@@ -147,9 +154,23 @@ public class PackageRowCard : Panel
             }
         };
 
-        _btnSwitch.Click += (s, e) =>
+        _btnSwitch.Click += async (s, e) =>
         {
             if (!_pkg.IsInstalled(_appRoot)) return;
+
+            if (_onSwitchAsync != null)
+            {
+                _btnSwitch.Enabled = false;
+                try
+                {
+                    await _onSwitchAsync(_pkg);
+                }
+                finally
+                {
+                    _btnSwitch.Enabled = true;
+                }
+                return;
+            }
 
             if (_pkg.Category.Equals("PHP", StringComparison.OrdinalIgnoreCase))
             {
@@ -163,7 +184,7 @@ public class PackageRowCard : Panel
             }
 
             ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-            _onChanged();
+            _onChanged?.Invoke();
         };
 
         _btnDelete.Click += async (s, e) =>
@@ -179,7 +200,7 @@ public class PackageRowCard : Panel
             {
                 _btnDelete.Enabled = false;
                 await PackageDownloader.UninstallPackageAsync(_pkg, _appRoot);
-                _onChanged();
+                _onChanged?.Invoke();
             }
         };
 
@@ -297,7 +318,7 @@ public class PackageRowCard : Panel
 
         if (success)
         {
-            _onChanged();
+            _onChanged?.Invoke();
         }
         else
         {

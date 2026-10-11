@@ -22,7 +22,7 @@ public partial class MainForm : Form
     private readonly List<IService> _services = new();
 
     private readonly bool _startMinimized;
-    private bool _hasBeenShown = false;
+    private bool _allowVisible;
     private bool _isExitingExplicitly = false;
 
     // Sites Page dynamic container
@@ -38,6 +38,7 @@ public partial class MainForm : Form
     public MainForm(bool startMinimized = false)
     {
         _startMinimized = startMinimized;
+        _allowVisible = !startMinimized;
         InitializeComponent();
 
         _appRoot = AppPaths.ResolveRoot();
@@ -1187,10 +1188,13 @@ public partial class MainForm : Form
             var cards = new List<Control>();
             foreach (var pkg in packages)
             {
-                var card = new PackageRowCard(pkg, _appRoot, _config, async () =>
-                {
-                    await SwitchActivePhpAsync(_config.ActivePhp);
-                });
+                var card = new PackageRowCard(
+                    pkg,
+                    _appRoot,
+                    _config,
+                    onChanged: () => RefreshPhpPackagesList(),
+                    onSwitchAsync: async p => await SwitchActivePhpAsync(p.FolderName)
+                );
                 cards.Add(card);
             }
             cards.Reverse();
@@ -1631,15 +1635,24 @@ public partial class MainForm : Form
             var cards = new List<Control>();
             foreach (var pkg in packages)
             {
-                var card = new PackageRowCard(pkg, _appRoot, _config, () =>
-                {
-                    NodeManager.UpdateCurrentJunction(_appRoot, _config.ActiveNode);
-                    _lblNodeTitle.Text = GetNodeTitleText();
-                    RefreshNodePackagesList();
-                    updateSystemCard?.Invoke();
-                    BuildTrayMenu();
-                    lblStatusText.Text = $"Node.js {_config.ActiveNode} active.";
-                });
+                var card = new PackageRowCard(
+                    pkg,
+                    _appRoot,
+                    _config,
+                    onChanged: () => RefreshNodePackagesList(),
+                    onSwitchAsync: async p =>
+                    {
+                        _config.ActiveNode = p.FolderName;
+                        ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                        NodeManager.UpdateCurrentJunction(_appRoot, p.FolderName);
+                        _lblNodeTitle.Text = GetNodeTitleText();
+                        RefreshNodePackagesList();
+                        updateSystemCard?.Invoke();
+                        BuildTrayMenu();
+                        lblStatusText.Text = $"Node.js {p.FolderName} active.";
+                        await Task.CompletedTask;
+                    }
+                );
                 cards.Add(card);
             }
             cards.Reverse();
@@ -2655,24 +2668,7 @@ public partial class MainForm : Form
                 IconKind.Server,
                 phpVersions.ToArray(),
                 _config.ActivePhp,
-                async newVersion =>
-                {
-                    _config.ActivePhp = newVersion;
-                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-                    VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
-                    if (_php.Status == ServiceStatus.Running)
-                    {
-                        lblStatusText.Text = $"Switching PHP to {newVersion}...";
-                        await _php.RestartAsync();
-                        if (_nginx.Status == ServiceStatus.Running)
-                        {
-                            await _nginx.RestartAsync();
-                        }
-                        lblStatusText.Text = $"Switched to PHP {newVersion}.";
-                    }
-                    RefreshSitesList();
-                    BuildTrayMenu();
-                }
+                async newVersion => await SwitchActivePhpAsync(newVersion)
             );
             cardContainer.Controls.Add(nginxCard);
         }
@@ -3116,18 +3112,12 @@ public partial class MainForm : Form
     // ==========================================
     protected override void SetVisibleCore(bool value)
     {
-        if (_startMinimized && !_hasBeenShown)
+        if (!_allowVisible)
         {
             value = false;
             if (!IsHandleCreated) CreateHandle();
         }
         base.SetVisibleCore(value);
-    }
-
-    protected override void OnShown(EventArgs e)
-    {
-        base.OnShown(e);
-        _hasBeenShown = true;
     }
 
     private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)
@@ -3137,6 +3127,7 @@ public partial class MainForm : Form
         if (e.CloseReason == CloseReason.UserClosing && _config.MinimizeToTray)
         {
             e.Cancel = true;
+            _allowVisible = false;
             Hide();
             notifyIcon.ShowBalloonTip(
                 2000,
@@ -3156,6 +3147,7 @@ public partial class MainForm : Form
 
     public void RestoreFromTray()
     {
+        _allowVisible = true;
         Show();
         if (WindowState == FormWindowState.Minimized)
         {
@@ -3163,6 +3155,7 @@ public partial class MainForm : Form
         }
         Activate();
         BringToFront();
+        SingleInstance.ForceForeground(Handle);
     }
 
     protected override void WndProc(ref Message m)

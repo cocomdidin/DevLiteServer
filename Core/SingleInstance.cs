@@ -19,10 +19,19 @@ public static class SingleInstance
 
     private static readonly IntPtr HwndBroadcast = (IntPtr)0xffff;
     private const int SwRestore = 9;
+    private const uint MSGFLT_ADD = 1;
 
     static SingleInstance()
     {
         WmShowFirstInstance = (int)RegisterWindowMessage(WindowMessageName);
+        if (WmShowFirstInstance != 0)
+        {
+            try
+            {
+                ChangeWindowMessageFilter((uint)WmShowFirstInstance, MSGFLT_ADD);
+            }
+            catch { }
+        }
     }
 
     public static bool TryAcquire(out Mutex? acquiredMutex)
@@ -49,12 +58,16 @@ public static class SingleInstance
 
     public static void ForceForeground(IntPtr hWnd)
     {
+        if (hWnd == IntPtr.Zero) return;
         ShowWindow(hWnd, SwRestore);
         SetForegroundWindow(hWnd);
     }
 
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
     private static extern uint RegisterWindowMessage(string lpString);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool ChangeWindowMessageFilter(uint message, uint dwFlag);
 
     [DllImport("user32.dll")]
     private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
