@@ -30,6 +30,9 @@ public partial class MainForm : Form
     private Panel _pnlPhpPackages = null!;
     private Panel _pnlNodePackages = null!;
     private ModernComboBox _cmbPhpVersions = null!;
+    private Label _lblPhpTitle = null!;
+    private Label _lblPhpSub = null!;
+    private StatusPill _pillPhp = null!;
     private Label _lblNodeTitle = null!;
     private Action? _refreshSqlServerCard;
     private Action? _refreshNodePackages;
@@ -1003,75 +1006,85 @@ public partial class MainForm : Form
     // ------------------------------------------
     private void PopulatePhpPage()
     {
-        pagePhp.Padding = new Padding(24, 16, 24, 20);
+        pagePhp.Padding = new Padding(24, 14, 24, 16);
         pagePhp.AutoScroll = true;
 
         var pnlHeader = CreateSectionHeader("PHP FastCGI Runtime", "Multi-version PHP environment managed by FastCGI worker supervisor.");
 
-        // Hero Card
+        // Hero Control Banner (Streamlined horizontal bar, Height: 58)
         var heroCard = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 175,
-            BackColor = ModernColors.Surface,
-            Margin = new Padding(0, 0, 0, 14),
-            Padding = new Padding(18, 14, 18, 14)
+            Height = 58,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 10),
+            Padding = new Padding(14, 6, 14, 6)
         };
         heroCard.Paint += (s, e) =>
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var rect = new RectangleF(0.5f, 0.5f, heroCard.Width - 1f, heroCard.Height - 1f);
-            using var path = CreateRoundedRectangle(rect, 8f);
+            using var path = CreateRoundedRectangle(rect, 6f);
+            using var bg = new SolidBrush(ModernColors.Surface);
+            g.FillPath(bg, path);
             using var pen = new Pen(ModernColors.BorderSubtle, 1f);
             g.DrawPath(pen, path);
         };
 
-        var lblPhpActiveTitle = new Label
+        _pillPhp = new StatusPill
         {
-            Text = "Active Version:",
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 9f),
-            Location = new Point(16, 16),
+            Status = _php.Status,
+            Location = new Point(14, 17)
+        };
+
+        _lblPhpTitle = new Label
+        {
+            Text = $"PHP {_config.ActivePhp} (Active)",
+            ForeColor = ModernColors.TextPrimary,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            Location = new Point(116, 7),
             AutoSize = true
         };
 
-        // ComboBox versions
-        _cmbPhpVersions = new ModernComboBox
+        _lblPhpSub = new Label
         {
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            BackColor = ModernColors.Card,
-            ForeColor = ModernColors.TextPrimary,
-            BorderRadius = 6,
-            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-            Width = 140,
-            Height = 28,
-            Location = new Point(110, 13)
+            Text = "Supervisor Pool: 5000 reqs  •  Laravel Stack Ready",
+            ForeColor = ModernColors.TextMuted,
+            Font = new Font("Segoe UI", 8.25f),
+            Location = new Point(117, 31),
+            AutoSize = true
         };
 
-        RefreshPhpVersionsCombo();
-
-        _cmbPhpVersions.SelectedIndexChanged += async (s, e) =>
+        _php.StatusChanged += (svc, st) =>
         {
-            if (_cmbPhpVersions.SelectedItem is string newVer && !newVer.Equals(_config.ActivePhp, StringComparison.OrdinalIgnoreCase))
+            if (IsHandleCreated && !IsDisposed)
             {
-                await SwitchActivePhpAsync(newVer);
+                try { BeginInvoke(() => { if (_pillPhp != null) _pillPhp.Status = st; }); } catch { }
             }
         };
 
+        // Hidden / internal combo sync
+        _cmbPhpVersions = new ModernComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Visible = false
+        };
+        RefreshPhpVersionsCombo();
+
         var btnRestartPhp = new ModernButton
         {
-            Text = "Restart FastCGI",
+            Text = "Restart",
             IconKind = IconKind.Refresh,
             IconSize = 10,
-            Width = 120,
-            Height = 30,
+            Width = 88,
+            Height = 28,
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
             ForeColor = ModernColors.TextPrimary,
-            Location = new Point(265, 12)
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
         btnRestartPhp.Click += async (s, e) =>
         {
@@ -1085,14 +1098,14 @@ public partial class MainForm : Form
             Text = "php.ini",
             IconKind = IconKind.Folder,
             IconSize = 10,
-            Width = 84,
-            Height = 30,
+            Width = 74,
+            Height = 28,
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
             ForeColor = ModernColors.TextSecondary,
-            Location = new Point(395, 12)
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
         btnOpenPhpIni.Click += (s, e) =>
         {
@@ -1114,17 +1127,17 @@ public partial class MainForm : Form
 
         var btnOpenExt = new ModernButton
         {
-            Text = "Open /ext",
+            Text = "ext/",
             IconKind = IconKind.Folder,
             IconSize = 10,
-            Width = 90,
-            Height = 30,
+            Width = 66,
+            Height = 28,
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
             ForeColor = ModernColors.TextSecondary,
-            Location = new Point(488, 12)
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
         btnOpenExt.Click += (s, e) =>
         {
@@ -1135,44 +1148,57 @@ public partial class MainForm : Form
             }
         };
 
-        // Row 2: Port configuration
         var lblPortTitle = new Label
         {
-            Text = "FastCGI Port:",
+            Text = "Port:",
             ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-            Location = new Point(16, 56),
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
             AutoSize = true
         };
         var txtFastCgiPort = CreatePortInput(_config.PhpFastCgiPort, p =>
         {
             _config.PhpFastCgiPort = p;
             _php.UpdatePort(p);
+            UpdatePhpBannerText();
         });
-        txtFastCgiPort.Location = new Point(102, 53);
+        txtFastCgiPort.Width = 56;
+        txtFastCgiPort.Height = 28;
 
-        var lblPhpDetails = new Label
+        void LayoutHeroControls()
         {
-            Text = "Loopback Address: 127.0.0.1  •  Pool: Max 5000 requests with instant worker respawn\nLaravel extensions: curl, fileinfo, gd, intl, mbstring, exif, mysqli, openssl, pdo, pgsql, sqlite, soap, sockets, sodium, zip",
-            ForeColor = ModernColors.TextMuted,
-            Font = new Font("Segoe UI", 8.25f),
-            Location = new Point(16, 92),
-            Size = new Size(580, 40)
-        };
+            int rightX = heroCard.ClientSize.Width - 14;
+            int btnY = (heroCard.Height - 28) / 2;
 
-        heroCard.Controls.Add(lblPhpActiveTitle);
-        heroCard.Controls.Add(_cmbPhpVersions);
-        heroCard.Controls.Add(btnRestartPhp);
-        heroCard.Controls.Add(btnOpenPhpIni);
-        heroCard.Controls.Add(btnOpenExt);
-        heroCard.Controls.Add(lblPortTitle);
-        heroCard.Controls.Add(txtFastCgiPort);
-        heroCard.Controls.Add(lblPhpDetails);
+            btnOpenExt.Location = new Point(rightX - btnOpenExt.Width, btnY);
+            rightX = btnOpenExt.Left - 6;
+
+            btnOpenPhpIni.Location = new Point(rightX - btnOpenPhpIni.Width, btnY);
+            rightX = btnOpenPhpIni.Left - 6;
+
+            btnRestartPhp.Location = new Point(rightX - btnRestartPhp.Width, btnY);
+            rightX = btnRestartPhp.Left - 8;
+
+            txtFastCgiPort.Location = new Point(rightX - txtFastCgiPort.Width, btnY);
+            rightX = txtFastCgiPort.Left - 4;
+
+            lblPortTitle.Location = new Point(rightX - lblPortTitle.Width, (heroCard.Height - lblPortTitle.Height) / 2);
+
+            // Constrain Title & Subtitle so they NEVER collide with port / buttons
+            int maxTextW = Math.Max(50, lblPortTitle.Left - _lblPhpTitle.Left - 8);
+            _lblPhpTitle.AutoEllipsis = true;
+            _lblPhpTitle.MaximumSize = new Size(maxTextW, 22);
+            _lblPhpSub.AutoEllipsis = true;
+            _lblPhpSub.MaximumSize = new Size(maxTextW, 18);
+        }
+
+        heroCard.Resize += (s, e) => LayoutHeroControls();
+        heroCard.Controls.AddRange([_pillPhp, _lblPhpTitle, _lblPhpSub, lblPortTitle, txtFastCgiPort, btnRestartPhp, btnOpenPhpIni, btnOpenExt]);
+        LayoutHeroControls();
 
         var cardSqlServer = CreateSqlServerCard();
 
-        // Section: Available PHP Runtimes (Herd Downloader)
-        var pnlPhpPacksHeader = CreateSectionHeader("Available PHP Runtimes (Official windows.php.net)", "1-click download, auto-extract, and configure PHP versions.");
+        // Subheader for available packages
+        var pnlPhpPacksHeader = CreateSubSectionHeader("Available PHP Versions (Official windows.php.net)");
 
         _pnlPhpPackages = new Panel
         {
@@ -1204,12 +1230,12 @@ public partial class MainForm : Form
         _refreshPhpPackages = RefreshPhpPackagesList;
         RefreshPhpPackagesList();
 
-        pagePhp.Controls.AddRange([_pnlPhpPackages, pnlPhpPacksHeader, cardSqlServer, heroCard, pnlHeader]);
+        pagePhp.Controls.AddRange([cardSqlServer, _pnlPhpPackages, pnlPhpPacksHeader, heroCard, pnlHeader]);
         pnlHeader.SendToBack();
         heroCard.SendToBack();
-        cardSqlServer.SendToBack();
         pnlPhpPacksHeader.SendToBack();
         _pnlPhpPackages.SendToBack();
+        cardSqlServer.SendToBack();
     }
 
     private Panel CreateSqlServerCard()
@@ -1217,10 +1243,10 @@ public partial class MainForm : Form
         var card = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 82,
-            BackColor = ModernColors.Surface,
-            Margin = new Padding(0, 0, 0, 14),
-            Padding = new Padding(16, 12, 16, 12)
+            Height = 56,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 10, 0, 10),
+            Padding = new Padding(14, 4, 14, 6)
         };
 
         card.Paint += (s, e) =>
@@ -1228,19 +1254,21 @@ public partial class MainForm : Form
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var rect = new RectangleF(0.5f, 0.5f, card.Width - 1f, card.Height - 1f);
-            using var path = CreateRoundedRectangle(rect, 8f);
+            using var path = CreateRoundedRectangle(rect, 6f);
+            using var bg = new SolidBrush(ModernColors.Surface);
+            g.FillPath(bg, path);
             using var pen = new Pen(ModernColors.BorderSubtle, 1f);
             g.DrawPath(pen, path);
 
-            // Icon Badge (34x34)
-            var badgeRect = new RectangleF(14f, 15f, 34f, 34f);
+            // Icon Badge (32x32)
+            var badgeRect = new RectangleF(12f, 12f, 32f, 32f);
             using var badgePath = CreateRoundedRectangle(badgeRect, 6f);
             using var badgeBg = new SolidBrush(ModernColors.Card);
             using var badgeBorder = new Pen(ModernColors.BorderSubtle, 1f);
             g.FillPath(badgeBg, badgePath);
             g.DrawPath(badgeBorder, badgePath);
 
-            var iconRect = new RectangleF(22f, 23f, 18f, 18f);
+            var iconRect = new RectangleF(19f, 19f, 18f, 18f);
             VectorIcons.Draw(g, IconKind.Database, iconRect, ModernColors.Primary);
         };
 
@@ -1248,8 +1276,8 @@ public partial class MainForm : Form
         {
             Text = "Microsoft SQL Server Drivers",
             ForeColor = ModernColors.TextPrimary,
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
-            Location = new Point(60, 14),
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+            Location = new Point(56, 7),
             AutoSize = true
         };
 
@@ -1257,14 +1285,14 @@ public partial class MainForm : Form
         {
             ForeColor = ModernColors.TextMuted,
             Font = new Font("Segoe UI", 8.25f),
-            Location = new Point(61, 38),
+            Location = new Point(57, 29),
             AutoSize = true
         };
 
         var btnInstallSqlSrv = new ModernButton
         {
             Width = 110,
-            Height = 30,
+            Height = 28,
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
@@ -1275,7 +1303,7 @@ public partial class MainForm : Form
         var btnInstallOdbc = new ModernButton
         {
             Width = 115,
-            Height = 30,
+            Height = 28,
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
@@ -1328,9 +1356,16 @@ public partial class MainForm : Form
                 btnInstallOdbc.HoverColor = ModernColors.SurfaceHover;
             }
 
-            int right = card.ClientSize.Width - 16;
-            btnInstallOdbc.Location = new Point(right - btnInstallOdbc.Width, 24);
-            btnInstallSqlSrv.Location = new Point(btnInstallOdbc.Left - btnInstallSqlSrv.Width - 8, 24);
+            int right = card.ClientSize.Width - 14;
+            int btnY = (card.Height - 28) / 2;
+            btnInstallOdbc.Location = new Point(right - btnInstallOdbc.Width, btnY);
+            btnInstallSqlSrv.Location = new Point(btnInstallOdbc.Left - btnInstallSqlSrv.Width - 8, btnY);
+
+            int maxTextW = Math.Max(50, btnInstallSqlSrv.Left - lblTitle.Left - 8);
+            lblTitle.AutoEllipsis = true;
+            lblTitle.MaximumSize = new Size(maxTextW, 20);
+            lblStatus.AutoEllipsis = true;
+            lblStatus.MaximumSize = new Size(maxTextW, 18);
         }
 
         _refreshSqlServerCard = RefreshCardState;
@@ -1423,17 +1458,19 @@ public partial class MainForm : Form
         var heroCard = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 130,
-            BackColor = ModernColors.Surface,
-            Margin = new Padding(0, 0, 0, 14),
-            Padding = new Padding(18, 14, 18, 14)
+            Height = 58,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 10),
+            Padding = new Padding(14, 6, 14, 6)
         };
         heroCard.Paint += (s, e) =>
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var rect = new RectangleF(0.5f, 0.5f, heroCard.Width - 1f, heroCard.Height - 1f);
-            using var path = CreateRoundedRectangle(rect, 8f);
+            using var path = CreateRoundedRectangle(rect, 6f);
+            using var bg = new SolidBrush(ModernColors.Surface);
+            g.FillPath(bg, path);
             using var pen = new Pen(ModernColors.BorderSubtle, 1f);
             g.DrawPath(pen, path);
         };
@@ -1444,50 +1481,64 @@ public partial class MainForm : Form
         {
             if (_config.ActiveNode.Equals("system", StringComparison.OrdinalIgnoreCase))
             {
-                return sysFound ? $"Active Runtime: System Node ({sysVer})" : "Active Runtime: System Node (Windows)";
+                return sysFound ? $"Active: System Node ({sysVer})" : "Active: System Node (Windows)";
             }
-            return $"Active Runtime: {_config.ActiveNode}";
+            return $"Active: Node.js {_config.ActiveNode}";
         }
+
+        var pillNode = new StatusPill
+        {
+            Status = ServiceStatus.Running,
+            Location = new Point(14, 17)
+        };
 
         _lblNodeTitle = new Label
         {
             Text = GetNodeTitleText(),
             ForeColor = ModernColors.TextPrimary,
-            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
-            Location = new Point(16, 14),
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            Location = new Point(116, 7),
+            AutoSize = true
+        };
+
+        var lblNodeSub = new Label
+        {
+            Text = "Linked to bin\\nodejs\\current  •  NPM & NPX Ready",
+            ForeColor = ModernColors.TextMuted,
+            Font = new Font("Segoe UI", 8.25f),
+            Location = new Point(117, 31),
             AutoSize = true
         };
 
         var btnOpenNodeTerminal = new ModernButton
         {
-            Text = "Launch Node Terminal",
+            Text = "Terminal",
             IconKind = IconKind.Terminal,
             IconSize = 11,
-            Width = 160,
-            Height = 32,
+            Width = 100,
+            Height = 28,
             BorderRadius = 6,
-            ShowBorder = false,
-            NormalColor = ModernColors.Primary,
-            HoverColor = ModernColors.PrimaryHover,
-            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(16, 48)
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextPrimary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
         btnOpenNodeTerminal.Click += BtnOpenTerminal_Click;
 
         var btnOpenNodeFolder = new ModernButton
         {
-            Text = "Node Directory",
+            Text = "Directory",
             IconKind = IconKind.Folder,
             IconSize = 10,
-            Width = 125,
-            Height = 32,
+            Width = 95,
+            Height = 28,
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
             ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(184, 48)
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
         btnOpenNodeFolder.Click += (s, e) =>
         {
@@ -1507,19 +1558,26 @@ public partial class MainForm : Form
             }
         };
 
-        var lblNodeNote = new Label
+        void LayoutHeroControls()
         {
-            Text = "Node.js, npm, and npx are dynamically managed via bin\\nodejs\\current.\nActive version applies immediately across all terminals without restarting.",
-            ForeColor = ModernColors.TextMuted,
-            Font = new Font("Segoe UI", 8.25f),
-            Location = new Point(16, 88),
-            AutoSize = true
-        };
+            int rightX = heroCard.ClientSize.Width - 14;
+            int btnY = (heroCard.Height - 28) / 2;
 
-        heroCard.Controls.Add(_lblNodeTitle);
-        heroCard.Controls.Add(btnOpenNodeTerminal);
-        heroCard.Controls.Add(btnOpenNodeFolder);
-        heroCard.Controls.Add(lblNodeNote);
+            btnOpenNodeFolder.Location = new Point(rightX - btnOpenNodeFolder.Width, btnY);
+            rightX = btnOpenNodeFolder.Left - 6;
+
+            btnOpenNodeTerminal.Location = new Point(rightX - btnOpenNodeTerminal.Width, btnY);
+
+            int maxTextW = Math.Max(50, btnOpenNodeTerminal.Left - _lblNodeTitle.Left - 8);
+            _lblNodeTitle.AutoEllipsis = true;
+            _lblNodeTitle.MaximumSize = new Size(maxTextW, 22);
+            lblNodeSub.AutoEllipsis = true;
+            lblNodeSub.MaximumSize = new Size(maxTextW, 18);
+        }
+
+        heroCard.Resize += (s, e) => LayoutHeroControls();
+        heroCard.Controls.AddRange([pillNode, _lblNodeTitle, lblNodeSub, btnOpenNodeTerminal, btnOpenNodeFolder]);
+        LayoutHeroControls();
 
         // Section: System Node Card (Windows Global)
         Panel? cardSystemNode = null;
@@ -1530,9 +1588,10 @@ public partial class MainForm : Form
             cardSystemNode = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 74,
+                Height = 56,
                 BackColor = Color.Transparent,
-                Padding = new Padding(14, 6, 14, 10)
+                Margin = new Padding(0, 0, 0, 8),
+                Padding = new Padding(14, 4, 14, 6)
             };
 
             updateSystemCard = () =>
@@ -1543,7 +1602,7 @@ public partial class MainForm : Form
                 var pill = new StatusPill
                 {
                     Status = isSystemActive ? ServiceStatus.Running : ServiceStatus.Stopped,
-                    Location = new Point(14, 18)
+                    Location = new Point(14, 13)
                 };
 
                 var lblTitle = new Label
@@ -1551,7 +1610,7 @@ public partial class MainForm : Form
                     Text = "System Node.js (Windows)",
                     ForeColor = ModernColors.TextPrimary,
                     Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-                    Location = new Point(116, 12),
+                    Location = new Point(116, 7),
                     AutoSize = true
                 };
 
@@ -1560,7 +1619,7 @@ public partial class MainForm : Form
                     Text = $"Global Windows Runtime ({sysVer})  •  {sysPath}",
                     ForeColor = isSystemActive ? ModernColors.Primary : ModernColors.TextMuted,
                     Font = new Font("Segoe UI", 8.25f),
-                    Location = new Point(117, 34),
+                    Location = new Point(117, 29),
                     AutoSize = true
                 };
 
@@ -1569,20 +1628,31 @@ public partial class MainForm : Form
                     Text = isSystemActive ? "Active" : "Use",
                     IconKind = isSystemActive ? IconKind.Check : IconKind.Play,
                     IconSize = 10,
-                    Width = 78,
-                    Height = 30,
+                    Width = 76,
+                    Height = 28,
                     BorderRadius = 6,
                     ShowBorder = true,
                     NormalColor = isSystemActive ? Color.FromArgb(16, 40, 32) : ModernColors.Card,
                     HoverColor = ModernColors.SurfaceHover,
                     ForeColor = isSystemActive ? ModernColors.Success : ModernColors.TextPrimary,
                     Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-                    Anchor = AnchorStyles.Top | AnchorStyles.Right,
                     Enabled = !isSystemActive
                 };
 
-                int cardH = cardSystemNode.Height - 8;
-                btnSwitch.Location = new Point(cardSystemNode.Width - 14 - btnSwitch.Width, (cardH - btnSwitch.Height) / 2);
+                void LayoutSystemControls()
+                {
+                    int rightX = cardSystemNode.ClientSize.Width - 14;
+                    int btnY = (cardSystemNode.Height - 6 - 28) / 2;
+                    btnSwitch.Location = new Point(rightX - btnSwitch.Width, btnY);
+
+                    int maxTextW = Math.Max(50, btnSwitch.Left - lblTitle.Left - 8);
+                    lblTitle.AutoEllipsis = true;
+                    lblTitle.MaximumSize = new Size(maxTextW, 20);
+                    lblTag.AutoEllipsis = true;
+                    lblTag.MaximumSize = new Size(maxTextW, 18);
+                }
+
+                cardSystemNode.Resize += (s, e) => LayoutSystemControls();
 
                 btnSwitch.Click += (s, e) =>
                 {
@@ -1596,6 +1666,7 @@ public partial class MainForm : Form
                 };
 
                 cardSystemNode.Controls.AddRange([pill, lblTitle, lblTag, btnSwitch]);
+                LayoutSystemControls();
                 cardSystemNode.Invalidate();
             };
 
@@ -1605,7 +1676,7 @@ public partial class MainForm : Form
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 float stroke = 1f;
                 float halfStroke = stroke / 2f;
-                float cardH = cardSystemNode.Height - 8f;
+                float cardH = cardSystemNode.Height - 6f;
                 var rect = new RectangleF(halfStroke, halfStroke, cardSystemNode.Width - stroke, cardH - stroke);
                 using var path = CreateRoundedRectangle(rect, 6f);
                 using var bg = new SolidBrush(ModernColors.Surface);
@@ -1613,13 +1684,24 @@ public partial class MainForm : Form
                 bool isActive = _config.ActiveNode.Equals("system", StringComparison.OrdinalIgnoreCase);
                 using var pen = new Pen(isActive ? Color.FromArgb(56, 189, 248, 120) : ModernColors.BorderSubtle, stroke);
                 g.DrawPath(pen, path);
+
+                if (isActive)
+                {
+                    using var activeBrush = new SolidBrush(ModernColors.Primary);
+                    using var activePath = new GraphicsPath();
+                    activePath.AddArc(rect.X, rect.Y, 6f, 6f, 180, 90);
+                    activePath.AddLine(rect.X + 3.5f, rect.Y, rect.X + 3.5f, rect.Bottom);
+                    activePath.AddArc(rect.X, rect.Bottom - 6f, 6f, 6f, 90, 90);
+                    activePath.CloseFigure();
+                    g.FillPath(activeBrush, activePath);
+                }
             };
 
             updateSystemCard();
         }
 
         // Section: Available Node.js Runtimes (Herd Downloader)
-        var pnlNodePacksHeader = CreateSectionHeader("Available Node.js Runtimes (Official nodejs.org)", "1-click download and extract portable Node.js, NPM, and NPX runtimes.");
+        var pnlNodePacksHeader = CreateSubSectionHeader("Available Node.js Runtimes (Official nodejs.org)");
 
         _pnlNodePackages = new Panel
         {
@@ -2427,6 +2509,26 @@ public partial class MainForm : Form
         return pnl;
     }
 
+    private static Panel CreateSubSectionHeader(string title)
+    {
+        var pnl = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 28,
+            Padding = new Padding(0, 6, 0, 4)
+        };
+        var lblT = new Label
+        {
+            Text = title,
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            Location = new Point(0, 4),
+            AutoSize = true
+        };
+        pnl.Controls.Add(lblT);
+        return pnl;
+    }
+
     private static Panel CreateOptionCard(string title, string desc, Control rightControl)
     {
         var card = new Panel
@@ -2613,8 +2715,25 @@ public partial class MainForm : Form
         _refreshSqlServerCard?.Invoke();
     }
 
+    private void UpdatePhpBannerText()
+    {
+        if (_lblPhpTitle != null)
+        {
+            _lblPhpTitle.Text = $"PHP {_config.ActivePhp} (Active)";
+        }
+        if (_lblPhpSub != null)
+        {
+            _lblPhpSub.Text = "Supervisor Pool: 5000 reqs  •  Laravel Stack Ready";
+        }
+        if (_pillPhp != null)
+        {
+            _pillPhp.Status = _php.Status;
+        }
+    }
+
     private void RefreshPhpVersionsCombo()
     {
+        UpdatePhpBannerText();
         if (_cmbPhpVersions == null) return;
         _cmbPhpVersions.Items.Clear();
         var versions = PhpService.GetInstalledVersions(_appRoot);
@@ -2678,7 +2797,7 @@ public partial class MainForm : Form
             var pnlEmpty = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.Transparent
+                BackColor = ModernColors.Background
             };
             var lblEmptyTitle = new Label
             {

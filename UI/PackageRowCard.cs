@@ -38,9 +38,9 @@ public class PackageRowCard : Panel
         _onSwitchAsync = onSwitchAsync;
 
         Dock = DockStyle.Top;
-        Height = 74;
+        Height = 56;
         BackColor = Color.Transparent;
-        Padding = new Padding(14, 6, 14, 10);
+        Padding = new Padding(14, 4, 14, 6);
 
         Paint += (s, e) =>
         {
@@ -48,7 +48,7 @@ public class PackageRowCard : Panel
             g.SmoothingMode = SmoothingMode.AntiAlias;
             float stroke = 1f;
             float halfStroke = stroke / 2f;
-            float cardH = Height - 8f;
+            float cardH = Height - 6f;
             var rect = new RectangleF(halfStroke, halfStroke, Width - stroke, cardH - stroke);
             using var path = CreateRoundedRect(rect, 6f);
             using var bg = new SolidBrush(ModernColors.Surface);
@@ -71,7 +71,7 @@ public class PackageRowCard : Panel
 
         _pill = new StatusPill
         {
-            Location = new Point(14, 18)
+            Location = new Point(14, 13)
         };
 
         _lblTitle = new Label
@@ -79,7 +79,7 @@ public class PackageRowCard : Panel
             Text = _pkg.Name,
             ForeColor = ModernColors.TextPrimary,
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            Location = new Point(116, 12),
+            Location = new Point(116, 7),
             AutoSize = true
         };
 
@@ -88,7 +88,7 @@ public class PackageRowCard : Panel
             Text = $"{_pkg.Tag}  •  ~{_pkg.ApproximateSizeBytes / (1024 * 1024)} MB",
             ForeColor = ModernColors.TextMuted,
             Font = new Font("Segoe UI", 8.25f),
-            Location = new Point(117, 34),
+            Location = new Point(117, 29),
             AutoSize = true
         };
 
@@ -97,15 +97,15 @@ public class PackageRowCard : Panel
             Text = "",
             ForeColor = ModernColors.Primary,
             Font = new Font("Segoe UI", 8.25f),
-            Location = new Point(117, 34),
+            Location = new Point(117, 29),
             AutoSize = true,
             Visible = false
         };
 
         _btnAction = new ModernButton
         {
-            Width = 95,
-            Height = 30,
+            Width = 90,
+            Height = 28,
             BorderRadius = 6,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
@@ -115,8 +115,8 @@ public class PackageRowCard : Panel
             Text = "Active",
             IconKind = IconKind.Check,
             IconSize = 10,
-            Width = 78,
-            Height = 30,
+            Width = 76,
+            Height = 28,
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
@@ -131,7 +131,7 @@ public class PackageRowCard : Panel
             IconKind = IconKind.Trash,
             IconSize = 11,
             Width = 32,
-            Height = 30,
+            Height = 28,
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
@@ -270,7 +270,7 @@ public class PackageRowCard : Panel
 
     private void LayoutRowControls()
     {
-        int cardH = Height - 8;
+        int cardH = Height - 6;
         int rightX = Width > 150 ? Width - 14 : 450;
 
         // Delete button
@@ -293,6 +293,15 @@ public class PackageRowCard : Panel
             _btnAction.Location = new Point(rightX - _btnAction.Width, (cardH - _btnAction.Height) / 2);
             rightX = _btnAction.Left - 8;
         }
+
+        // Constrain labels so they NEVER collide with right controls
+        int maxTextW = Math.Max(50, rightX - _lblTitle.Left - 10);
+        _lblTitle.AutoEllipsis = true;
+        _lblTitle.MaximumSize = new Size(maxTextW, 20);
+        _lblTag.AutoEllipsis = true;
+        _lblTag.MaximumSize = new Size(maxTextW, 18);
+        _lblStatus.AutoEllipsis = true;
+        _lblStatus.MaximumSize = new Size(maxTextW, 18);
     }
 
     private async Task StartDownloadAsync()

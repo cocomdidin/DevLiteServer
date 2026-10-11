@@ -18,4 +18,10 @@
     <_SuppressWinFormsTrimError>true</_SuppressWinFormsTrimError>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="bin\**" />
+    <None Remove="bin\**" />
+    <Content Remove="bin\**" />
+  </ItemGroup>
+
 </Project>

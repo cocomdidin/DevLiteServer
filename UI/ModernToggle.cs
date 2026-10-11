@@ -69,16 +69,33 @@ public class ModernToggle : Control
         Checked = !Checked;
     }
 
+    private Color GetParentSurfaceColor()
+    {
+        if (Parent is ServiceCard sc)
+        {
+            return sc.IsHovered ? ModernColors.CardHover : ModernColors.Surface;
+        }
+        if (Parent is PackageRowCard)
+        {
+            return ModernColors.Surface;
+        }
+        if (Parent != null && Parent.BackColor != Color.Transparent && Parent.BackColor.A == 255)
+        {
+            return Parent.BackColor;
+        }
+        return ModernColors.Surface;
+    }
+
     protected override void OnPaintBackground(PaintEventArgs pevent)
     {
-        Color parentBg = Parent?.BackColor ?? ModernColors.Surface;
+        Color parentBg = GetParentSurfaceColor();
         pevent.Graphics.Clear(parentBg);
     }
 
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
-        Color parentBg = Parent?.BackColor ?? ModernColors.Surface;
+        Color parentBg = GetParentSurfaceColor();
         g.Clear(parentBg);
 
         g.SmoothingMode = SmoothingMode.AntiAlias;

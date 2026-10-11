@@ -20,6 +20,7 @@ public class ServiceCard : Panel
     private readonly ModernComboBox? _cmbVersions;
     private bool _isHovered;
 
+    public bool IsHovered => _isHovered;
     public IService Service => _service;
 
     public ServiceCard(
@@ -341,9 +342,18 @@ public class ServiceCard : Panel
         Invalidate();
     }
 
+    private Color GetParentSurfaceColor()
+    {
+        if (Parent != null && Parent.BackColor != Color.Transparent && Parent.BackColor.A == 255)
+        {
+            return Parent.BackColor;
+        }
+        return ModernColors.Background;
+    }
+
     protected override void OnPaintBackground(PaintEventArgs pevent)
     {
-        Color parentBg = Parent?.BackColor ?? ModernColors.Background;
+        Color parentBg = GetParentSurfaceColor();
         pevent.Graphics.Clear(parentBg);
     }
 
@@ -358,7 +368,7 @@ public class ServiceCard : Panel
         if (Width <= 1 || Height <= 1) return;
 
         var g = e.Graphics;
-        Color parentBg = Parent?.BackColor ?? ModernColors.Background;
+        Color parentBg = GetParentSurfaceColor();
         g.Clear(parentBg);
 
         g.SmoothingMode = SmoothingMode.AntiAlias;
