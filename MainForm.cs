@@ -23,6 +23,7 @@ public partial class MainForm : Form
 
     private readonly bool _startMinimized;
     private bool _allowVisible;
+    private bool _hasAutoStartedServices = false;
     private bool _isExitingExplicitly = false;
 
     // Sites Page dynamic container
@@ -148,18 +149,11 @@ public partial class MainForm : Form
                 }
             }
 
-            if (_config.AutoStartServices)
+            // Fallback in case OnLoad was bypassed or missed
+            if (_config.AutoStartServices && !_hasAutoStartedServices)
             {
+                _hasAutoStartedServices = true;
                 await AutoStartConfiguredServicesAsync();
-            }
-
-            if (_config.CheckUpdatesOnStart)
-            {
-                _ = Task.Run(async () =>
-                {
-                    await Task.Delay(3000);
-                    await CheckForUpdatesAsync(manual: false);
-                });
             }
         };
     }
@@ -3036,18 +3030,32 @@ public partial class MainForm : Form
     {
         if (!_config.AutoStartServices) return;
 
-        // Auto-start PHP FastCGI first if enabled and installed
-        if (_config.EnablePhp && _php.IsInstalled && _php.Status != ServiceStatus.Running)
+        btnStartAll.Enabled = false;
+        try
         {
-            await _php.StartAsync();
-        }
-
-        foreach (var svc in _services)
-        {
-            if (svc != _php && _config.IsServiceEnabled(svc.Name) && svc.IsInstalled && svc.Status != ServiceStatus.Running)
+            // Auto-start PHP FastCGI first if enabled and installed
+            if (_config.EnablePhp && _php.IsInstalled && _php.Status != ServiceStatus.Running)
             {
-                await svc.StartAsync();
+                await _php.StartAsync();
             }
+
+            foreach (var svc in _services)
+            {
+                if (svc != _php && _config.IsServiceEnabled(svc.Name) && svc.IsInstalled && svc.Status != ServiceStatus.Running)
+                {
+                    await svc.StartAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            lblStatusText.Text = $"⚠ Auto-start error: {ex.Message}";
+            lblStatusText.ForeColor = ModernColors.Danger;
+        }
+        finally
+        {
+            btnStartAll.Enabled = true;
+            UpdateServiceStats();
         }
     }
 
@@ -3229,6 +3237,26 @@ public partial class MainForm : Form
     // ==========================================
     // WINDOW LIFECYCLE & TRAY MANAGEMENT
     // ==========================================
+    protected override async void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+
+        if (_config.AutoStartServices && !_hasAutoStartedServices)
+        {
+            _hasAutoStartedServices = true;
+            await AutoStartConfiguredServicesAsync();
+        }
+
+        if (_config.CheckUpdatesOnStart)
+        {
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(3000);
+                await CheckForUpdatesAsync(manual: false);
+            });
+        }
+    }
+
     protected override void SetVisibleCore(bool value)
     {
         if (!_allowVisible)

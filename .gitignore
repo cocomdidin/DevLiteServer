@@ -37,4 +37,5 @@ bin/postgresql/data/*
 www/*
 !www/.gitkeep
 !www/index.php
+!www/favicon.ico
 sites.json
