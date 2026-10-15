@@ -24,6 +24,7 @@ public partial class MainForm : Form
     private readonly bool _startMinimized;
     private bool _allowVisible;
     private bool _hasAutoStartedServices = false;
+    private bool _hasRunStartupTasks = false;
     private bool _isExitingExplicitly = false;
 
     // Sites Page dynamic container
@@ -136,7 +137,7 @@ public partial class MainForm : Form
             Icon = SystemIcons.Application;
         }
 
-        Shown += async (s, e) =>
+        Shown += (s, e) =>
         {
             if (!DependencyChecker.IsVcRedistInstalled())
             {
@@ -147,13 +148,6 @@ public partial class MainForm : Form
                     lblStatusText.ForeColor = ModernColors.TextSecondary;
                     lblStatusText.Cursor = Cursors.Default;
                 }
-            }
-
-            // Fallback in case OnLoad was bypassed or missed
-            if (_config.AutoStartServices && !_hasAutoStartedServices)
-            {
-                _hasAutoStartedServices = true;
-                await AutoStartConfiguredServicesAsync();
             }
         };
     }
@@ -3241,6 +3235,16 @@ public partial class MainForm : Form
     {
         base.OnLoad(e);
 
+        // Fires when form is shown normally (not --tray mode).
+        // Tray-mode startup is handled in SetVisibleCore via BeginInvoke.
+        await RunStartupTasksAsync();
+    }
+
+    private async Task RunStartupTasksAsync()
+    {
+        if (_hasRunStartupTasks) return;
+        _hasRunStartupTasks = true;
+
         if (_config.AutoStartServices && !_hasAutoStartedServices)
         {
             _hasAutoStartedServices = true;
@@ -3262,7 +3266,14 @@ public partial class MainForm : Form
         if (!_allowVisible)
         {
             value = false;
-            if (!IsHandleCreated) CreateHandle();
+            if (!IsHandleCreated)
+            {
+                CreateHandle();
+                // OnLoad never fires when form stays permanently hidden (--tray mode).
+                // Schedule startup tasks via BeginInvoke so they run on the message loop
+                // after the handle and all controls are fully initialized.
+                BeginInvoke(new Action(async () => await RunStartupTasksAsync()));
+            }
         }
         base.SetVisibleCore(value);
     }
