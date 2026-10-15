@@ -3089,7 +3089,7 @@ public partial class MainForm : Form
         Process.Start(new ProcessStartInfo($"http://localhost:{_config.MailpitWebPort}") { UseShellExecute = true });
     }
 
-    private void BtnOpenAdminer_Click(object? sender, EventArgs e)
+    private async void BtnOpenAdminer_Click(object? sender, EventArgs e)
     {
         string toolsDir = Path.Combine(_appRoot, "tools");
         if (Directory.Exists(toolsDir))
@@ -3103,6 +3103,40 @@ public partial class MainForm : Form
                     return;
                 }
                 catch { }
+            }
+        }
+
+        string adminerDir = Path.Combine(_appRoot, "tools", "adminer");
+        string adminerPhp = Path.Combine(adminerDir, "adminer.php");
+        if (!File.Exists(adminerPhp))
+        {
+            var confirm = MessageBox.Show(this,
+                "Adminer is not installed. Would you like to download it now (~500 KB)?",
+                "Database Manager", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirm == DialogResult.Yes)
+            {
+                lblStatusText.Text = "Downloading Adminer...";
+                lblStatusText.ForeColor = ModernColors.Primary;
+                try
+                {
+                    Directory.CreateDirectory(adminerDir);
+                    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+                    http.DefaultRequestHeaders.Add("User-Agent", "DevLiteServer/1.0");
+                    byte[] data = await http.GetByteArrayAsync("https://github.com/vrana/adminer/releases/download/v4.8.1/adminer-4.8.1.php");
+                    await File.WriteAllBytesAsync(adminerPhp, data);
+                    lblStatusText.Text = "Adminer downloaded successfully.";
+                    lblStatusText.ForeColor = ModernColors.Success;
+                }
+                catch (Exception ex)
+                {
+                    lblStatusText.Text = $"Failed to download Adminer: {ex.Message}";
+                    lblStatusText.ForeColor = ModernColors.Danger;
+                    return;
+                }
+            }
+            else
+            {
+                return;
             }
         }
 

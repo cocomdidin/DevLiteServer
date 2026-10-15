@@ -46,8 +46,8 @@ jobs:
       - name: Provision Starter Runtimes
         shell: pwsh
         run: |
-          Write-Host "Provisioning full runtime bundle (Nginx, PHP 8.4, MySQL 8.4, Node.js 24, Git, Mailpit, Composer)..."
-          .\scripts\setup-bundle.ps1 -Component All
+          Write-Host "Provisioning core runtime bundle (Nginx, PHP 8.4, Git, Composer)..."
+          .\scripts\setup-bundle.ps1 -Component Core
 
       - name: Publish .NET Application
         shell: pwsh
@@ -64,6 +64,12 @@ jobs:
           Copy-Item -Path "config.ini" -Destination "dist/app/config.ini" -Force
           Copy-Item -Path "config.ini.default" -Destination "dist/app/config.ini.default" -Force
           Copy-Item -Path "bin" -Destination "dist/app/bin" -Recurse -Force
+
+          # Exclude on-demand services and tools from distribution bundle
+          if (Test-Path "dist/app/tools/adminer") { Remove-Item -Recurse -Force "dist/app/tools/adminer" }
+          if (Test-Path "dist/app/bin/mysql") { Remove-Item -Recurse -Force "dist/app/bin/mysql" }
+          if (Test-Path "dist/app/bin/nodejs") { Remove-Item -Recurse -Force "dist/app/bin/nodejs" }
+          if (Test-Path "dist/app/bin/mailpit") { Remove-Item -Recurse -Force "dist/app/bin/mailpit" }
 
           # Clean runtime artifacts / database directories from distribution bundle
           Get-ChildItem -Path "dist/app/bin" -Recurse -Directory -Filter "data" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue

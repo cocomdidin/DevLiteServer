@@ -270,7 +270,7 @@ switch ($Component) {
     "Core" {
         Setup-Nginx
         Setup-Php
-        Setup-Mailpit
+        Setup-Git
         Setup-Composer
     }
     "All" {

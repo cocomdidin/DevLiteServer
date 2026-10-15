@@ -8,8 +8,8 @@
 - **Target OS**: Windows 10 & Windows 11 (64-bit)
 - **Tech Stack Inti**: C# WinForms (.NET 10 LTS - `net10.0-windows`)
 - **Model Distribusi**:
-  - **Starter Bundle (Out-of-the-Box)**: Paket ZIP portabel (~200 MB) berisi `DevLiteServer.exe`, Nginx, PHP 8.4 NTS, Node.js v24 x64, Git for Windows (Portable/MinGit), MySQL 8.4, Mailpit, Composer, dan Adminer. Siap pakai langsung tanpa koneksi internet.
-  - **Herd-Style Downloader**: Modul built-in untuk download versi tambahan/alternatif PHP (7.4, 8.1, 8.2, 8.3) dan Node.js (v20, v22, dst.) langsung dari sumber resmi.
+  - **Thin Core Starter Bundle**: Paket portabel ringan (~35 MB) berisi `DevLiteServer.exe`, Nginx, PHP 8.4 NTS, MinGit (Git for Windows CLI), dan Composer.
+  - **Herd-Style On-Demand Downloader**: Modul built-in 1-klik untuk mengunduh service dan runtime tambahan langsung dari sumber resmi: MySQL 8.4, Node.js (v18, v20, v22, v24), Mailpit, PostgreSQL 17, Redis, Adminer, serta multi-version PHP (7.4, 8.0, 8.1, 8.2, 8.3).
 - **Tujuan Utama**: Lingkungan pengembangan web lokal super cepat, portabel, modular, zero-registry, dan always-free. Alternatif modern pengganti Laragon (v7+ berbayar) dan XAMPP, dengan kemampuan package downloader mandiri ala Laravel Herd.
 
 ---

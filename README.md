@@ -95,20 +95,25 @@ Mailpit=true
 
 ---
 
-## 📦 Default Stack & Ports
+## 📦 Stack & Ports
 
+### Pre-Bundled Core (Out-of-the-Box)
 | Service / Tool | Version | Port / Access | Notes |
 |---|---|---|---|
 | **Nginx** | 1.26.x | `http://localhost:80` | High-performance reverse proxy & web server |
 | **PHP (NTS x64)** | 8.4.x | `127.0.0.1:9000` | FastCGI daemon with auto-supervision |
+| **MinGit** | Latest | CLI | Isolated Git for Windows CLI |
+| **Composer** | Latest | CLI | PHP package manager |
+
+### On-Demand 1-Click Components (Installable via UI)
+| Service / Tool | Version | Port / Access | Notes |
+|---|---|---|---|
 | **MySQL** | 8.4.x | `3306` | Default user: `root` (no password) |
-| **PostgreSQL** | 16.x | `5432` | Default user: `postgres` (trust auth, no password) |
+| **Node.js** | v18, v20, v22, v24 | CLI | Portable runtime with NPM & NPX or System Node |
+| **PostgreSQL** | 17.x | `5432` | Default user: `postgres` (trust auth, no password) |
 | **Redis** | 7.x | `6379` | In-memory key-value cache store |
 | **Mailpit Web UI** | Latest | `http://localhost:8025` | Webmail inbox viewer |
 | **Mailpit SMTP** | Latest | `127.0.0.1:1025` | Local mail capture daemon |
-| **Node.js** | v24.x | CLI | Portable runtime with NPM & NPX |
-| **MinGit** | Latest | CLI | Isolated Git for Windows CLI |
-| **Composer** | Latest | CLI | PHP package manager |
 | **Adminer** | Latest | Web | Single-file database management client |
 
 ---

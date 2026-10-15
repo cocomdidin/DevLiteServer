@@ -92,8 +92,14 @@ New-Item -ItemType Directory -Force -Path $distWwwDir | Out-Null
 if (Test-Path (Join-Path $ScriptRoot "bin\nginx")) {
     Copy-Item -Recurse -Force (Join-Path $ScriptRoot "bin\nginx") -Destination (Join-Path $distBinDir "nginx")
 }
-if (Test-Path (Join-Path $ScriptRoot "tools\adminer")) {
-    Copy-Item -Recurse -Force (Join-Path $ScriptRoot "tools\adminer") -Destination (Join-Path $distToolsDir "adminer")
+if (Test-Path (Join-Path $ScriptRoot "bin\php")) {
+    Copy-Item -Recurse -Force (Join-Path $ScriptRoot "bin\php") -Destination (Join-Path $distBinDir "php")
+}
+if (Test-Path (Join-Path $ScriptRoot "bin\git")) {
+    Copy-Item -Recurse -Force (Join-Path $ScriptRoot "bin\git") -Destination (Join-Path $distBinDir "git")
+}
+if (Test-Path (Join-Path $ScriptRoot "tools\composer")) {
+    Copy-Item -Recurse -Force (Join-Path $ScriptRoot "tools\composer") -Destination (Join-Path $distToolsDir "composer")
 }
 
 # Create sample www index.php if empty
