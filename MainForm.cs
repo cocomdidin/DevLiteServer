@@ -1015,11 +1015,11 @@ public partial class MainForm : Form
 
         var pnlHeader = CreateSectionHeader("PHP FastCGI Runtime", "Multi-version PHP environment managed by FastCGI worker supervisor.");
 
-        // Hero Control Banner (Streamlined horizontal bar, Height: 58)
+        // Hero Control Banner (Streamlined horizontal bar, Height: 58 + 8px gap)
         var heroCard = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 58,
+            Height = 66,
             BackColor = Color.Transparent,
             Margin = new Padding(0, 0, 0, 10),
             Padding = new Padding(14, 6, 14, 6)
@@ -1028,7 +1028,7 @@ public partial class MainForm : Form
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            var rect = new RectangleF(0.5f, 0.5f, heroCard.Width - 1f, heroCard.Height - 1f);
+            var rect = new RectangleF(0.5f, 0.5f, heroCard.Width - 1f, 58f);
             using var path = CreateRoundedRectangle(rect, 6f);
             using var bg = new SolidBrush(ModernColors.Surface);
             g.FillPath(bg, path);
@@ -1100,7 +1100,7 @@ public partial class MainForm : Form
         var btnOpenPhpIni = new ModernButton
         {
             Text = "php.ini",
-            IconKind = IconKind.Folder,
+            IconKind = IconKind.Gear,
             IconSize = 10,
             Width = 74,
             Height = 28,
@@ -1171,7 +1171,7 @@ public partial class MainForm : Form
         void LayoutHeroControls()
         {
             int rightX = heroCard.ClientSize.Width - 14;
-            int btnY = (heroCard.Height - 28) / 2;
+            int btnY = (58 - 28) / 2;
 
             btnOpenExt.Location = new Point(rightX - btnOpenExt.Width, btnY);
             rightX = btnOpenExt.Left - 6;
@@ -1185,7 +1185,7 @@ public partial class MainForm : Form
             txtFastCgiPort.Location = new Point(rightX - txtFastCgiPort.Width, btnY);
             rightX = txtFastCgiPort.Left - 4;
 
-            lblPortTitle.Location = new Point(rightX - lblPortTitle.Width, (heroCard.Height - lblPortTitle.Height) / 2);
+            lblPortTitle.Location = new Point(rightX - lblPortTitle.Width, (58 - lblPortTitle.Height) / 2);
 
             // Constrain Title & Subtitle so they NEVER collide with port / buttons
             int maxTextW = Math.Max(50, lblPortTitle.Left - _lblPhpTitle.Left - 8);
@@ -1194,6 +1194,12 @@ public partial class MainForm : Form
             _lblPhpSub.AutoEllipsis = true;
             _lblPhpSub.MaximumSize = new Size(maxTextW, 18);
         }
+
+        var heroTip = new ToolTip();
+        heroTip.SetToolTip(btnRestartPhp, "Restart PHP FastCGI supervisor");
+        heroTip.SetToolTip(btnOpenPhpIni, "Open php.ini configuration");
+        heroTip.SetToolTip(btnOpenExt, "Open PHP extensions folder");
+        heroTip.SetToolTip(txtFastCgiPort, "FastCGI listening TCP port");
 
         heroCard.Resize += (s, e) => LayoutHeroControls();
         heroCard.Controls.AddRange([_pillPhp, _lblPhpTitle, _lblPhpSub, lblPortTitle, txtFastCgiPort, btnRestartPhp, btnOpenPhpIni, btnOpenExt]);
@@ -1234,12 +1240,12 @@ public partial class MainForm : Form
         _refreshPhpPackages = RefreshPhpPackagesList;
         RefreshPhpPackagesList();
 
-        pagePhp.Controls.AddRange([cardSqlServer, _pnlPhpPackages, pnlPhpPacksHeader, heroCard, pnlHeader]);
+        pagePhp.Controls.AddRange([_pnlPhpPackages, pnlPhpPacksHeader, cardSqlServer, heroCard, pnlHeader]);
         pnlHeader.SendToBack();
         heroCard.SendToBack();
+        cardSqlServer.SendToBack();
         pnlPhpPacksHeader.SendToBack();
         _pnlPhpPackages.SendToBack();
-        cardSqlServer.SendToBack();
     }
 
     private Panel CreateSqlServerCard()
@@ -1247,9 +1253,9 @@ public partial class MainForm : Form
         var card = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 56,
+            Height = 64,
             BackColor = Color.Transparent,
-            Margin = new Padding(0, 10, 0, 10),
+            Margin = new Padding(0, 0, 0, 10),
             Padding = new Padding(14, 4, 14, 6)
         };
 
@@ -1257,7 +1263,7 @@ public partial class MainForm : Form
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            var rect = new RectangleF(0.5f, 0.5f, card.Width - 1f, card.Height - 1f);
+            var rect = new RectangleF(0.5f, 0.5f, card.Width - 1f, 56f);
             using var path = CreateRoundedRectangle(rect, 6f);
             using var bg = new SolidBrush(ModernColors.Surface);
             g.FillPath(bg, path);
@@ -1292,6 +1298,9 @@ public partial class MainForm : Form
             Location = new Point(57, 29),
             AutoSize = true
         };
+
+        var tip = new ToolTip();
+        tip.SetToolTip(lblTitle, "Microsoft SQL Server & Azure SQL database drivers for PHP");
 
         var btnInstallSqlSrv = new ModernButton
         {
@@ -1332,6 +1341,7 @@ public partial class MainForm : Form
                 btnInstallSqlSrv.ForeColor = ModernColors.Danger;
                 btnInstallSqlSrv.NormalColor = ModernColors.Card;
                 btnInstallSqlSrv.HoverColor = Color.FromArgb(40, 20, 30);
+                tip.SetToolTip(btnInstallSqlSrv, "Remove sqlsrv extension from active PHP");
             }
             else
             {
@@ -1340,6 +1350,7 @@ public partial class MainForm : Form
                 btnInstallSqlSrv.ForeColor = ModernColors.Primary;
                 btnInstallSqlSrv.NormalColor = ModernColors.Card;
                 btnInstallSqlSrv.HoverColor = ModernColors.SurfaceHover;
+                tip.SetToolTip(btnInstallSqlSrv, "Download and install sqlsrv extension for active PHP");
             }
 
             if (isOdbcInstalled)
@@ -1349,6 +1360,7 @@ public partial class MainForm : Form
                 btnInstallOdbc.ForeColor = ModernColors.Success;
                 btnInstallOdbc.Enabled = false;
                 btnInstallOdbc.NormalColor = ModernColors.Card;
+                tip.SetToolTip(btnInstallOdbc, $"{odbcName ?? "ODBC Driver"} is installed and ready");
             }
             else
             {
@@ -1358,10 +1370,11 @@ public partial class MainForm : Form
                 btnInstallOdbc.Enabled = true;
                 btnInstallOdbc.NormalColor = ModernColors.Card;
                 btnInstallOdbc.HoverColor = ModernColors.SurfaceHover;
+                tip.SetToolTip(btnInstallOdbc, "Download and install Microsoft ODBC Driver 18 for Windows");
             }
 
             int right = card.ClientSize.Width - 14;
-            int btnY = (card.Height - 28) / 2;
+            int btnY = (56 - 28) / 2;
             btnInstallOdbc.Location = new Point(right - btnInstallOdbc.Width, btnY);
             btnInstallSqlSrv.Location = new Point(btnInstallOdbc.Left - btnInstallSqlSrv.Width - 8, btnY);
 

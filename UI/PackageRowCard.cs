@@ -18,6 +18,7 @@ public class PackageRowCard : Panel
     private readonly ModernButton _btnAction;
     private readonly ModernButton _btnSwitch;
     private readonly ModernButton _btnDelete;
+    private readonly ToolTip _tip = new();
 
     private CancellationTokenSource? _cts;
     private bool _isDownloading = false;
@@ -156,7 +157,7 @@ public class PackageRowCard : Panel
 
         _btnSwitch.Click += async (s, e) =>
         {
-            if (!_pkg.IsInstalled(_appRoot)) return;
+            if (!_pkg.IsInstalled(_appRoot) || _pkg.IsActive(_config)) return;
 
             if (_onSwitchAsync != null)
             {
@@ -234,6 +235,7 @@ public class PackageRowCard : Panel
             _btnDelete.Visible = false;
             _lblStatus.Visible = true;
             _lblTag.Visible = false;
+            _tip.SetToolTip(_btnAction, "Cancel package download");
         }
         else if (installed)
         {
@@ -244,9 +246,13 @@ public class PackageRowCard : Panel
             _btnSwitch.IconKind = active ? IconKind.Check : IconKind.Play;
             _btnSwitch.ForeColor = active ? ModernColors.Success : ModernColors.TextPrimary;
             _btnSwitch.NormalColor = active ? Color.FromArgb(16, 40, 32) : ModernColors.Card;
+            _btnSwitch.HoverColor = active ? Color.FromArgb(16, 40, 32) : ModernColors.SurfaceHover;
+            _btnSwitch.Cursor = active ? Cursors.Default : Cursors.Hand;
             _btnDelete.Visible = !active;
             _lblStatus.Visible = false;
             _lblTag.Visible = true;
+            _tip.SetToolTip(_btnSwitch, active ? $"{_pkg.Name} is currently active" : $"Switch active runtime to {_pkg.Name}");
+            if (!active) _tip.SetToolTip(_btnDelete, $"Uninstall {_pkg.Name} and delete files");
         }
         else
         {
@@ -262,6 +268,7 @@ public class PackageRowCard : Panel
             _btnDelete.Visible = false;
             _lblStatus.Visible = false;
             _lblTag.Visible = true;
+            _tip.SetToolTip(_btnAction, $"Download and install {_pkg.Name}");
         }
 
         LayoutRowControls();
