@@ -49,8 +49,10 @@ Unlike traditional solutions, Dev Lite Server does not install Windows Services 
   One-click launcher for PowerShell / CMD with an isolated `PATH` containing PHP, Node.js, Git, Composer, MySQL, PostgreSQL, and Redis client binaries without polluting your Windows environment.
 - 📬 **Built-in Mailpit Suite**:
   Zero-configuration local SMTP testing (`127.0.0.1:1025`) and beautiful web inbox viewer (`http://localhost:8025`).
-- 🗄️ **Zero-Fuss MySQL 8.4**:
-  Out-of-the-box local database with empty root password preset for instant development.
+- 🗄️ **Zero-Fuss MySQL 8.4 & PostgreSQL 17**:
+  Out-of-the-box local database with empty root password / trust auth preset for instant development.
+- 🗃️ **Multi-Persona Database Client Manager**:
+  Interactive DB client selector tailored to all user levels: **phpMyAdmin** (classic web UI for MySQL), **AdminerEvo** (lightweight multi-engine web manager for MySQL, PostgreSQL, SQLite), **HeidiSQL Portable** (high-performance native desktop GUI connecting directly via TCP), **Tiny RDM Portable** (modern desktop GUI for Redis key-value stores), and **redis-cli** (interactive loopback terminal). Auto-detects existing system clients (DBeaver, TablePlus, Beekeeper Studio, RedisInsight).
 - 🚀 **In-App Auto-Update System**:
   Built-in GitHub Release checker with one-click direct download, progress bar, graceful daemon shutdown, and installer execution.
 - 🎨 **Modern Dark OLED UI, Dedicated Settings & Clean Dashboard**:
@@ -87,6 +89,11 @@ Mysql=true
 Postgresql=false
 Redis=false
 Mailpit=true
+
+[Tools]
+DefaultMySqlClient=ask
+DefaultPgClient=ask
+DefaultRedisClient=ask
 ```
 
 > **Note**:
@@ -114,7 +121,7 @@ Mailpit=true
 | **Redis** | 7.x | `6379` | In-memory key-value cache store |
 | **Mailpit Web UI** | Latest | `http://localhost:8025` | Webmail inbox viewer |
 | **Mailpit SMTP** | Latest | `127.0.0.1:1025` | Local mail capture daemon |
-| **Adminer** | Latest | Web | Single-file database management client |
+| **Database Clients** | phpMyAdmin, AdminerEvo, HeidiSQL, Tiny RDM, redis-cli | GUI / Web / CLI | Selectable on-the-fly or saved preference per database engine |
 
 ---
 

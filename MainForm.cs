@@ -2103,7 +2103,7 @@ public partial class MainForm : Form
             () => _config.MysqlPort,
             p => _config.MysqlPort = p,
             Path.Combine(_appRoot, "bin", "mysql", "data"),
-            () => BtnOpenAdminer_Click(null, EventArgs.Empty));
+            (force) => OpenDatabaseClient("mysql", force));
 
         // 2. PostgreSQL Card
         var cardPg = CreateServiceManagementCard(
@@ -2114,7 +2114,7 @@ public partial class MainForm : Form
             () => _config.PostgreSqlPort,
             p => _config.PostgreSqlPort = p,
             Path.Combine(_appRoot, "bin", "postgresql", "data"),
-            () => BtnOpenAdminer_Click(null, EventArgs.Empty));
+            (force) => OpenDatabaseClient("postgresql", force));
 
         // 3. Redis Card
         var cardRedis = CreateServiceManagementCard(
@@ -2125,10 +2125,13 @@ public partial class MainForm : Form
             () => _config.RedisPort,
             p => _config.RedisPort = p,
             null,
-            () => TerminalLauncher.OpenTerminal(_appRoot, _config));
+            (force) => OpenDatabaseClient("redis", force));
 
-        pageServices.Controls.AddRange([cardRedis, cardPg, cardMySql, pnlHeader]);
-        pnlHeader.SendToBack();
+        pageServices.Controls.AddRange([pnlHeader, cardMySql, cardPg, cardRedis]);
+        pnlHeader.BringToFront();
+        cardMySql.BringToFront();
+        cardPg.BringToFront();
+        cardRedis.BringToFront();
     }
 
     private Panel CreateServiceManagementCard(
@@ -2139,7 +2142,7 @@ public partial class MainForm : Form
         Func<int> getPort,
         Action<int> setPort,
         string? dataDirPath,
-        Action onOpenClient)
+        Action<bool> onOpenClient)
     {
         var card = new Panel
         {
@@ -2317,7 +2320,13 @@ public partial class MainForm : Form
             ForeColor = ModernColors.Primary,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
-        btnClient.Click += (s, e) => onOpenClient();
+        btnClient.Click += (s, e) => onOpenClient((ModifierKeys & Keys.Shift) == Keys.Shift);
+        btnClient.MouseDown += (s, e) =>
+        {
+            if (e.Button == MouseButtons.Right) onOpenClient(true);
+        };
+        var ttClient = new ToolTip();
+        ttClient.SetToolTip(btnClient, "Open database client\n(Right-click or Shift+Click to choose another client)");
 
         ModernButton? btnDataDir = null;
         if (!string.IsNullOrEmpty(dataDirPath))
@@ -3316,6 +3325,7 @@ public partial class MainForm : Form
         // Quick Tools in Tray
         trayMenu.Items.Add(new ToolStripMenuItem("Open Web Root (/www)", null, BtnOpenWww_Click));
         trayMenu.Items.Add(new ToolStripMenuItem("Open Mailpit Inbox", null, BtnOpenMailpit_Click));
+        trayMenu.Items.Add(new ToolStripMenuItem("Database Client...", null, (s, e) => OpenDatabaseClient("mysql", false)));
         trayMenu.Items.Add(new ToolStripMenuItem("Open Terminal", null, BtnOpenTerminal_Click));
         trayMenu.Items.Add(new ToolStripMenuItem("Check for Updates...", null, BtnCheckUpdates_Click));
         trayMenu.Items.Add(new ToolStripSeparator());
@@ -3452,58 +3462,60 @@ public partial class MainForm : Form
         Process.Start(new ProcessStartInfo($"http://localhost:{_config.MailpitWebPort}") { UseShellExecute = true });
     }
 
-    private async void BtnOpenAdminer_Click(object? sender, EventArgs e)
+    private void BtnOpenAdminer_Click(object? sender, EventArgs e)
     {
-        string toolsDir = Path.Combine(_appRoot, "tools");
-        if (Directory.Exists(toolsDir))
-        {
-            var exes = Directory.GetFiles(toolsDir, "*.exe", SearchOption.AllDirectories);
-            if (exes.Length > 0)
-            {
-                try
-                {
-                    Process.Start(new ProcessStartInfo(exes[0]) { UseShellExecute = true });
-                    return;
-                }
-                catch { }
-            }
-        }
+        OpenDatabaseClient("mysql", false);
+    }
 
-        string adminerDir = Path.Combine(_appRoot, "tools", "adminer");
-        string adminerPhp = Path.Combine(adminerDir, "adminer.php");
-        if (!File.Exists(adminerPhp))
+    private async void OpenDatabaseClient(string serviceKey, bool forceDialog = false)
+    {
+        string defaultPref = serviceKey.ToLowerInvariant() switch
         {
-            var confirm = MessageBox.Show(this,
-                "Adminer is not installed. Would you like to download it now (~500 KB)?",
-                "Database Manager", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm == DialogResult.Yes)
+            "mysql" => _config.DefaultMySqlClient,
+            "postgresql" or "postgres" => _config.DefaultPgClient,
+            "redis" => _config.DefaultRedisClient,
+            _ => "ask"
+        };
+
+        var available = DatabaseClientManager.GetClientsForService(serviceKey, _appRoot);
+        var candidate = available.FirstOrDefault(c => c.Id.Equals(defaultPref, StringComparison.OrdinalIgnoreCase) && c.IsInstalled);
+
+        if (!forceDialog && candidate != null)
+        {
+            await DatabaseClientManager.LaunchClientAsync(candidate, serviceKey, _appRoot, _config, _nginx, _php, s =>
             {
-                lblStatusText.Text = "Downloading Adminer...";
+                lblStatusText.Text = s;
                 lblStatusText.ForeColor = ModernColors.Primary;
-                try
-                {
-                    Directory.CreateDirectory(adminerDir);
-                    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-                    http.DefaultRequestHeaders.Add("User-Agent", "DevLiteServer/1.0");
-                    byte[] data = await http.GetByteArrayAsync("https://github.com/vrana/adminer/releases/download/v4.8.1/adminer-4.8.1.php");
-                    await File.WriteAllBytesAsync(adminerPhp, data);
-                    lblStatusText.Text = "Adminer downloaded successfully.";
-                    lblStatusText.ForeColor = ModernColors.Success;
-                }
-                catch (Exception ex)
-                {
-                    lblStatusText.Text = $"Failed to download Adminer: {ex.Message}";
-                    lblStatusText.ForeColor = ModernColors.Danger;
-                    return;
-                }
-            }
-            else
-            {
-                return;
-            }
+            });
+            return;
         }
 
-        Process.Start(new ProcessStartInfo($"http://localhost:{_config.HttpPort}/adminer") { UseShellExecute = true });
+        using var dlg = new DbClientDialog(serviceKey, _appRoot, _config);
+        if (dlg.ShowDialog(this) == DialogResult.OK && dlg.SelectedClient != null)
+        {
+            if (dlg.RememberChoice)
+            {
+                switch (serviceKey.ToLowerInvariant())
+                {
+                    case "mysql":
+                        _config.DefaultMySqlClient = dlg.SelectedClient.Id;
+                        break;
+                    case "postgresql" or "postgres":
+                        _config.DefaultPgClient = dlg.SelectedClient.Id;
+                        break;
+                    case "redis":
+                        _config.DefaultRedisClient = dlg.SelectedClient.Id;
+                        break;
+                }
+                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            }
+
+            await DatabaseClientManager.LaunchClientAsync(dlg.SelectedClient, serviceKey, _appRoot, _config, _nginx, _php, s =>
+            {
+                lblStatusText.Text = s;
+                lblStatusText.ForeColor = ModernColors.Primary;
+            });
+        }
     }
 
     private async Task<int?> PromptPortConflictResolverAsync(string serviceName, int currentPort, int suggestedPort)

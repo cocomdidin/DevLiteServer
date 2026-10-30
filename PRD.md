@@ -73,7 +73,7 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
 | **FR-07** | Instant Version Switcher | Ganti versi PHP aktif untuk Nginx secara on-the-fly via klik kanan menu tray. Restart service terkait dalam < 1 detik. | P1 (Tinggi) |
 | **FR-08** | Virtual Hosts & Batch Sync | Deteksi folder di `/www`. Otomatis generate konfigurasi Nginx vhost untuk domain `http://<folder>.test`. Pembaruan file `hosts` Windows dilakukan secara **Batch** (saat Start All atau tombol klik "Sync Hosts") dengan 1x prompt UAC per sync untuk mencegah spam dialog Admin. | P1 (Tinggi) |
 | **FR-09** | Isolated Terminal Environment | Tombol "Open Terminal" yang membuka PowerShell/CMD dengan environment variable `PATH` yang sudah diinjeksi versi aktif PHP, Node.js (v24), Git, Composer, MySQL, PostgreSQL. Tidak merusak environment Windows global. | P1 (Tinggi) |
-| **FR-10** | Quick Access Tools | Tombol cepat: Buka Folder `/www`, Buka Mailpit Web UI (`:8025`), Buka Database Manager (Default: Adminer web client via `http://localhost/adminer`, tombol disabled jika Nginx/PHP belum running; Auto-detect jika ada desktop GUI di folder `/tools/`). | P2 (Medium) |
+| **FR-10** | Multi-Persona Database Client Manager | Pemilih client database interaktif (`DbClientDialog`) berbasis persona pengguna: (1) Beginner: phpMyAdmin (Web UI klasik MySQL via `/phpmyadmin/`), (2) General Multi-Engine: AdminerEvo (~500 KB single-file web client untuk MySQL, PostgreSQL, SQLite via `/adminer/`), (3) Power User: HeidiSQL Portable (~28 MB native Windows desktop GUI langsung via TCP), (4) Redis Store: Tiny RDM Portable (~11 MB desktop GUI) dan redis-cli (terminal loopback console). Mendukung simpan preferensi default per engine (`config.ini` [Tools]), download on-demand otomatis, dan deteksi tools sistem Windows yang sudah terpasang (DBeaver, TablePlus, Beekeeper, RedisInsight). | P1 (Tinggi) |
 | **FR-11** | Windows Logon Auto-Start | Opsi integrasi autorun saat user logon Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`), dengan argumen `--tray` agar langsung berjalan di background system tray tanpa popup window. Bebas hak administrator/UAC. | P2 (Medium) |
 
 ---
@@ -107,9 +107,11 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
 │
 ├─/templates                    (Nginx default conf, vhost.tpl, php.ini.tpl, my.ini.tpl)
 ├─/tools
-│  ├─/adminer                   (adminer.php - web-based DB client untuk MySQL & PostgreSQL)
-│  ├─/composer                  (composer.phar & composer.bat)
-│  └─/(optional-gui)            (HeidiSQL / Beekeeper Studio portable jika ditaruh user)
+│  ├─/adminer                   (adminer.php - single-file AdminerEvo untuk MySQL, PostgreSQL, SQLite)
+│  ├─/phpmyadmin                (phpMyAdmin web interface untuk MySQL)
+│  ├─/heidisql                  (HeidiSQL Portable native desktop GUI)
+│  ├─/tinyrdm                   (Tiny RDM Portable desktop GUI untuk Redis)
+│  └─/composer                  (composer.phar & composer.bat)
 └─/www                          (Root folder proyek web pengguna)
 ```
 
@@ -172,3 +174,9 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
   - UI integrasi pada tab Sites & Local Domains dengan tombol 1-klik Sync Hosts.
   - System Tray menu lengkap, dark mode UI polish, dan single instance enforcement.
   - Publish single-file release script (`scripts/publish-release.ps1`) menghasilkan standalone executable ~16 MB (IL trimmed, down from 49 MB).
+- **Milestone 5 (Multi-Persona DB Client & Node.js Runtime Polish) [SELESAI]**:
+  - Multi-Persona Database Client Manager (`DbClientDialog`) untuk MySQL, PostgreSQL, dan Redis.
+  - Integrasi phpMyAdmin, AdminerEvo, HeidiSQL Portable, Tiny RDM Portable, dan redis-cli terminal.
+  - On-demand download, background extraction, dan pre-configured `config.inc.php` (`AllowNoPassword`).
+  - Dedicated Nginx prefix location modifier (`^~`) untuk routing `/adminer/`, `/phpmyadmin/`, dan `/redisadmin/`.
+  - Node.js Mode Selector tabs (Isolated Portable Node.js vs Windows Global / NVM Node.js) dengan auto-detection.

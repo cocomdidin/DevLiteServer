@@ -22,13 +22,48 @@ http {
         }
 
         # Dedicated Adminer route for database management
-        location /adminer {
-            alias "{{ROOT_DIR_FORWARD}}/tools/adminer";
+        location = /adminer {
+            return 301 /adminer/;
+        }
+        location ^~ /adminer/ {
+            alias "{{ROOT_DIR_FORWARD}}/tools/adminer/";
             index adminer.php;
 
             location ~ \.php$ {
                 fastcgi_pass   127.0.0.1:{{PHP_PORT}};
                 fastcgi_index  adminer.php;
+                fastcgi_param  SCRIPT_FILENAME $request_filename;
+                include        fastcgi_params;
+            }
+        }
+
+        # Dedicated phpMyAdmin route for MySQL management
+        location = /phpmyadmin {
+            return 301 /phpmyadmin/;
+        }
+        location ^~ /phpmyadmin/ {
+            alias "{{ROOT_DIR_FORWARD}}/tools/phpmyadmin/";
+            index index.php;
+
+            location ~ \.php$ {
+                fastcgi_pass   127.0.0.1:{{PHP_PORT}};
+                fastcgi_index  index.php;
+                fastcgi_param  SCRIPT_FILENAME $request_filename;
+                include        fastcgi_params;
+            }
+        }
+
+        # Dedicated phpRedisAdmin route for Redis key-value management
+        location = /redisadmin {
+            return 301 /redisadmin/;
+        }
+        location ^~ /redisadmin/ {
+            alias "{{ROOT_DIR_FORWARD}}/tools/phpredisadmin/";
+            index index.php;
+
+            location ~ \.php$ {
+                fastcgi_pass   127.0.0.1:{{PHP_PORT}};
+                fastcgi_index  index.php;
                 fastcgi_param  SCRIPT_FILENAME $request_filename;
                 include        fastcgi_params;
             }

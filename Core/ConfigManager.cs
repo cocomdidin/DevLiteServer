@@ -22,6 +22,11 @@ public class AppConfig
     public string ActivePhp { get; set; } = "php-8.4";
     public string ActiveNode { get; set; } = "node-v24";
 
+    // Database client preferences ("ask", "heidisql", "phpmyadmin", "adminer", "tinyrdm", "cli")
+    public string DefaultMySqlClient { get; set; } = "ask";
+    public string DefaultPgClient { get; set; } = "ask";
+    public string DefaultRedisClient { get; set; } = "ask";
+
     // Ports
     public int HttpPort { get; set; } = 80;
     public int HttpsPort { get; set; } = 443;
@@ -80,6 +85,9 @@ public class AppConfig
         EnableMailpit = d.EnableMailpit;
         ActivePhp = d.ActivePhp;
         ActiveNode = d.ActiveNode;
+        DefaultMySqlClient = d.DefaultMySqlClient;
+        DefaultPgClient = d.DefaultPgClient;
+        DefaultRedisClient = d.DefaultRedisClient;
         HttpPort = d.HttpPort;
         HttpsPort = d.HttpsPort;
         PhpFastCgiPort = d.PhpFastCgiPort;
@@ -168,6 +176,12 @@ public static class ConfigManager
                     else if (key.Equals("ActiveNode", StringComparison.OrdinalIgnoreCase)) config.ActiveNode = val;
                     break;
 
+                case "TOOLS":
+                    if (key.Equals("DefaultMySqlClient", StringComparison.OrdinalIgnoreCase)) config.DefaultMySqlClient = val;
+                    else if (key.Equals("DefaultPgClient", StringComparison.OrdinalIgnoreCase)) config.DefaultPgClient = val;
+                    else if (key.Equals("DefaultRedisClient", StringComparison.OrdinalIgnoreCase)) config.DefaultRedisClient = val;
+                    break;
+
                 case "PORTS":
                     if (key.Equals("HttpPort", StringComparison.OrdinalIgnoreCase)) config.HttpPort = int.Parse(val);
                     else if (key.Equals("HttpsPort", StringComparison.OrdinalIgnoreCase)) config.HttpsPort = int.Parse(val);
@@ -207,6 +221,11 @@ public static class ConfigManager
             "[Versions]",
             $"ActivePhp={config.ActivePhp}",
             $"ActiveNode={config.ActiveNode}",
+            "",
+            "[Tools]",
+            $"DefaultMySqlClient={config.DefaultMySqlClient}",
+            $"DefaultPgClient={config.DefaultPgClient}",
+            $"DefaultRedisClient={config.DefaultRedisClient}",
             "",
             "[Ports]",
             $"HttpPort={config.HttpPort}",

@@ -17,6 +17,11 @@ Mailpit=false
 ActivePhp=php-8.4
 ActiveNode=node-v24
 
+[Tools]
+DefaultMySqlClient=ask
+DefaultPgClient=ask
+DefaultRedisClient=ask
+
 [Ports]
 HttpPort=80
 HttpsPort=443
