@@ -382,10 +382,10 @@ public partial class MainForm : Form
 
         var btnAddSite = new ModernButton
         {
-            Text = "+ Add Site",
+            Text = "Add Site",
             IconKind = IconKind.Plus,
             IconSize = 10,
-            Width = 96,
+            Width = 92,
             Height = 30,
             BorderRadius = 6,
             ShowBorder = false,
@@ -483,9 +483,9 @@ public partial class MainForm : Form
         var btnOpenConf = new ModernButton
         {
             Text = "nginx.conf",
-            IconKind = IconKind.Folder,
+            IconKind = IconKind.Gear,
             IconSize = 10,
-            Width = 90,
+            Width = 95,
             Height = 30,
             BorderRadius = 6,
             ShowBorder = true,
@@ -692,7 +692,12 @@ public partial class MainForm : Form
             Font = new Font("Segoe UI", 10f, FontStyle.Bold),
             Location = new Point(60, 10),
             AutoSize = true,
-            AutoEllipsis = true
+            AutoEllipsis = true,
+            Cursor = Cursors.Hand
+        };
+        lblName.Click += (s, e) =>
+        {
+            try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
         };
 
         var lblUrl = new Label
@@ -705,12 +710,16 @@ public partial class MainForm : Form
             AutoEllipsis = true
         };
 
+        var tip = new ToolTip();
+        tip.SetToolTip(lblName, $"Open {url} in browser");
+        tip.SetToolTip(lblUrl, $"Path: {wwwDir}");
+
         var btnBrowse = new ModernButton
         {
             Text = "Open",
             IconKind = IconKind.Globe,
             IconSize = 10,
-            Width = 72,
+            Width = 64,
             Height = 28,
             BorderRadius = 5,
             ShowBorder = true,
@@ -723,32 +732,33 @@ public partial class MainForm : Form
         {
             try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
         };
+        tip.SetToolTip(btnBrowse, $"Open {url} in browser");
 
         var btnOpenDir = new ModernButton
         {
-            Text = "Folder",
+            Text = "",
             IconKind = IconKind.Folder,
-            IconSize = 10,
-            Width = 72,
+            IconSize = 12,
+            Width = 28,
             Height = 28,
             BorderRadius = 5,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+            ForeColor = ModernColors.TextSecondary
         };
         btnOpenDir.Click += (s, e) =>
         {
             try { Process.Start(new ProcessStartInfo("explorer.exe", wwwDir) { UseShellExecute = true }); } catch { }
         };
+        tip.SetToolTip(btnOpenDir, $"Open folder: {wwwDir}");
 
         void LayoutRootSiteButtons()
         {
             int cardH = card.Height - 10;
             int rightX = card.Width > 200 ? card.Width - btnBrowse.Width - 14 : 500;
             btnBrowse.Location = new Point(rightX, (cardH - btnBrowse.Height) / 2);
-            btnOpenDir.Location = new Point(btnBrowse.Left - btnOpenDir.Width - 8, (cardH - btnOpenDir.Height) / 2);
+            btnOpenDir.Location = new Point(btnBrowse.Left - btnOpenDir.Width - 6, (cardH - btnOpenDir.Height) / 2);
 
             int maxTextW = btnOpenDir.Left - lblName.Left - 12;
             if (maxTextW > 50)
@@ -812,7 +822,7 @@ public partial class MainForm : Form
             }
             else
             {
-                VectorIcons.Draw(g, IconKind.Globe, iconRect, ModernColors.Primary);
+                VectorIcons.Draw(g, IconKind.Server, iconRect, ModernColors.Primary);
             }
         };
 
@@ -823,7 +833,12 @@ public partial class MainForm : Form
             Font = new Font("Segoe UI", 10f, FontStyle.Bold),
             Location = new Point(60, 10),
             AutoSize = true,
-            AutoEllipsis = true
+            AutoEllipsis = true,
+            Cursor = Cursors.Hand
+        };
+        lblName.Click += (s, e) =>
+        {
+            try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
         };
 
         string phpDesc = string.IsNullOrEmpty(site.PhpVersion) || site.PhpVersion.Equals("default", StringComparison.OrdinalIgnoreCase)
@@ -844,7 +859,7 @@ public partial class MainForm : Form
         };
 
         var tip = new ToolTip();
-        tip.SetToolTip(lblName, $"Path: {site.PhysicalPath}\nDocRoot: {site.DocumentRoot}");
+        tip.SetToolTip(lblName, $"Open {url} in browser\nPath: {site.PhysicalPath}\nDocRoot: {site.DocumentRoot}");
         tip.SetToolTip(lblUrl, $"Path: {site.PhysicalPath}\nDocRoot: {site.DocumentRoot}");
 
         var btnBrowse = new ModernButton
@@ -852,7 +867,7 @@ public partial class MainForm : Form
             Text = "Open",
             IconKind = IconKind.Globe,
             IconSize = 10,
-            Width = 68,
+            Width = 64,
             Height = 28,
             BorderRadius = 5,
             ShowBorder = true,
@@ -865,39 +880,39 @@ public partial class MainForm : Form
         {
             try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
         };
+        tip.SetToolTip(btnBrowse, $"Open {url} in browser");
 
         var btnOpenDir = new ModernButton
         {
-            Text = "Folder",
+            Text = "",
             IconKind = IconKind.Folder,
-            IconSize = 10,
-            Width = 68,
+            IconSize = 12,
+            Width = 28,
             Height = 28,
             BorderRadius = 5,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+            ForeColor = ModernColors.TextSecondary
         };
         btnOpenDir.Click += (s, e) =>
         {
             try { Process.Start(new ProcessStartInfo("explorer.exe", site.PhysicalPath) { UseShellExecute = true }); } catch { }
         };
+        tip.SetToolTip(btnOpenDir, $"Open folder: {site.PhysicalPath}");
 
         var btnEdit = new ModernButton
         {
-            Text = "Edit",
+            Text = "",
             IconKind = IconKind.Pencil,
-            IconSize = 10,
-            Width = 60,
+            IconSize = 12,
+            Width = 28,
             Height = 28,
             BorderRadius = 5,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+            ForeColor = ModernColors.TextSecondary
         };
         btnEdit.Click += async (s, e) =>
         {
@@ -915,24 +930,24 @@ public partial class MainForm : Form
                 lblStatusText.ForeColor = ModernColors.Success;
             }
         };
+        tip.SetToolTip(btnEdit, $"Edit settings for {site.Domain}");
 
         ModernButton? btnDelete = null;
         if (site.IsExternal)
         {
             btnDelete = new ModernButton
             {
-                Text = "Remove",
+                Text = "",
                 IconKind = IconKind.Trash,
-                IconSize = 10,
-                Width = 68,
+                IconSize = 12,
+                Width = 28,
                 Height = 28,
                 BorderRadius = 5,
                 ShowBorder = true,
                 BorderLineColor = Color.FromArgb(244, 63, 94, 120),
                 NormalColor = ModernColors.Card,
                 HoverColor = Color.FromArgb(45, 20, 28),
-                ForeColor = Color.FromArgb(254, 205, 211),
-                Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+                ForeColor = Color.FromArgb(254, 205, 211)
             };
             btnDelete.Click += async (s, e) =>
             {
@@ -955,6 +970,7 @@ public partial class MainForm : Form
                     lblStatusText.ForeColor = ModernColors.Success;
                 }
             };
+            tip.SetToolTip(btnDelete, $"Unlink external site '{site.Domain}'");
             card.Controls.Add(btnDelete);
         }
 
