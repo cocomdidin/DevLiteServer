@@ -47,7 +47,7 @@ public static class NodeManager
         return (false, "", "");
     }
 
-    private static string GetNodeVersion(string nodeExePath)
+    public static string GetNodeVersion(string nodeExePath)
     {
         try
         {
@@ -60,6 +60,37 @@ public static class NodeManager
         }
         catch { }
         return "Unknown";
+    }
+
+    public static List<(string version, string path)> DetectNvmVersions()
+    {
+        var list = new List<(string version, string path)>();
+        try
+        {
+            string? nvmHome = Environment.GetEnvironmentVariable("NVM_HOME");
+            if (string.IsNullOrEmpty(nvmHome))
+            {
+                string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                string defaultNvm = Path.Combine(appData, "nvm");
+                if (Directory.Exists(defaultNvm)) nvmHome = defaultNvm;
+            }
+
+            if (!string.IsNullOrEmpty(nvmHome) && Directory.Exists(nvmHome))
+            {
+                foreach (var dir in Directory.GetDirectories(nvmHome))
+                {
+                    string exe = Path.Combine(dir, "node.exe");
+                    if (File.Exists(exe))
+                    {
+                        string name = Path.GetFileName(dir);
+                        string ver = GetNodeVersion(exe);
+                        list.Add((string.IsNullOrEmpty(ver) || ver == "Unknown" ? name : ver, dir));
+                    }
+                }
+            }
+        }
+        catch { }
+        return list;
     }
 
     public static List<string> GetInstalledVersions(string appRoot)
@@ -92,7 +123,13 @@ public static class NodeManager
             if (!Directory.Exists(nodeRoot)) Directory.CreateDirectory(nodeRoot);
 
             string targetDir;
-            if (string.Equals(activeVersion, "system", StringComparison.OrdinalIgnoreCase))
+            if (activeVersion.StartsWith("system:", StringComparison.OrdinalIgnoreCase))
+            {
+                string customPath = activeVersion.Substring("system:".Length);
+                if (!Directory.Exists(customPath)) return false;
+                targetDir = customPath;
+            }
+            else if (string.Equals(activeVersion, "system", StringComparison.OrdinalIgnoreCase))
             {
                 var (isFound, sysPath, _) = DetectSystemNode();
                 if (!isFound || !Directory.Exists(sysPath)) return false;

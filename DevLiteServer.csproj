@@ -16,12 +16,14 @@
     <ApplicationIcon>assets\app.ico</ApplicationIcon>
     <NoWarn>$(NoWarn);WFO1000</NoWarn>
     <_SuppressWinFormsTrimError>true</_SuppressWinFormsTrimError>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="bin\**" />
     <None Remove="bin\**" />
     <Content Remove="bin\**" />
+    <EmbeddedResource Remove="bin\**" />
   </ItemGroup>
 
 </Project>
