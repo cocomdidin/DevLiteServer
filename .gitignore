@@ -9,6 +9,10 @@ bin/*/*
 !bin/*/.gitkeep
 tools/composer/composer.phar
 tools/composer/composer.bat
+tools/adminer/adminer.php
+tools/phpmyadmin/
+tools/heidisql/
+tools/tinyrdm/
 
 # Visual Studio / Rider / VS Code
 .vs/

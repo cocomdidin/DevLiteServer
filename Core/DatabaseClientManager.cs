@@ -344,7 +344,6 @@ public static class DatabaseClientManager
                         string blowfishSecret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 
                         string pmaConfig = $@"<?php
-declare(strict_types=1);
 
 $cfg['blowfish_secret'] = '{blowfishSecret}';
 
@@ -359,7 +358,7 @@ $cfg['Servers'][$i]['AllowNoPassword'] = true;
 $cfg['UploadDir'] = '';
 $cfg['SaveDir'] = '';
 ";
-                        await File.WriteAllTextAsync(configInc, pmaConfig, Encoding.UTF8, ct);
+                        await File.WriteAllTextAsync(configInc, pmaConfig, new UTF8Encoding(false), ct);
 
                         progress?.Report("phpMyAdmin installed.");
                         return true;

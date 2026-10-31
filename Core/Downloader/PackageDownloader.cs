@@ -188,6 +188,9 @@ public static class PackageDownloader
         content = content.Replace(";extension_dir = \"ext\"", "extension_dir = \"ext\"");
         content = content.Replace(";extension_dir = \"./ext\"", "extension_dir = \"ext\"");
 
+        // Suppress E_DEPRECATED so vendor deprecation notices never break HTTP headers or session_start()
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"^error_reporting\s*=.*$", "error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT", System.Text.RegularExpressions.RegexOptions.Multiline);
+
         // Enable required extensions for Laravel & modern web development
         string[] extensions =
         [
