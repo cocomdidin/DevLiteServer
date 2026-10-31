@@ -325,10 +325,30 @@ public static class VectorIcons
 
             case IconKind.Pencil:
                 {
-                    // Diagonal pencil stroke
-                    g.DrawLine(pen, x + (w * 0.25f), y + (h * 0.75f), x + (w * 0.72f), y + (h * 0.28f));
-                    g.DrawLine(pen, x + (w * 0.25f), y + (h * 0.75f), x + (w * 0.18f), y + (h * 0.82f));
-                    g.DrawLine(pen, x + (w * 0.18f), y + (h * 0.82f), x + (w * 0.32f), y + (h * 0.82f));
+                    // Modern 45-degree edit pen with nib, barrel, and writing baseline
+                    using var thinPen = new Pen(color, Math.Max(w * 0.085f, 1.15f))
+                    {
+                        StartCap = LineCap.Round,
+                        EndCap = LineCap.Round,
+                        LineJoin = LineJoin.Round
+                    };
+
+                    using var path = new GraphicsPath();
+                    path.AddPolygon(new[]
+                    {
+                        new PointF(x + (w * 0.16f), y + (h * 0.84f)), // Nib tip
+                        new PointF(x + (w * 0.16f), y + (h * 0.62f)), // Nib upper shoulder
+                        new PointF(x + (w * 0.62f), y + (h * 0.16f)), // Barrel top-left
+                        new PointF(x + (w * 0.84f), y + (h * 0.38f)), // Barrel top-right
+                        new PointF(x + (w * 0.38f), y + (h * 0.84f))  // Nib lower shoulder
+                    });
+                    g.DrawPath(thinPen, path);
+
+                    // Eraser/cap crossline
+                    g.DrawLine(thinPen, x + (w * 0.54f), y + (h * 0.24f), x + (w * 0.76f), y + (h * 0.46f));
+
+                    // Writing underline
+                    g.DrawLine(thinPen, x + (w * 0.48f), y + (h * 0.86f), x + (w * 0.84f), y + (h * 0.86f));
                 }
                 break;
 

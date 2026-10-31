@@ -942,7 +942,7 @@ public partial class MainForm : Form
         var btnEdit = new ModernButton
         {
             Text = "",
-            IconKind = IconKind.Pencil,
+            IconKind = IconKind.Gear,
             IconSize = 12,
             Width = 28,
             Height = 28,
