@@ -39,6 +39,29 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
+[InstallDelete]
+; Clean legacy multi-file .NET compile artifacts from app root
+Type: files; Name: "{app}\*.dll"
+Type: files; Name: "{app}\*.pdb"
+Type: files; Name: "{app}\DevLiteServer.deps.json"
+Type: files; Name: "{app}\DevLiteServer.runtimeconfig.json"
+
+; Clean legacy .NET runtime & satellite localization directories
+Type: filesandordirs; Name: "{app}\runtimes"
+Type: filesandordirs; Name: "{app}\cs"
+Type: filesandordirs; Name: "{app}\de"
+Type: filesandordirs; Name: "{app}\es"
+Type: filesandordirs; Name: "{app}\fr"
+Type: filesandordirs; Name: "{app}\it"
+Type: filesandordirs; Name: "{app}\ja"
+Type: filesandordirs; Name: "{app}\ko"
+Type: filesandordirs; Name: "{app}\pl"
+Type: filesandordirs; Name: "{app}\pt-BR"
+Type: filesandordirs; Name: "{app}\ru"
+Type: filesandordirs; Name: "{app}\tr"
+Type: filesandordirs; Name: "{app}\zh-Hans"
+Type: filesandordirs; Name: "{app}\zh-Hant"
+
 [Files]
 ; 1. Core application binaries, assets, tools, templates (always updated on install)
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "config.ini,config.ini.default,sites.json,www\*,ssl\*,bin\nginx\*,bin\php\*,bin\mysql\*,bin\nodejs\*,bin\mailpit\*,bin\postgresql\*,bin\redis\*,bin\git\*,tools\composer\*,tools\adminer\*,tools\phpmyadmin\*,tools\heidisql\*,tools\tinyrdm\*"; Flags: ignoreversion recursesubdirs createallsubdirs

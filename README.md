@@ -220,7 +220,7 @@ dotnet run
 
 ### 4. Build Installer Locally (Optional)
 ```powershell
-dotnet publish DevLiteServer.csproj -c Release -r win-x64 --self-contained true -o ./dist/app
+dotnet publish DevLiteServer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o ./dist/app
 iscc.exe /DMyAppVersion=1.0.0 /DSourceDir=..\dist\app installer\setup.iss
 ```
 

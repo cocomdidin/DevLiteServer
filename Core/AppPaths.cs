@@ -64,4 +64,58 @@ public static class AppPaths
         _cachedRoot = current;
         return _cachedRoot;
     }
+
+    /// <summary>
+    /// Cleans up legacy multi-file .NET compile artifacts and satellite resource folders
+    /// left in the application root from older non-single-file releases.
+    /// Safely skipped in development environments.
+    /// </summary>
+    public static void CleanupLegacyArtifacts()
+    {
+        try
+        {
+            string root = ResolveRoot();
+
+            // Safety guard: never delete anything in development mode
+            if (File.Exists(Path.Combine(root, "DevLiteServer.csproj")))
+            {
+                return;
+            }
+
+            // 1. Delete legacy loose .dll, .pdb, and runtime json files in root directory
+            string[] looseFiles = Directory.GetFiles(root, "*.*", SearchOption.TopDirectoryOnly);
+            foreach (var file in looseFiles)
+            {
+                string ext = Path.GetExtension(file);
+                string fileName = Path.GetFileName(file);
+
+                if (ext.Equals(".dll", StringComparison.OrdinalIgnoreCase) ||
+                    ext.Equals(".pdb", StringComparison.OrdinalIgnoreCase) ||
+                    fileName.Equals("DevLiteServer.deps.json", StringComparison.OrdinalIgnoreCase) ||
+                    fileName.Equals("DevLiteServer.runtimeconfig.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    try { File.Delete(file); } catch { }
+                }
+            }
+
+            // 2. Delete legacy .NET runtime subfolders (runtimes and satellite localization)
+            string[] legacyDirs = [
+                "runtimes", "cs", "de", "es", "fr", "it", "ja",
+                "ko", "pl", "pt-BR", "ru", "tr", "zh-Hans", "zh-Hant"
+            ];
+
+            foreach (var dirName in legacyDirs)
+            {
+                string targetDir = Path.Combine(root, dirName);
+                if (Directory.Exists(targetDir))
+                {
+                    try { Directory.Delete(targetDir, recursive: true); } catch { }
+                }
+            }
+        }
+        catch
+        {
+            // ponytail: Best effort cleanup; never block application startup
+        }
+    }
 }

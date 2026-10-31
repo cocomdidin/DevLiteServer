@@ -15,6 +15,9 @@ static class Program
             return;
         }
 
+        // Clean up legacy multi-file artifacts left by pre-single-file releases
+        AppPaths.CleanupLegacyArtifacts();
+
         bool startMinimized = args.Any(a => a.Equals("--tray", StringComparison.OrdinalIgnoreCase) ||
                                             a.Equals("--minimized", StringComparison.OrdinalIgnoreCase) ||
                                             a.Equals("-tray", StringComparison.OrdinalIgnoreCase));
