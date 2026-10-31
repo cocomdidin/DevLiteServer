@@ -108,6 +108,28 @@ public static class PackageCatalog
 
     private static readonly Dictionary<string, PackageItem> ServicePackages = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["nginx"] = new PackageItem
+        {
+            Id = "service-nginx",
+            Name = "Nginx 1.26",
+            Category = "Service",
+            ServiceKey = "nginx",
+            Tag = "Nginx 1.26 Stable (x64)",
+            DownloadUrl = "https://nginx.org/download/nginx-1.26.3.zip",
+            FolderName = "nginx",
+            ApproximateSizeBytes = 3_000_000
+        },
+        ["php"] = new PackageItem
+        {
+            Id = "php-8.4",
+            Name = "PHP 8.4",
+            Category = "PHP",
+            ServiceKey = "php",
+            Tag = "Current Release (NTS x64)",
+            DownloadUrl = "https://windows.php.net/downloads/releases/php-8.4.4-nts-Win32-vs17-x64.zip",
+            FolderName = "php-8.4",
+            ApproximateSizeBytes = 32_500_000
+        },
         ["postgresql"] = new PackageItem
         {
             Id = "service-postgresql",

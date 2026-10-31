@@ -8,8 +8,9 @@
 - **Target OS**: Windows 10 & Windows 11 (64-bit)
 - **Tech Stack Inti**: C# WinForms (.NET 10 LTS - `net10.0-windows`)
 - **Model Distribusi**:
-  - **Thin Core Starter Bundle**: Paket portabel ringan (~35 MB) berisi `DevLiteServer.exe`, Nginx, PHP 8.4 NTS, MinGit (Git for Windows CLI), dan Composer.
-  - **Herd-Style On-Demand Downloader**: Modul built-in 1-klik untuk mengunduh service dan runtime tambahan langsung dari sumber resmi: MySQL 8.4, Node.js (v18, v20, v22, v24), Mailpit, PostgreSQL 17, Redis, Adminer, serta multi-version PHP (7.4, 8.0, 8.1, 8.2, 8.3).
+  - **Slim Zero-Bundle Architecture**: Paket portabel & installer ultra-ringan (~16 MB) tanpa menyertakan runtime binaries berat dalam build CI.
+  - **First-Run Auto-Setup (Herd-Style)**: Dialog setup otomatis (`FirstRunSetupDialog`) saat startup pertama untuk mendownload dan mengonfigurasi komponen web inti non-versioned (Nginx 1.26, PHP 8.4 NTS, Composer CLI, MinGit) dalam 1-klik tanpa friksi.
+  - **Herd-Style On-Demand Downloader**: Modul built-in 1-klik untuk mengunduh service dan runtime tambahan langsung dari sumber resmi: MySQL 8.4, Node.js (v18, v20, v22, v24), Mailpit, PostgreSQL 17, Redis, database client tools (phpMyAdmin, AdminerEvo, HeidiSQL, Tiny RDM), serta multi-version PHP (7.4, 8.1, 8.2, 8.3).
 - **Tujuan Utama**: Lingkungan pengembangan web lokal super cepat, portabel, modular, zero-registry, dan always-free. Alternatif modern pengganti Laragon (v7+ berbayar) dan XAMPP, dengan kemampuan package downloader mandiri ala Laravel Herd.
 
 ---
@@ -75,6 +76,7 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
 | **FR-09** | Isolated Terminal Environment | Tombol "Open Terminal" yang membuka PowerShell/CMD dengan environment variable `PATH` yang sudah diinjeksi versi aktif PHP, Node.js (v24), Git, Composer, MySQL, PostgreSQL. Tidak merusak environment Windows global. | P1 (Tinggi) |
 | **FR-10** | Multi-Persona Database Client Manager | Pemilih client database interaktif (`DbClientDialog`) berbasis persona pengguna: (1) Beginner: phpMyAdmin (Web UI klasik MySQL via `/phpmyadmin/`), (2) General Multi-Engine: AdminerEvo (~500 KB single-file web client untuk MySQL, PostgreSQL, SQLite via `/adminer/`), (3) Power User: HeidiSQL Portable (~28 MB native Windows desktop GUI langsung via TCP), (4) Redis Store: Tiny RDM Portable (~11 MB desktop GUI) dan redis-cli (terminal loopback console). Mendukung simpan preferensi default per engine (`config.ini` [Tools]), download on-demand otomatis, dan deteksi tools sistem Windows yang sudah terpasang (DBeaver, TablePlus, Beekeeper, RedisInsight). | P1 (Tinggi) |
 | **FR-11** | Windows Logon Auto-Start | Opsi integrasi autorun saat user logon Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`), dengan argumen `--tray` agar langsung berjalan di background system tray tanpa popup window. Bebas hak administrator/UAC. | P2 (Medium) |
+| **FR-12** | First-Run Core Provisioner | Dialog setup terpadu (`FirstRunSetupDialog`) saat aplikasi pertama kali dijalankan tanpa runtime core. Memeriksa keberadaan Visual C++ Runtime (MSVCRT x64), Nginx 1.26, PHP 8.4 NTS, Composer CLI, MinGit Portable, dan AdminerEvo, lalu mengunduh, mengekstrak, dan mengonfigurasinya secara otomatis dalam urutan sekuensial dengan live progress indicator. Menyediakan opsi 1-klik pendaftaran ke Windows User PATH dan auto-generate starter `www/index.php`. | P1 (Tinggi) |
 
 ---
 
@@ -164,7 +166,7 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
   - Dynamic config templates lengkap: `nginx.conf.tpl`, `my.ini.tpl`, `php.ini.tpl`, `postgresql.conf.tpl`, `redis.conf.tpl`.
 - **Milestone 3 (Herd-Style Package Downloader) [SELESAI]**:
   - Downloader client untuk PHP (windows.php.net: 7.4, 8.1, 8.2, 8.3, 8.4) dan Node.js (nodejs.org: v18, v20, v22, v24).
-  - Thin Core Bundle architecture: Nginx & core assets bundled (~15 MB), runtime heavy (MySQL, PostgreSQL, Redis, Mailpit) diunduh on-demand.
+  - Slim Zero-Bundle architecture: Installer & portable bundle ultra-ringan (~16 MB), semua server dan runtime (Nginx, PHP, MySQL, PostgreSQL, Redis, Mailpit) diunduh on-demand via 1-klik UI.
   - Lifecycle state `NotInstalled` dengan status badge neutral gray dan dynamic 1-klik "Install" button.
   - Auto-unzip, directory placement, single-wrapper folder flattening, dan auto-configure `php.ini`.
   - Isolated Terminal launcher dengan injected dynamic `PATH` untuk PHP, Node, Git, Composer, MySQL, PostgreSQL, Redis.

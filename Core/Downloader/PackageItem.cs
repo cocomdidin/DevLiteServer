@@ -39,6 +39,16 @@ public class PackageItem
         else if (Category.Equals("Service", StringComparison.OrdinalIgnoreCase))
         {
             string key = !string.IsNullOrEmpty(ServiceKey) ? ServiceKey : FolderName;
+            if (key.Equals("nginx", StringComparison.OrdinalIgnoreCase))
+            {
+                if (File.Exists(Path.Combine(dir, "nginx.exe"))) return true;
+                return Directory.GetFiles(dir, "nginx.exe", SearchOption.AllDirectories).Length > 0;
+            }
+            if (key.Equals("php", StringComparison.OrdinalIgnoreCase))
+            {
+                if (File.Exists(Path.Combine(dir, "php-cgi.exe")) || File.Exists(Path.Combine(dir, "php.exe"))) return true;
+                return Directory.GetFiles(dir, "php-cgi.exe", SearchOption.AllDirectories).Length > 0;
+            }
             if (key.Equals("mysql", StringComparison.OrdinalIgnoreCase))
             {
                 if (File.Exists(Path.Combine(dir, "bin", "mysqld.exe"))) return true;

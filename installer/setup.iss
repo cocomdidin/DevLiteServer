@@ -41,7 +41,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; 1. Core application binaries, assets, tools, templates (always updated on install)
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "config.ini,config.ini.default,sites.json,www\*,ssl\*,bin\mysql\*,bin\nodejs\*,bin\mailpit\*,bin\postgresql\*,tools\adminer\*,tools\phpmyadmin\*,tools\heidisql\*,tools\tinyrdm\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "config.ini,config.ini.default,sites.json,www\*,ssl\*,bin\nginx\*,bin\php\*,bin\mysql\*,bin\nodejs\*,bin\mailpit\*,bin\postgresql\*,bin\redis\*,bin\git\*,tools\composer\*,tools\adminer\*,tools\phpmyadmin\*,tools\heidisql\*,tools\tinyrdm\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; 2. Default configuration file (installed ONLY if not existing, never deleted on uninstall)
 Source: "{#SourceDir}\config.ini"; DestDir: "{app}"; Flags: onlyifdoesntexist uninsneveruninstall

@@ -139,14 +139,21 @@ public partial class MainForm : Form
 
         Shown += (s, e) =>
         {
-            if (!DependencyChecker.IsVcRedistInstalled())
+            // First-run auto-setup: provision core environment (MSVCRT, Nginx, PHP 8.4, Composer, Git, Adminer) if missing
+            if (CoreProvisioner.NeedsSetup(_appRoot))
             {
-                using var dlg = new VcRedistDialog();
-                if (dlg.ShowDialog(this) == DialogResult.OK)
+                using var setupDlg = new FirstRunSetupDialog(_appRoot, _config);
+                if (setupDlg.ShowDialog(this) == DialogResult.OK)
                 {
-                    lblStatusText.Text = $"Ready | Root: {_appRoot}";
-                    lblStatusText.ForeColor = ModernColors.TextSecondary;
-                    lblStatusText.Cursor = Cursors.Default;
+                    _nginx.CheckInstallation();
+                    _php.CheckInstallation();
+                    BuildServiceCards();
+                    RefreshPhpVersionsCombo();
+                    RefreshSitesList();
+                    _refreshPhpPackages?.Invoke();
+                    BuildTrayMenu();
+                    lblStatusText.Text = "Core environment provisioned successfully.";
+                    lblStatusText.ForeColor = ModernColors.Success;
                 }
             }
         };
@@ -358,8 +365,39 @@ public partial class MainForm : Form
             }
         };
 
+        var btnCoreSetup = new ModernButton
+        {
+            Text = "Core Setup Wizard",
+            IconKind = IconKind.Lightning,
+            IconSize = 10,
+            Width = 145,
+            Height = 32,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.Primary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(290, 6)
+        };
+        btnCoreSetup.Click += (s, e) =>
+        {
+            using var dlg = new FirstRunSetupDialog(_appRoot, _config);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                _nginx.CheckInstallation();
+                _php.CheckInstallation();
+                BuildServiceCards();
+                RefreshPhpVersionsCombo();
+                RefreshSitesList();
+                _refreshPhpPackages?.Invoke();
+                BuildTrayMenu();
+            }
+        };
+
         pnlActions.Controls.Add(btnOpenConfig);
         pnlActions.Controls.Add(btnResetDefaults);
+        pnlActions.Controls.Add(btnCoreSetup);
 
         // Add to settings page in reverse dock order so pnlHeader is on top
         pageSettings.Controls.AddRange([pnlActions, cardUserPath, cardAuto, cardTray, cardWin, pnlHeader]);
@@ -3122,7 +3160,8 @@ public partial class MainForm : Form
                 IconKind.Server,
                 phpVersions.ToArray(),
                 _config.ActivePhp,
-                async newVersion => await SwitchActivePhpAsync(newVersion)
+                async newVersion => await SwitchActivePhpAsync(newVersion),
+                onInstall: async svc => await InstallServiceWithUiAsync("nginx", svc)
             );
             cardContainer.Controls.Add(nginxCard);
         }

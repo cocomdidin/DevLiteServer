@@ -43,12 +43,6 @@ jobs:
           dotnet-version: '10.0.x'
           dotnet-quality: 'preview'
 
-      - name: Provision Starter Runtimes
-        shell: pwsh
-        run: |
-          Write-Host "Provisioning core runtime bundle (Nginx, PHP 8.4, Git, Composer)..."
-          .\scripts\setup-bundle.ps1 -Component Core
-
       - name: Publish .NET Application
         shell: pwsh
         run: |
@@ -63,13 +57,24 @@ jobs:
           Copy-Item -Path "assets" -Destination "dist/app/assets" -Recurse -Force
           Copy-Item -Path "config.ini" -Destination "dist/app/config.ini" -Force
           Copy-Item -Path "config.ini.default" -Destination "dist/app/config.ini.default" -Force
-          Copy-Item -Path "bin" -Destination "dist/app/bin" -Recurse -Force
 
-          # Exclude on-demand services and tools from distribution bundle
-          if (Test-Path "dist/app/tools/adminer") { Remove-Item -Recurse -Force "dist/app/tools/adminer" }
-          if (Test-Path "dist/app/bin/mysql") { Remove-Item -Recurse -Force "dist/app/bin/mysql" }
-          if (Test-Path "dist/app/bin/nodejs") { Remove-Item -Recurse -Force "dist/app/bin/nodejs" }
-          if (Test-Path "dist/app/bin/mailpit") { Remove-Item -Recurse -Force "dist/app/bin/mailpit" }
+          New-Item -ItemType Directory -Force -Path "dist/app/bin" | Out-Null
+          if (Test-Path "bin") {
+              Copy-Item -Path "bin" -Destination "dist/app/bin" -Recurse -Force
+          }
+
+          # Exclude on-demand services and tools from slim distribution bundle
+          $excludeTools = @("adminer", "phpmyadmin", "heidisql", "tinyrdm", "composer")
+          foreach ($tool in $excludeTools) {
+              $toolPath = "dist/app/tools/$tool"
+              if (Test-Path $toolPath) { Remove-Item -Recurse -Force $toolPath }
+          }
+
+          $excludeBins = @("mysql", "nodejs", "mailpit", "postgresql", "redis", "nginx", "php", "git")
+          foreach ($bin in $excludeBins) {
+              $binPath = "dist/app/bin/$bin"
+              if (Test-Path $binPath) { Remove-Item -Recurse -Force $binPath }
+          }
 
           # Clean runtime artifacts / database directories from distribution bundle
           Get-ChildItem -Path "dist/app/bin" -Recurse -Directory -Filter "data" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue

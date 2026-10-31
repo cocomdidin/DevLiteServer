@@ -35,6 +35,8 @@ Unlike traditional solutions, Dev Lite Server does not install Windows Services 
 
 - ⚡ **True Portability & Zero-Registry**:
   Run from anywhere (`C:\DevLiteServer`, a secondary SSD, or a USB drive). No Windows services registered, no leftover registry entries.
+- 🚀 **First-Run Core Auto-Setup (Herd-Style)**:
+  On fresh launch, automatically detects missing core dependencies (MSVCRT x64, Nginx 1.26, PHP 8.4 NTS, Composer CLI, MinGit Portable, AdminerEvo) and provisions them in a sequential 1-click wizard with 1-click Windows User PATH registration and starter dashboard initialization.
 - 🛡️ **Win32 Job Object Process Supervision**:
   All child daemon processes are assigned to a kernel Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. Even in the event of an abrupt crash, zero orphan daemons remain.
 - 🔒 **Single-Instance Mutex & Focus Activation**:
@@ -104,23 +106,21 @@ DefaultRedisClient=ask
 
 ## 📦 Stack & Ports
 
-### Pre-Bundled Core (Out-of-the-Box)
-| Service / Tool | Version | Port / Access | Notes |
-|---|---|---|---|
-| **Nginx** | 1.26.x | `http://localhost:80` | High-performance reverse proxy & web server |
-| **PHP (NTS x64)** | 8.4.x | `127.0.0.1:9000` | FastCGI daemon with auto-supervision |
-| **MinGit** | Latest | CLI | Isolated Git for Windows CLI |
-| **Composer** | Latest | CLI | PHP package manager |
+### Slim Zero-Bundle Architecture
+Dev Lite Server ships as an ultra-compact starter package (~16 MB). All services and runtimes are provisioned on-demand with 1-click installation directly from official sources:
 
-### On-Demand 1-Click Components (Installable via UI)
 | Service / Tool | Version | Port / Access | Notes |
 |---|---|---|---|
-| **MySQL** | 8.4.x | `3306` | Default user: `root` (no password) |
+| **Nginx** | 1.26.x | `http://localhost:80` | High-performance reverse proxy & web server (1-click install) |
+| **PHP (NTS x64)** | 7.4, 8.1, 8.2, 8.3, 8.4 | `127.0.0.1:9000` | FastCGI daemon with auto-supervision & multi-version switcher |
 | **Node.js** | v18, v20, v22, v24 | CLI | Portable runtime with NPM & NPX or System Node |
+| **MySQL** | 8.4.x | `3306` | Default user: `root` (no password) |
 | **PostgreSQL** | 17.x | `5432` | Default user: `postgres` (trust auth, no password) |
-| **Redis** | 7.x | `6379` | In-memory key-value cache store |
+| **Redis** | 5.x / 7.x | `6379` | In-memory key-value cache store |
 | **Mailpit Web UI** | Latest | `http://localhost:8025` | Webmail inbox viewer |
 | **Mailpit SMTP** | Latest | `127.0.0.1:1025` | Local mail capture daemon |
+| **MinGit** | Latest | CLI | Isolated Git for Windows CLI |
+| **Composer** | Latest | CLI | PHP package manager |
 | **Database Clients** | phpMyAdmin, AdminerEvo, HeidiSQL, Tiny RDM, redis-cli | GUI / Web / CLI | Selectable on-the-fly or saved preference per database engine |
 
 ---

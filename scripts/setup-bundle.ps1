@@ -30,6 +30,7 @@ function Download-And-Extract {
     param (
         [string]$Name,
         [string]$Url,
+        [string]$FallbackUrl,
         [string]$ZipName,
         [string]$TargetDir,
         [switch]$FlattenSingleSubdir
@@ -42,7 +43,32 @@ function Download-And-Extract {
         Write-Host "[$Name] Downloading from: $Url" -ForegroundColor Gray
         $client = New-Object System.Net.WebClient
         $client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) DevLiteServer/1.0")
-        $client.DownloadFile($Url, $ZipPath)
+
+        $downloadSucceeded = $false
+        $urlsToTry = @($Url)
+        if ($FallbackUrl) {
+            $urlsToTry += $FallbackUrl
+        } elseif ($Url -match "windows\.php\.net/downloads/releases/(php-[^/]+\.zip)") {
+            $urlsToTry += "https://windows.php.net/downloads/releases/archives/$($Matches[1])"
+        }
+
+        foreach ($tryUrl in $urlsToTry) {
+            try {
+                if ($tryUrl -ne $Url) {
+                    Write-Host "[$Name] Trying fallback download: $tryUrl" -ForegroundColor Yellow
+                }
+                $client.DownloadFile($tryUrl, $ZipPath)
+                $downloadSucceeded = $true
+                break
+            } catch {
+                Write-Host "[$Name] Download failed from $tryUrl : $($_.Exception.Message)" -ForegroundColor DarkYellow
+                if (Test-Path $ZipPath) { Remove-Item -Force $ZipPath -ErrorAction SilentlyContinue }
+            }
+        }
+
+        if (-not $downloadSucceeded) {
+            throw "Failed to download $Name from any of the configured URLs."
+        }
         Write-Host "[$Name] Download complete." -ForegroundColor Green
     } else {
         Write-Host "[$Name] Using cached download: $ZipPath" -ForegroundColor DarkGray
@@ -88,8 +114,9 @@ function Setup-Nginx {
 function Setup-Php {
     $target = Join-Path $BinDir "php\php-8.4"
     Download-And-Extract -Name "PHP 8.4" `
-        -Url "https://windows.php.net/downloads/releases/php-8.4.26-nts-Win32-vs17-x64.zip" `
-        -ZipName "php-8.4.26-nts.zip" `
+        -Url "https://windows.php.net/downloads/releases/php-8.4.4-nts-Win32-vs17-x64.zip" `
+        -FallbackUrl "https://windows.php.net/downloads/releases/archives/php-8.4.4-nts-Win32-vs17-x64.zip" `
+        -ZipName "php-8.4.4-nts.zip" `
         -TargetDir $target
 
     # Auto-configure php.ini
