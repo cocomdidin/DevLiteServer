@@ -360,6 +360,21 @@ $cfg['SaveDir'] = '';
 ";
                         await File.WriteAllTextAsync(configInc, pmaConfig, new UTF8Encoding(false), ct);
 
+                        // Suppress PHP 8.4 deprecation notices in vendor libs before autoloading
+                        string indexPhp = Path.Combine(destDir, "index.php");
+                        if (File.Exists(indexPhp))
+                        {
+                            string indexContent = await File.ReadAllTextAsync(indexPhp, ct);
+                            if (!indexContent.Contains("E_DEPRECATED"))
+                            {
+                                indexContent = indexContent.Replace(
+                                    "declare(strict_types=1);",
+                                    "declare(strict_types=1);\n\nerror_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);\nini_set('display_errors', '0');"
+                                );
+                                await File.WriteAllTextAsync(indexPhp, indexContent, new UTF8Encoding(false), ct);
+                            }
+                        }
+
                         progress?.Report("phpMyAdmin installed.");
                         return true;
                     }

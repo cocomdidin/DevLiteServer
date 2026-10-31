@@ -49,6 +49,7 @@ http {
                 fastcgi_pass   127.0.0.1:{{PHP_PORT}};
                 fastcgi_index  index.php;
                 fastcgi_param  SCRIPT_FILENAME $request_filename;
+                fastcgi_param  PHP_VALUE "error_reporting=22527\ndisplay_errors=0";
                 include        fastcgi_params;
             }
         }

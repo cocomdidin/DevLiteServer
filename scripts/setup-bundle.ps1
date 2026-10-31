@@ -162,11 +162,19 @@ function Setup-Php {
         $content = $content -replace 'memory_limit = 128M', 'memory_limit = 512M'
         $content = $content -replace 'max_execution_time = 30', 'max_execution_time = 300'
 
+        # Suppress E_DEPRECATED so vendor deprecation notices never break HTTP headers or sessions
+        $content = $content -replace '(?m)^error_reporting\s*=.*$', 'error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT'
+
         Set-Content -Path $iniTarget -Value $content
         Write-Host "[PHP 8.4] php.ini configured." -ForegroundColor Green
     } elseif (Test-Path $iniTarget) {
         $content = Get-Content $iniTarget -Raw
         $changed = $false
+
+        if ($content -match '(?m)^error_reporting\s*=\s*E_ALL\s*$') {
+            $content = $content -replace '(?m)^error_reporting\s*=.*$', 'error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT'
+            $changed = $true
+        }
 
         if ($content -match ';extension_dir = "ext"') {
             $content = $content -replace ';extension_dir = "ext"', 'extension_dir = "ext"'
