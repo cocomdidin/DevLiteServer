@@ -62,6 +62,16 @@ Type: filesandordirs; Name: "{app}\tr"
 Type: filesandordirs; Name: "{app}\zh-Hans"
 Type: filesandordirs; Name: "{app}\zh-Hant"
 
+; Clean accidental nested bin\bin directory from previous bundles
+Type: filesandordirs; Name: "{app}\bin\bin"
+
+[Dirs]
+Name: "{app}\bin"
+Name: "{app}\tools"
+Name: "{app}\www"
+Name: "{app}\ssl"
+Name: "{app}\logs"
+
 [Files]
 ; 1. Core application binaries, assets, tools, templates (always updated on install)
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "config.ini,config.ini.default,sites.json,www\*,ssl\*,bin\nginx\*,bin\php\*,bin\mysql\*,bin\nodejs\*,bin\mailpit\*,bin\postgresql\*,bin\redis\*,bin\git\*,tools\composer\*,tools\adminer\*,tools\phpmyadmin\*,tools\heidisql\*,tools\tinyrdm\*"; Flags: ignoreversion recursesubdirs createallsubdirs

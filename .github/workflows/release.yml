@@ -52,33 +52,13 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item -Path "templates" -Destination "dist/app/templates" -Recurse -Force
-          Copy-Item -Path "tools" -Destination "dist/app/tools" -Recurse -Force
-          Copy-Item -Path "www" -Destination "dist/app/www" -Recurse -Force
           Copy-Item -Path "assets" -Destination "dist/app/assets" -Recurse -Force
+          Copy-Item -Path "www" -Destination "dist/app/www" -Recurse -Force
           Copy-Item -Path "config.ini" -Destination "dist/app/config.ini" -Force
           Copy-Item -Path "config.ini.default" -Destination "dist/app/config.ini.default" -Force
 
           New-Item -ItemType Directory -Force -Path "dist/app/bin" | Out-Null
-          if (Test-Path "bin") {
-              Copy-Item -Path "bin" -Destination "dist/app/bin" -Recurse -Force
-          }
-
-          # Exclude on-demand services and tools from slim distribution bundle
-          $excludeTools = @("adminer", "phpmyadmin", "heidisql", "tinyrdm", "composer")
-          foreach ($tool in $excludeTools) {
-              $toolPath = "dist/app/tools/$tool"
-              if (Test-Path $toolPath) { Remove-Item -Recurse -Force $toolPath }
-          }
-
-          $excludeBins = @("mysql", "nodejs", "mailpit", "postgresql", "redis", "nginx", "php", "git")
-          foreach ($bin in $excludeBins) {
-              $binPath = "dist/app/bin/$bin"
-              if (Test-Path $binPath) { Remove-Item -Recurse -Force $binPath }
-          }
-
-          # Clean runtime artifacts / database directories from distribution bundle
-          Get-ChildItem -Path "dist/app/bin" -Recurse -Directory -Filter "data" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-          if (Test-Path "dist/app/bin/php/current") { cmd /c rmdir "dist\app\bin\php\current" }
+          New-Item -ItemType Directory -Force -Path "dist/app/tools" | Out-Null
 
       - name: Package Portable Zip
         shell: pwsh

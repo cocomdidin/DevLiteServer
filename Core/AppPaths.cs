@@ -112,6 +112,13 @@ public static class AppPaths
                     try { Directory.Delete(targetDir, recursive: true); } catch { }
                 }
             }
+
+            // 3. Delete accidental nested bin\bin directory from previous bundles
+            string nestedBin = Path.Combine(root, "bin", "bin");
+            if (Directory.Exists(nestedBin))
+            {
+                try { Directory.Delete(nestedBin, recursive: true); } catch { }
+            }
         }
         catch
         {
