@@ -4,6 +4,8 @@ StartWithWindows=false
 MinimizeToTray=true
 AutoStartServices=false
 CheckUpdatesOnStart=true
+PreferredEditor=vscode
+CustomEditorPath=
 
 [Services]
 Nginx=true

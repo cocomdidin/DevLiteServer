@@ -24,6 +24,7 @@ public enum IconKind
     Plus,
     Lock,
     Pencil,
+    Code,
     ChevronDown
 }
 
@@ -349,6 +350,25 @@ public static class VectorIcons
 
                     // Writing underline
                     g.DrawLine(thinPen, x + (w * 0.48f), y + (h * 0.86f), x + (w * 0.84f), y + (h * 0.86f));
+                }
+                break;
+
+            case IconKind.Code:
+                {
+                    // Code brackets: < >
+                    float cy = y + (h * 0.5f);
+                    float spanX = w * 0.20f;
+                    float depthY = h * 0.26f;
+
+                    // Left angle bracket <
+                    float leftX = x + (w * 0.22f);
+                    g.DrawLine(pen, leftX + spanX, cy - depthY, leftX, cy);
+                    g.DrawLine(pen, leftX, cy, leftX + spanX, cy + depthY);
+
+                    // Right angle bracket >
+                    float rightX = x + (w * 0.78f);
+                    g.DrawLine(pen, rightX - spanX, cy - depthY, rightX, cy);
+                    g.DrawLine(pen, rightX, cy, rightX - spanX, cy + depthY);
                 }
                 break;
 

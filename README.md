@@ -59,6 +59,8 @@ Unlike traditional solutions, Dev Lite Server does not install Windows Services 
   Built-in GitHub Release checker with one-click direct download, progress bar, graceful daemon shutdown, and installer execution.
 - 🎨 **Modern Dark OLED UI, Dedicated Settings & Clean Dashboard**:
   High-DPI optimized, responsive WinForms dashboard that displays only currently enabled services. Includes a dedicated **Settings & Configuration** dialog with port management, per-service dashboard visibility toggles, auto-start options, and dedicated one-click **Exit** button that cleanly terminates all daemons and the application.
+- 💻 **Configurable Code Editor & Sites Shortcut**:
+  Set your preferred text/code editor (VS Code, Cursor, Antigravity, PhpStorm, or custom executable) in Settings. Open any site's codebase or `/www` web root directly into your editor with a single click from the Sites tab.
 - 🪟 **Windows Logon Auto-Start**:
   Optional single-click startup on Windows logon (`StartWithWindows=true`) registering into `HKCU` Run key, launching minimized to tray with zero UAC prompts.
 
@@ -75,6 +77,8 @@ StartWithWindows=false
 MinimizeToTray=true
 AutoStartServices=false
 CheckUpdatesOnStart=true
+PreferredEditor=vscode
+CustomEditorPath=
 
 [AutoStart]
 Nginx=false

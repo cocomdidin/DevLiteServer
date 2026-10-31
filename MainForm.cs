@@ -305,6 +305,90 @@ public partial class MainForm : Form
         };
         var cardUserPath = CreateOptionCard("Register to Windows User PATH", "Enables any external terminal or IDE (CMD, PowerShell, VS Code) to access PHP, Node, and Composer globally without Administrator privileges.", togUserPath);
 
+        // 6. Preferred Code Editor
+        var cmbEditor = new ModernComboBox
+        {
+            Width = 160,
+            Height = 28
+        };
+        foreach (var ed in CodeEditorManager.SupportedEditors)
+        {
+            cmbEditor.Items.Add(ed.DisplayName);
+        }
+        int selIdx = Array.FindIndex(CodeEditorManager.SupportedEditors, e => e.Id.Equals(_config.PreferredEditor, StringComparison.OrdinalIgnoreCase));
+        cmbEditor.SelectedIndex = selIdx >= 0 ? selIdx : 0;
+
+        var btnBrowseEditor = new ModernButton
+        {
+            Text = "Browse...",
+            Width = 72,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f),
+            Visible = _config.PreferredEditor.Equals("custom", StringComparison.OrdinalIgnoreCase)
+        };
+
+        var pnlEditorCtrl = new Panel
+        {
+            Width = 240,
+            Height = 28,
+            BackColor = Color.Transparent
+        };
+        cmbEditor.Location = new Point(0, 0);
+        btnBrowseEditor.Location = new Point(166, 0);
+        pnlEditorCtrl.Controls.Add(cmbEditor);
+        pnlEditorCtrl.Controls.Add(btnBrowseEditor);
+
+        cmbEditor.SelectedIndexChanged += (s, e) =>
+        {
+            if (cmbEditor.SelectedIndex >= 0 && cmbEditor.SelectedIndex < CodeEditorManager.SupportedEditors.Length)
+            {
+                var chosen = CodeEditorManager.SupportedEditors[cmbEditor.SelectedIndex];
+                _config.PreferredEditor = chosen.Id;
+                btnBrowseEditor.Visible = chosen.Id.Equals("custom", StringComparison.OrdinalIgnoreCase);
+
+                if (chosen.Id.Equals("custom", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(_config.CustomEditorPath))
+                {
+                    using var ofd = new OpenFileDialog
+                    {
+                        Title = "Select Code Editor Executable",
+                        Filter = "Executable Files (*.exe)|*.exe|All Files (*.*)|*.*",
+                        CheckFileExists = true
+                    };
+                    if (ofd.ShowDialog(this) == DialogResult.OK)
+                    {
+                        _config.CustomEditorPath = ofd.FileName;
+                    }
+                }
+
+                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                RefreshSitesList();
+            }
+        };
+
+        btnBrowseEditor.Click += (s, e) =>
+        {
+            using var ofd = new OpenFileDialog
+            {
+                Title = "Select Code Editor Executable",
+                Filter = "Executable Files (*.exe)|*.exe|All Files (*.*)|*.*",
+                CheckFileExists = true,
+                FileName = _config.CustomEditorPath
+            };
+            if (ofd.ShowDialog(this) == DialogResult.OK)
+            {
+                _config.CustomEditorPath = ofd.FileName;
+                ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                RefreshSitesList();
+            }
+        };
+
+        var cardEditor = CreateOptionCard("Preferred Code Editor", "Choose the editor used to open site codebases from the Sites tab.", pnlEditorCtrl);
+
         // 6. Action Buttons Bar (Reset Settings & Open config.ini)
         var pnlActions = new Panel
         {
@@ -400,7 +484,7 @@ public partial class MainForm : Form
         pnlActions.Controls.Add(btnCoreSetup);
 
         // Add to settings page in reverse dock order so pnlHeader is on top
-        pageSettings.Controls.AddRange([pnlActions, cardUserPath, cardAuto, cardTray, cardWin, pnlHeader]);
+        pageSettings.Controls.AddRange([pnlActions, cardUserPath, cardEditor, cardAuto, cardTray, cardWin, pnlHeader]);
         pnlHeader.SendToBack();
     }
 
@@ -791,14 +875,35 @@ public partial class MainForm : Form
         };
         tip.SetToolTip(btnOpenDir, $"Open folder: {wwwDir}");
 
+        string editorName = CodeEditorManager.GetEditorDisplayName(_config.PreferredEditor);
+        var btnOpenCode = new ModernButton
+        {
+            Text = "",
+            IconKind = IconKind.Code,
+            IconSize = 12,
+            Width = 28,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextSecondary
+        };
+        btnOpenCode.Click += (s, e) =>
+        {
+            CodeEditorManager.OpenFolder(_config, wwwDir, this);
+        };
+        tip.SetToolTip(btnOpenCode, $"Open codebase in {editorName}: {wwwDir}");
+
         void LayoutRootSiteButtons()
         {
             int cardH = card.Height - 10;
             int rightX = card.Width > 200 ? card.Width - btnBrowse.Width - 14 : 500;
             btnBrowse.Location = new Point(rightX, (cardH - btnBrowse.Height) / 2);
             btnOpenDir.Location = new Point(btnBrowse.Left - btnOpenDir.Width - 6, (cardH - btnOpenDir.Height) / 2);
+            btnOpenCode.Location = new Point(btnOpenDir.Left - btnOpenCode.Width - 6, (cardH - btnOpenCode.Height) / 2);
 
-            int maxTextW = btnOpenDir.Left - lblName.Left - 12;
+            int maxTextW = btnOpenCode.Left - lblName.Left - 12;
             if (maxTextW > 50)
             {
                 lblName.MaximumSize = new Size(maxTextW, 22);
@@ -810,6 +915,7 @@ public partial class MainForm : Form
 
         card.Controls.Add(lblName);
         card.Controls.Add(lblUrl);
+        card.Controls.Add(btnOpenCode);
         card.Controls.Add(btnOpenDir);
         card.Controls.Add(btnBrowse);
 
@@ -939,6 +1045,26 @@ public partial class MainForm : Form
         };
         tip.SetToolTip(btnOpenDir, $"Open folder: {site.PhysicalPath}");
 
+        string editorName = CodeEditorManager.GetEditorDisplayName(_config.PreferredEditor);
+        var btnOpenCode = new ModernButton
+        {
+            Text = "",
+            IconKind = IconKind.Code,
+            IconSize = 12,
+            Width = 28,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextSecondary
+        };
+        btnOpenCode.Click += (s, e) =>
+        {
+            CodeEditorManager.OpenFolder(_config, site.PhysicalPath, this);
+        };
+        tip.SetToolTip(btnOpenCode, $"Open codebase in {editorName}: {site.PhysicalPath}");
+
         var btnEdit = new ModernButton
         {
             Text = "",
@@ -1018,7 +1144,8 @@ public partial class MainForm : Form
             int rightX = card.Width > 200 ? card.Width - btnBrowse.Width - 14 : 500;
             btnBrowse.Location = new Point(rightX, (cardH - btnBrowse.Height) / 2);
             btnOpenDir.Location = new Point(btnBrowse.Left - btnOpenDir.Width - 6, (cardH - btnOpenDir.Height) / 2);
-            btnEdit.Location = new Point(btnOpenDir.Left - btnEdit.Width - 6, (cardH - btnEdit.Height) / 2);
+            btnOpenCode.Location = new Point(btnOpenDir.Left - btnOpenCode.Width - 6, (cardH - btnOpenCode.Height) / 2);
+            btnEdit.Location = new Point(btnOpenCode.Left - btnEdit.Width - 6, (cardH - btnEdit.Height) / 2);
 
             int leftBoundary = btnEdit.Left;
             if (btnDelete != null)
@@ -1036,6 +1163,7 @@ public partial class MainForm : Form
 
         card.Controls.Add(lblName);
         card.Controls.Add(lblUrl);
+        card.Controls.Add(btnOpenCode);
         card.Controls.Add(btnEdit);
         card.Controls.Add(btnOpenDir);
         card.Controls.Add(btnBrowse);

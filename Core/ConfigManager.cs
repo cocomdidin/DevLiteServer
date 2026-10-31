@@ -10,6 +10,10 @@ public class AppConfig
     public bool StartWithWindows { get; set; } = false;
     public bool RegisterUserPath { get; set; } = false;
 
+    // Preferred text editor command or executable path ("vscode", "cursor", "antigravity", "phpstorm", "custom")
+    public string PreferredEditor { get; set; } = "vscode";
+    public string CustomEditorPath { get; set; } = "";
+
     // Enabled services
     public bool EnableNginx { get; set; } = true;
     public bool EnablePhp { get; set; } = true;
@@ -77,6 +81,8 @@ public class AppConfig
         MinimizeToTray = d.MinimizeToTray;
         StartWithWindows = d.StartWithWindows;
         RegisterUserPath = d.RegisterUserPath;
+        PreferredEditor = d.PreferredEditor;
+        CustomEditorPath = d.CustomEditorPath;
         EnableNginx = d.EnableNginx;
         EnablePhp = d.EnablePhp;
         EnableMysql = d.EnableMysql;
@@ -155,6 +161,10 @@ public static class ConfigManager
                         config.StartWithWindows = bool.Parse(val);
                     else if (key.Equals("RegisterUserPath", StringComparison.OrdinalIgnoreCase))
                         config.RegisterUserPath = bool.Parse(val);
+                    else if (key.Equals("PreferredEditor", StringComparison.OrdinalIgnoreCase))
+                        config.PreferredEditor = val;
+                    else if (key.Equals("CustomEditorPath", StringComparison.OrdinalIgnoreCase))
+                        config.CustomEditorPath = val;
                     break;
 
                 case "AUTOSTART":
@@ -209,6 +219,8 @@ public static class ConfigManager
             $"AutoStartServices={config.AutoStartServices.ToString().ToLower()}",
             $"CheckUpdatesOnStart={config.CheckUpdatesOnStart.ToString().ToLower()}",
             $"RegisterUserPath={config.RegisterUserPath.ToString().ToLower()}",
+            $"PreferredEditor={config.PreferredEditor}",
+            $"CustomEditorPath={config.CustomEditorPath}",
             "",
             "[Services]",
             $"Nginx={config.EnableNginx.ToString().ToLower()}",
