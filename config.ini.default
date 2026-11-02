@@ -19,6 +19,9 @@ Mailpit=false
 ActivePhp=php-8.4
 ActiveNode=node-v24
 
+[Php]
+WorkerCount=4
+
 [Tools]
 DefaultMySqlClient=ask
 DefaultPgClient=ask

@@ -26,6 +26,9 @@ public class AppConfig
     public string ActivePhp { get; set; } = "php-8.4";
     public string ActiveNode { get; set; } = "node-v24";
 
+    // PHP FastCGI Worker Pool (concurrency)
+    public int PhpWorkerCount { get; set; } = 4;
+
     // Database client preferences ("ask", "heidisql", "phpmyadmin", "adminer", "tinyrdm", "cli")
     public string DefaultMySqlClient { get; set; } = "ask";
     public string DefaultPgClient { get; set; } = "ask";
@@ -91,6 +94,7 @@ public class AppConfig
         EnableMailpit = d.EnableMailpit;
         ActivePhp = d.ActivePhp;
         ActiveNode = d.ActiveNode;
+        PhpWorkerCount = d.PhpWorkerCount;
         DefaultMySqlClient = d.DefaultMySqlClient;
         DefaultPgClient = d.DefaultPgClient;
         DefaultRedisClient = d.DefaultRedisClient;
@@ -184,6 +188,13 @@ public static class ConfigManager
                 case "VERSIONS":
                     if (key.Equals("ActivePhp", StringComparison.OrdinalIgnoreCase)) config.ActivePhp = val;
                     else if (key.Equals("ActiveNode", StringComparison.OrdinalIgnoreCase)) config.ActiveNode = val;
+                    else if (key.Equals("WorkerCount", StringComparison.OrdinalIgnoreCase) && int.TryParse(val, out int wcVer))
+                        config.PhpWorkerCount = Math.Clamp(wcVer, 1, 16);
+                    break;
+
+                case "PHP":
+                    if (key.Equals("WorkerCount", StringComparison.OrdinalIgnoreCase) && int.TryParse(val, out int wcPhp))
+                        config.PhpWorkerCount = Math.Clamp(wcPhp, 1, 16);
                     break;
 
                 case "TOOLS":
@@ -233,6 +244,9 @@ public static class ConfigManager
             "[Versions]",
             $"ActivePhp={config.ActivePhp}",
             $"ActiveNode={config.ActiveNode}",
+            "",
+            "[Php]",
+            $"WorkerCount={config.PhpWorkerCount}",
             "",
             "[Tools]",
             $"DefaultMySqlClient={config.DefaultMySqlClient}",

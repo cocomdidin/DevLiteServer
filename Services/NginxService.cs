@@ -158,7 +158,8 @@ public class NginxService : BaseService
             TemplateEngine.ProcessTemplate(templatePath, outputPath, vars);
         }
 
-        // Generate dynamic vhosts.conf for *.test domains
+        // Generate dynamic upstreams.conf and vhosts.conf for *.test domains
+        VirtualHostManager.GenerateUpstreamsConfig(AppRoot, _config, confDir);
         VirtualHostManager.GenerateVhostsConfig(AppRoot, _config, confDir);
     }
 

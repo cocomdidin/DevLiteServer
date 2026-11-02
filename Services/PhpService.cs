@@ -7,8 +7,8 @@ namespace DevLiteServer.Services;
 public class PhpWorkerInfo
 {
     public string Version { get; set; } = "";
-    public int Port { get; set; }
-    public Process? Process { get; set; }
+    public int BasePort { get; set; }
+    public List<Process?> Processes { get; } = new();
     public CancellationTokenSource Cts { get; set; } = new();
 }
 
@@ -17,6 +17,9 @@ public class PhpService : BaseService
     private readonly AppConfig _config;
     private CancellationTokenSource? _supervisorCts;
     private readonly Dictionary<string, PhpWorkerInfo> _extraWorkers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<Process?> _primaryWorkers = new();
+
+    public int WorkerCount => Math.Clamp(_config.PhpWorkerCount, 1, 16);
 
     public override string Name => "PHP (FastCGI)";
     public override int Port => _config.PhpFastCgiPort;
@@ -44,10 +47,10 @@ public class PhpService : BaseService
         var match = Regex.Match(version, @"(\d+)\.(\d+)");
         if (match.Success && int.TryParse(match.Groups[1].Value, out int major) && int.TryParse(match.Groups[2].Value, out int minor))
         {
-            return 9000 + (major * 10) + minor; // e.g. 8.4 -> 9084, 8.2 -> 9082, 7.4 -> 9074
+            return 9000 + (major * 100) + (minor * 10); // e.g. 8.4 -> 9840, 8.2 -> 9820, 7.4 -> 9740 (10 port slots per version)
         }
 
-        return 9100 + Math.Abs(version.GetHashCode() % 100);
+        return 9100 + Math.Abs(version.GetHashCode() % 50) * 10;
     }
 
     public static List<string> GetInstalledVersions(string appRoot)
@@ -173,9 +176,13 @@ public class PhpService : BaseService
             return false;
         }
 
-        if (!await CheckAndResolvePortAsync(Port, p => _config.PhpFastCgiPort = p))
+        for (int i = 0; i < WorkerCount; i++)
         {
-            return false;
+            int p = Port + i;
+            if (!await CheckAndResolvePortAsync(p, resolved => _config.PhpFastCgiPort = resolved - i))
+            {
+                return false;
+            }
         }
 
         Status = ServiceStatus.Starting;
@@ -184,7 +191,7 @@ public class PhpService : BaseService
         try
         {
             EnsureConfig(GetPhpDirectory());
-            StartWorker();
+            StartPrimaryWorkers();
             _ = Task.Run(() => SupervisorLoopAsync(_supervisorCts.Token));
 
             await Task.Delay(300);
@@ -221,7 +228,7 @@ public class PhpService : BaseService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        // 1. Terminate any worker whose version is no longer needed by any site
+        // 1. Terminate any worker pool whose version is no longer needed by any site
         lock (_extraWorkers)
         {
             var unneeded = _extraWorkers.Keys.Where(v => !requiredVersions.Contains(v)).ToList();
@@ -232,9 +239,20 @@ public class PhpService : BaseService
                     try
                     {
                         worker.Cts.Cancel();
-                        if (worker.Process != null && !worker.Process.HasExited)
+                        lock (worker.Processes)
                         {
-                            worker.Process.Kill(true);
+                            foreach (var proc in worker.Processes)
+                            {
+                                try
+                                {
+                                    if (proc != null && !proc.HasExited)
+                                    {
+                                        proc.Kill(true);
+                                    }
+                                }
+                                catch { }
+                            }
+                            worker.Processes.Clear();
                         }
                     }
                     catch { }
@@ -260,7 +278,8 @@ public class PhpService : BaseService
 
         lock (_extraWorkers)
         {
-            if (_extraWorkers.TryGetValue(version, out var existing) && existing.Process != null && !existing.Process.HasExited)
+            if (_extraWorkers.TryGetValue(version, out var existing) &&
+                existing.Processes.Any(p => p != null && !p.HasExited))
             {
                 return true;
             }
@@ -273,16 +292,16 @@ public class PhpService : BaseService
             return false;
         }
 
-        int port = GetPortForVersion(version, Port);
+        int basePort = GetPortForVersion(version, Port);
         EnsureConfig(versionDir);
 
         var worker = new PhpWorkerInfo
         {
             Version = version,
-            Port = port
+            BasePort = basePort
         };
 
-        StartExtraWorkerProcess(worker);
+        StartExtraWorkers(worker);
 
         lock (_extraWorkers)
         {
@@ -291,7 +310,7 @@ public class PhpService : BaseService
 
         _ = Task.Run(() => ExtraWorkerSupervisorLoopAsync(worker, worker.Cts.Token));
         await Task.Delay(200);
-        return worker.Process != null && !worker.Process.HasExited;
+        return worker.Processes.Any(p => p != null && !p.HasExited);
     }
 
     private void EnsureConfig(string phpDir)
@@ -315,42 +334,66 @@ public class PhpService : BaseService
         }
     }
 
-    private void StartWorker()
+    private void StartPrimaryWorkers()
     {
         string phpCgi = GetPhpCgiPath();
         string phpDir = GetPhpDirectory();
 
-        var psi = new ProcessStartInfo
+        lock (_primaryWorkers)
         {
-            FileName = phpCgi,
-            Arguments = $"-b 127.0.0.1:{Port}",
-            WorkingDirectory = phpDir,
-            RedirectStandardOutput = false,
-            RedirectStandardError = false
-        };
+            while (_primaryWorkers.Count < WorkerCount)
+            {
+                _primaryWorkers.Add(null);
+            }
 
-        psi.EnvironmentVariables["PHP_FCGI_MAX_REQUESTS"] = "5000";
+            for (int i = 0; i < WorkerCount; i++)
+            {
+                if (_primaryWorkers[i] == null || _primaryWorkers[i]!.HasExited)
+                {
+                    _primaryWorkers[i] = LaunchPhpWorker(phpCgi, phpDir, Port + i, i == 0);
+                }
+            }
 
-        CurrentProcess = LaunchProcess(psi, true);
+            CurrentProcess = _primaryWorkers.FirstOrDefault(p => p != null && !p.HasExited);
+        }
     }
 
-    private void StartExtraWorkerProcess(PhpWorkerInfo worker)
+    private void StartExtraWorkers(PhpWorkerInfo worker)
     {
         string versionDir = Path.Combine(AppRoot, "bin", "php", worker.Version);
         string phpCgi = Path.Combine(versionDir, "php-cgi.exe");
 
+        lock (worker.Processes)
+        {
+            while (worker.Processes.Count < WorkerCount)
+            {
+                worker.Processes.Add(null);
+            }
+
+            for (int i = 0; i < WorkerCount; i++)
+            {
+                if (worker.Processes[i] == null || worker.Processes[i]!.HasExited)
+                {
+                    worker.Processes[i] = LaunchPhpWorker(phpCgi, versionDir, worker.BasePort + i, false);
+                }
+            }
+        }
+    }
+
+    private Process? LaunchPhpWorker(string phpCgi, string workingDir, int port, bool setAsCurrent = false)
+    {
         var psi = new ProcessStartInfo
         {
             FileName = phpCgi,
-            Arguments = $"-b 127.0.0.1:{worker.Port}",
-            WorkingDirectory = versionDir,
+            Arguments = $"-b 127.0.0.1:{port}",
+            WorkingDirectory = workingDir,
             RedirectStandardOutput = false,
             RedirectStandardError = false
         };
 
         psi.EnvironmentVariables["PHP_FCGI_MAX_REQUESTS"] = "5000";
 
-        worker.Process = LaunchProcess(psi, false);
+        return LaunchProcess(psi, setAsCurrent);
     }
 
     private async Task SupervisorLoopAsync(CancellationToken token)
@@ -359,10 +402,25 @@ public class PhpService : BaseService
         {
             if (Status == ServiceStatus.Running)
             {
-                if (CurrentProcess == null || CurrentProcess.HasExited)
+                string phpCgi = GetPhpCgiPath();
+                string phpDir = GetPhpDirectory();
+
+                lock (_primaryWorkers)
                 {
-                    // Respawn worker when max requests reached
-                    StartWorker();
+                    for (int i = 0; i < WorkerCount; i++)
+                    {
+                        if (i >= _primaryWorkers.Count)
+                        {
+                            _primaryWorkers.Add(null);
+                        }
+
+                        if (_primaryWorkers[i] == null || _primaryWorkers[i]!.HasExited)
+                        {
+                            _primaryWorkers[i] = LaunchPhpWorker(phpCgi, phpDir, Port + i, i == 0);
+                        }
+                    }
+
+                    CurrentProcess = _primaryWorkers.FirstOrDefault(p => p != null && !p.HasExited);
                 }
             }
             try
@@ -382,9 +440,23 @@ public class PhpService : BaseService
         {
             if (Status == ServiceStatus.Running)
             {
-                if (worker.Process == null || worker.Process.HasExited)
+                string versionDir = Path.Combine(AppRoot, "bin", "php", worker.Version);
+                string phpCgi = Path.Combine(versionDir, "php-cgi.exe");
+
+                lock (worker.Processes)
                 {
-                    StartExtraWorkerProcess(worker);
+                    for (int i = 0; i < WorkerCount; i++)
+                    {
+                        if (i >= worker.Processes.Count)
+                        {
+                            worker.Processes.Add(null);
+                        }
+
+                        if (worker.Processes[i] == null || worker.Processes[i]!.HasExited)
+                        {
+                            worker.Processes[i] = LaunchPhpWorker(phpCgi, versionDir, worker.BasePort + i, false);
+                        }
+                    }
                 }
             }
             try
@@ -403,20 +475,39 @@ public class PhpService : BaseService
         Status = ServiceStatus.Stopping;
         _supervisorCts?.Cancel();
 
-        var portsToWait = new List<int> { Port };
+        var portsToWait = new List<int>();
+        for (int i = 0; i < WorkerCount; i++)
+        {
+            portsToWait.Add(Port + i);
+        }
 
         // 1. Terminate extra workers
         lock (_extraWorkers)
         {
             foreach (var worker in _extraWorkers.Values)
             {
-                portsToWait.Add(worker.Port);
+                for (int i = 0; i < WorkerCount; i++)
+                {
+                    portsToWait.Add(worker.BasePort + i);
+                }
+
                 try
                 {
                     worker.Cts.Cancel();
-                    if (worker.Process != null && !worker.Process.HasExited)
+                    lock (worker.Processes)
                     {
-                        worker.Process.Kill(true);
+                        foreach (var proc in worker.Processes)
+                        {
+                            try
+                            {
+                                if (proc != null && !proc.HasExited)
+                                {
+                                    proc.Kill(true);
+                                }
+                            }
+                            catch { }
+                        }
+                        worker.Processes.Clear();
                     }
                 }
                 catch { }
@@ -424,18 +515,21 @@ public class PhpService : BaseService
             _extraWorkers.Clear();
         }
 
-        // 2. Terminate main process
-        try
+        // 2. Terminate primary workers
+        lock (_primaryWorkers)
         {
-            if (CurrentProcess != null && !CurrentProcess.HasExited)
+            foreach (var proc in _primaryWorkers)
             {
-                CurrentProcess.Kill(true);
-                await CurrentProcess.WaitForExitAsync();
+                try
+                {
+                    if (proc != null && !proc.HasExited)
+                    {
+                        proc.Kill(true);
+                    }
+                }
+                catch { }
             }
-        }
-        catch { }
-        finally
-        {
+            _primaryWorkers.Clear();
             CurrentProcess = null;
         }
 

@@ -10,6 +10,19 @@ http {
     sendfile        on;
     keepalive_timeout  65;
 
+    # Upstream PHP FastCGI pools
+    include upstreams.conf;
+
+    # FastCGI performance and buffer tuning
+    fastcgi_connect_timeout 5s;
+    fastcgi_send_timeout 60s;
+    fastcgi_read_timeout 60s;
+    fastcgi_buffer_size 128k;
+    fastcgi_buffers 4 256k;
+    fastcgi_busy_buffers_size 256k;
+    fastcgi_temp_file_write_size 256k;
+    fastcgi_keep_conn on;
+
     server {
         listen       {{HTTP_PORT}};
         server_name  localhost;
@@ -30,7 +43,7 @@ http {
             index adminer.php;
 
             location ~ \.php$ {
-                fastcgi_pass   127.0.0.1:{{PHP_PORT}};
+                fastcgi_pass   php_default;
                 fastcgi_index  adminer.php;
                 fastcgi_param  SCRIPT_FILENAME $request_filename;
                 include        fastcgi_params;
@@ -46,7 +59,7 @@ http {
             index index.php;
 
             location ~ \.php$ {
-                fastcgi_pass   127.0.0.1:{{PHP_PORT}};
+                fastcgi_pass   php_default;
                 fastcgi_index  index.php;
                 fastcgi_param  SCRIPT_FILENAME $request_filename;
                 fastcgi_param  PHP_VALUE "error_reporting=22527\ndisplay_errors=0";
@@ -63,7 +76,7 @@ http {
             index index.php;
 
             location ~ \.php$ {
-                fastcgi_pass   127.0.0.1:{{PHP_PORT}};
+                fastcgi_pass   php_default;
                 fastcgi_index  index.php;
                 fastcgi_param  SCRIPT_FILENAME $request_filename;
                 include        fastcgi_params;
@@ -73,7 +86,7 @@ http {
         # Pass PHP scripts to FastCGI server
         location ~ \.php$ {
             try_files $uri =404;
-            fastcgi_pass   127.0.0.1:{{PHP_PORT}};
+            fastcgi_pass   php_default;
             fastcgi_index  index.php;
             fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
             include        fastcgi_params;
