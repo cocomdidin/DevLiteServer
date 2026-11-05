@@ -42,7 +42,7 @@ Unlike traditional solutions, Dev Lite Server does not install Windows Services 
 - 🔒 **Single-Instance Mutex & Focus Activation**:
   Prevents duplicate application instances. Double-clicking desktop or portable shortcuts while minimized automatically restores and focuses the active window.
 - ⚡ **PHP Multi-Worker Concurrency Pool & FastCGI Auto-Pairing (Herd-Style)**:
-  Eliminates `502 Bad Gateway` and freeze/hang under heavy or concurrent traffic. Runs multi-process `php-cgi.exe` worker pools (default 4 workers per PHP version) coupled with Nginx dynamic `upstream` round-robin load balancing, persistent `fastcgi_keep_conn on`, and FastCGI buffer & timeout tuning. Auto-recovery loop independently respawns dead workers without downtime.
+  Eliminates `502 Bad Gateway` and freeze/hang under heavy or concurrent traffic. Runs multi-process `php-cgi.exe` worker pools (default 8 workers per PHP version) with enabled Zend OpCache, coupled with Nginx dynamic `upstream` round-robin load balancing, persistent `fastcgi_keep_conn on`, and FastCGI buffer & timeout tuning. Auto-recovery loop independently respawns dead workers without downtime.
 - 🔌 **Interactive Port Conflict Resolver**:
   Automatically detects port collisions on startup (80, 9000, 3306, 5432, 6379, 1025, 8025) and offers 1-click reassignment to recommended free ports without manual config editing.
 - 🧩 **System Dependency Checker (MSVCRT)**:
@@ -97,7 +97,7 @@ Redis=false
 Mailpit=true
 
 [Php]
-WorkerCount=4
+WorkerCount=8
 
 [Tools]
 DefaultMySqlClient=ask
@@ -119,7 +119,7 @@ Dev Lite Server ships as an ultra-compact starter package (~16 MB). All services
 | Service / Tool | Version | Port / Access | Notes |
 |---|---|---|---|
 | **Nginx** | 1.26.x | `http://localhost:80` | High-performance reverse proxy & web server (1-click install) |
-| **PHP (NTS x64)** | 7.4, 8.1, 8.2, 8.3, 8.4 | `127.0.0.1:9000-9003` | FastCGI multi-worker pool (default 4 workers) with auto-supervision & multi-version switcher |
+| **PHP (NTS x64)** | 7.4, 8.1, 8.2, 8.3, 8.4 | `127.0.0.1:9000-9007` | FastCGI multi-worker pool (default 8 workers) with Zend OpCache & auto-supervision |
 | **Node.js** | v18, v20, v22, v24 | CLI | Portable runtime with NPM & NPX or System Node |
 | **MySQL** | 8.4.x | `3306` | Default user: `root` (no password) |
 | **PostgreSQL** | 17.x | `5432` | Default user: `postgres` (trust auth, no password) |

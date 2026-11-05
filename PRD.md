@@ -43,7 +43,8 @@ LiteServer berfokus pada **Nginx** sebagai web server tunggal (Apache dieliminas
    - Seluruh child process (Nginx, PHP-CGI, MySQL, PostgreSQL, Redis, Mailpit) dikunci ke dalam satu Win32 Job Object dengan flag `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`.
    - Menjamin 100% zero zombie process jika LiteServer ditutup atau crash.
 2. **FastCGI Multi-Worker Supervisor (PHP Worker Pool & Upstream Load Balancer)**:
-   - Mengelola pool process `php-cgi.exe` (default 4 worker proses per versi PHP, misal port 9000..9003) dengan Nginx dynamic `upstream` round-robin.
+   - Mengelola pool process `php-cgi.exe` (default 8 worker proses per versi PHP, misal port 9000..9007) dengan Nginx dynamic `upstream` round-robin.
+   - Mengaktifkan `zend_extension=opcache` dengan zero-revalidation frequency (`revalidate_freq=0`) untuk eliminasi disk I/O bottleneck di Windows.
    - Mengaktifkan `fastcgi_keep_conn on`, buffer & timeout tuning pada Nginx untuk mencegah freeze/hang saat beban berat atau traffic konkurensi tinggi.
    - Auto-respawn individual worker untuk menangani batas default Windows `PHP_FCGI_MAX_REQUESTS` = 5000 tanpa menghentikan worker lain (zero downtime).
 3. **Runtime Downloader Engine (Herd-Style)**:

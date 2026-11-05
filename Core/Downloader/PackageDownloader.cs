@@ -233,6 +233,60 @@ public static class PackageDownloader
         content = content.Replace("max_execution_time = 30", "max_execution_time = 300");
 
         File.WriteAllText(iniTarget, content);
+        EnsureOpCacheEnabled(iniTarget);
+    }
+
+    public static void EnsureOpCacheEnabled(string iniPath)
+    {
+        if (!File.Exists(iniPath)) return;
+        try
+        {
+            string content = File.ReadAllText(iniPath);
+            bool modified = false;
+
+            // 1. Uncomment or add zend_extension=opcache
+            if (content.Contains(";zend_extension=opcache"))
+            {
+                content = content.Replace(";zend_extension=opcache", "zend_extension=opcache");
+                modified = true;
+            }
+            else if (!Regex.IsMatch(content, @"(?m)^zend_extension\s*=\s*opcache"))
+            {
+                content += "\r\n[opcache]\r\nzend_extension=opcache\r\nopcache.enable=1\r\nopcache.enable_cli=0\r\nopcache.memory_consumption=128\r\nopcache.interned_strings_buffer=16\r\nopcache.max_accelerated_files=20000\r\nopcache.validate_timestamps=1\r\nopcache.revalidate_freq=0\r\n";
+                modified = true;
+            }
+
+            // 2. Ensure opcache.enable=1
+            if (content.Contains(";opcache.enable=1"))
+            {
+                content = content.Replace(";opcache.enable=1", "opcache.enable=1");
+                modified = true;
+            }
+            else if (content.Contains(";opcache.enable=0") || content.Contains("opcache.enable=0"))
+            {
+                content = content.Replace(";opcache.enable=0", "opcache.enable=1").Replace("opcache.enable=0", "opcache.enable=1");
+                modified = true;
+            }
+
+            // 3. Ensure validate_timestamps and revalidate_freq for live dev reload
+            if (content.Contains(";opcache.validate_timestamps=1"))
+            {
+                content = content.Replace(";opcache.validate_timestamps=1", "opcache.validate_timestamps=1");
+                modified = true;
+            }
+
+            if (content.Contains(";opcache.revalidate_freq="))
+            {
+                content = Regex.Replace(content, @";opcache\.revalidate_freq\s*=\s*\d+", "opcache.revalidate_freq=0");
+                modified = true;
+            }
+
+            if (modified)
+            {
+                File.WriteAllText(iniPath, content);
+            }
+        }
+        catch { }
     }
 
     private static void CleanupSafely(string tempZip, string tempExtract)

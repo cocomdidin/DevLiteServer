@@ -332,6 +332,10 @@ public class PhpService : BaseService
                 DevLiteServer.Core.Downloader.PackageDownloader.ConfigurePhpIni(phpDir);
             }
         }
+        else
+        {
+            DevLiteServer.Core.Downloader.PackageDownloader.EnsureOpCacheEnabled(phpIni);
+        }
     }
 
     private void StartPrimaryWorkers()

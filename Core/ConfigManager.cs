@@ -27,7 +27,7 @@ public class AppConfig
     public string ActiveNode { get; set; } = "node-v24";
 
     // PHP FastCGI Worker Pool (concurrency)
-    public int PhpWorkerCount { get; set; } = 4;
+    public int PhpWorkerCount { get; set; } = 8;
 
     // Database client preferences ("ask", "heidisql", "phpmyadmin", "adminer", "tinyrdm", "cli")
     public string DefaultMySqlClient { get; set; } = "ask";
