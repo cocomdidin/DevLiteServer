@@ -389,7 +389,73 @@ public partial class MainForm : Form
 
         var cardEditor = CreateOptionCard("Preferred Code Editor", "Choose the editor used to open site codebases from the Sites tab.", pnlEditorCtrl);
 
-        // 6. Action Buttons Bar (Reset Settings & Open config.ini)
+        // 7. SSL / HTTPS Local Root CA
+        var pnlCaCtrl = new Panel { Width = 205, Height = 28, BackColor = Color.Transparent };
+        var btnTrustCa = new ModernButton
+        {
+            Text = SslCertificateManager.IsRootCaTrusted(_appRoot) ? "Root CA Trusted" : "Trust Root CA",
+            Width = 145,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = SslCertificateManager.IsRootCaTrusted(_appRoot) ? ModernColors.Success : ModernColors.Primary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(24, 0)
+        };
+
+        var btnOpenCaDir = new ModernButton
+        {
+            Text = "",
+            IconKind = IconKind.Folder,
+            IconSize = 12,
+            Width = 28,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextSecondary,
+            Location = new Point(175, 0)
+        };
+        btnOpenCaDir.Click += (s, e) =>
+        {
+            string caDir = Path.Combine(_appRoot, "ssl", "ca");
+            if (!Directory.Exists(caDir)) Directory.CreateDirectory(caDir);
+            try { Process.Start(new ProcessStartInfo("explorer.exe", caDir) { UseShellExecute = true }); } catch { }
+        };
+
+        btnTrustCa.Click += (s, e) =>
+        {
+            try
+            {
+                string sslDir = Path.Combine(_appRoot, "ssl");
+                using var ca = SslCertificateManager.EnsureRootCertificateAuthority(sslDir);
+                bool ok = SslCertificateManager.EnsureRootCaTrusted(ca);
+                if (ok)
+                {
+                    btnTrustCa.Text = "Root CA Trusted";
+                    btnTrustCa.ForeColor = ModernColors.Success;
+                    MessageBox.Show(this, "LiteServer Development Root CA successfully installed in Windows Trust Store.\n\nAll local SSL sites (.test and localhost) will now be fully trusted by your browser with no warnings.", "SSL Root CA", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    MessageBox.Show(this, "Could not install Root CA. You may have cancelled the Windows security prompt.", "SSL Root CA", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Error installing Root CA:\n{ex.Message}", "SSL Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        };
+
+        pnlCaCtrl.Controls.Add(btnTrustCa);
+        pnlCaCtrl.Controls.Add(btnOpenCaDir);
+
+        var cardSsl = CreateOptionCard("SSL / HTTPS Local Root CA", "Install local Root CA to make all .test and localhost HTTPS sites fully trusted by browsers without security warnings.", pnlCaCtrl);
+
+        // 8. Action Buttons Bar (Reset Settings & Open config.ini)
         var pnlActions = new Panel
         {
             Height = 44,
@@ -484,7 +550,7 @@ public partial class MainForm : Form
         pnlActions.Controls.Add(btnCoreSetup);
 
         // Add to settings page in reverse dock order so pnlHeader is on top
-        pageSettings.Controls.AddRange([pnlActions, cardUserPath, cardEditor, cardAuto, cardTray, cardWin, pnlHeader]);
+        pageSettings.Controls.AddRange([pnlActions, cardUserPath, cardEditor, cardSsl, cardAuto, cardTray, cardWin, pnlHeader]);
         pnlHeader.SendToBack();
     }
 
