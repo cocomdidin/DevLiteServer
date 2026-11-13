@@ -68,26 +68,26 @@ public static class CodeEditorManager
             return LaunchProcess(customPath, $"\"{folderPath}\"", owner);
         }
 
-        // 2. Known editor command
-        var editor = SupportedEditors.FirstOrDefault(e => e.Id.Equals(editorId, StringComparison.OrdinalIgnoreCase));
-        string cmd = !string.IsNullOrEmpty(editor.Command) ? editor.Command : "code";
-
-        // Try direct launch via shell (works when in system or user PATH)
-        if (LaunchProcess(cmd, $"\"{folderPath}\"", null))
-        {
-            return true;
-        }
-
-        if (editorId.Equals("antigravity", StringComparison.OrdinalIgnoreCase) && LaunchProcess("antigravity", $"\"{folderPath}\"", null))
-        {
-            return true;
-        }
-
-        // Fallback: search well-known install directories
+        // 2. Try direct GUI executable first (cleanest & no console window popup)
         string? resolvedExe = ResolveKnownEditorPath(editorId);
         if (!string.IsNullOrEmpty(resolvedExe) && File.Exists(resolvedExe))
         {
             return LaunchProcess(resolvedExe, $"\"{folderPath}\"", owner);
+        }
+
+        // 3. Fallback to CLI command in PATH with hidden window
+        var editor = SupportedEditors.FirstOrDefault(e => e.Id.Equals(editorId, StringComparison.OrdinalIgnoreCase));
+        string cmd = !string.IsNullOrEmpty(editor.Command) ? editor.Command : "code";
+
+        // Try direct launch via shell with hidden window (prevents batch/cmd console flash)
+        if (LaunchProcess(cmd, $"\"{folderPath}\"", null, hideWindow: true))
+        {
+            return true;
+        }
+
+        if (editorId.Equals("antigravity", StringComparison.OrdinalIgnoreCase) && LaunchProcess("antigravity", $"\"{folderPath}\"", null, hideWindow: true))
+        {
+            return true;
         }
 
         MessageBox.Show(owner,
@@ -99,16 +99,23 @@ public static class CodeEditorManager
         return false;
     }
 
-    private static bool LaunchProcess(string fileName, string args, IWin32Window? owner)
+    private static bool LaunchProcess(string fileName, string args, IWin32Window? owner, bool hideWindow = false)
     {
         try
         {
-            Process.Start(new ProcessStartInfo
+            var psi = new ProcessStartInfo
             {
                 FileName = fileName,
                 Arguments = args,
                 UseShellExecute = true
-            });
+            };
+
+            if (hideWindow)
+            {
+                psi.WindowStyle = ProcessWindowStyle.Hidden;
+            }
+
+            Process.Start(psi);
             return true;
         }
         catch (Exception ex)
@@ -144,10 +151,8 @@ public static class CodeEditorManager
             case "antigravity":
                 return ProbeFiles([
                     Path.Combine(localAppData, "Programs", "Antigravity IDE", "Antigravity IDE.exe"),
-                    Path.Combine(localAppData, "Programs", "Antigravity IDE", "bin", "antigravity-ide.cmd"),
-                    Path.Combine(programFiles, "Antigravity IDE", "Antigravity IDE.exe"),
-                    Path.Combine(programFiles, "Antigravity IDE", "bin", "antigravity-ide.cmd"),
                     Path.Combine(localAppData, "Programs", "Antigravity", "Antigravity.exe"),
+                    Path.Combine(programFiles, "Antigravity IDE", "Antigravity IDE.exe"),
                     Path.Combine(programFiles, "Antigravity", "Antigravity.exe")
                 ]);
 
