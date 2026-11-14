@@ -2,38 +2,38 @@ namespace DevLiteServer.UI;
 
 public static class ModernColors
 {
-    // Canvas & Containers (Dark Slate OLED)
-    public static readonly Color Background = Color.FromArgb(11, 15, 25);       // #0B0F19 (Deep canvas)
-    public static readonly Color Surface = Color.FromArgb(17, 24, 39);          // #111827 (Header / Footer / Panels)
-    public static readonly Color SurfaceHover = Color.FromArgb(31, 41, 55);     // #1F2937
-    public static readonly Color Card = Color.FromArgb(24, 33, 50);             // #182132 (Cards)
-    public static readonly Color CardHover = Color.FromArgb(30, 41, 62);        // #1E293E (Card hover)
+    // Canvas & Containers (Obsidian / Zinc-950 Neutral Dark)
+    public static readonly Color Background = Color.FromArgb(9, 9, 11);         // #09090B (Zinc 950 deep canvas)
+    public static readonly Color Surface = Color.FromArgb(18, 18, 21);          // #121215 (Header / Footer / Sidebar)
+    public static readonly Color SurfaceHover = Color.FromArgb(28, 28, 33);     // #1C1C21
+    public static readonly Color Card = Color.FromArgb(24, 24, 27);             // #18181B (Zinc 900 Cards)
+    public static readonly Color CardHover = Color.FromArgb(34, 34, 38);        // #222226 (Card hover)
 
     // Borders
-    public static readonly Color BorderSubtle = Color.FromArgb(31, 41, 55);     // #1F2937
-    public static readonly Color Border = Color.FromArgb(51, 65, 85);           // #334155
-    public static readonly Color BorderLight = Color.FromArgb(71, 85, 105);     // #475569
+    public static readonly Color BorderSubtle = Color.FromArgb(39, 39, 42);     // #27272A (Zinc 800)
+    public static readonly Color Border = Color.FromArgb(63, 63, 70);           // #3F3F46 (Zinc 700)
+    public static readonly Color BorderLight = Color.FromArgb(82, 82, 91);      // #52525B (Zinc 600)
 
-    // Brand Accents
-    public static readonly Color Primary = Color.FromArgb(56, 189, 248);        // #38BDF8 (Sky/Cyan Accent)
-    public static readonly Color PrimaryHover = Color.FromArgb(14, 165, 233);   // #0EA5E9
-    public static readonly Color PrimaryBg = Color.FromArgb(12, 74, 110);       // #0C4A6E
+    // Brand Accents (Electric Indigo)
+    public static readonly Color Primary = Color.FromArgb(99, 102, 241);        // #6366F1 (Indigo 500)
+    public static readonly Color PrimaryHover = Color.FromArgb(79, 70, 229);    // #4F46E5 (Indigo 600)
+    public static readonly Color PrimaryBg = Color.FromArgb(35, 99, 102, 241);  // Translucent Indigo tint (14%)
 
     // Semantic States
-    public static readonly Color Success = Color.FromArgb(34, 197, 94);         // #22C55E (Emerald Green)
-    public static readonly Color SuccessHover = Color.FromArgb(22, 163, 74);    // #16A34A
-    public static readonly Color SuccessBg = Color.FromArgb(20, 83, 45);        // #14532D (Subtle dark emerald)
+    public static readonly Color Success = Color.FromArgb(16, 185, 129);        // #10B981 (Emerald 500)
+    public static readonly Color SuccessHover = Color.FromArgb(5, 150, 105);    // #059669
+    public static readonly Color SuccessBg = Color.FromArgb(30, 16, 185, 129);  // Translucent Emerald tint (12%)
 
-    public static readonly Color Danger = Color.FromArgb(244, 63, 94);          // #F43F5E (Rose Red)
+    public static readonly Color Danger = Color.FromArgb(244, 63, 94);          // #F43F5E (Rose 500)
     public static readonly Color DangerHover = Color.FromArgb(225, 29, 72);     // #E11D48
-    public static readonly Color DangerBg = Color.FromArgb(136, 19, 55);        // #881337
+    public static readonly Color DangerBg = Color.FromArgb(32, 244, 63, 94);    // Translucent Rose tint (12%)
 
-    public static readonly Color Warning = Color.FromArgb(245, 158, 11);        // #F59E0B (Amber)
+    public static readonly Color Warning = Color.FromArgb(245, 158, 11);        // #F59E0B (Amber 500)
     public static readonly Color WarningHover = Color.FromArgb(217, 119, 6);    // #D97706
-    public static readonly Color WarningBg = Color.FromArgb(120, 53, 15);       // #78350F
+    public static readonly Color WarningBg = Color.FromArgb(32, 245, 158, 11);  // Translucent Amber tint (12%)
 
     // Typography
-    public static readonly Color TextPrimary = Color.FromArgb(248, 250, 252);   // #F8FAFC (Slate 50)
-    public static readonly Color TextSecondary = Color.FromArgb(148, 163, 184); // #94A3B8 (Slate 400)
-    public static readonly Color TextMuted = Color.FromArgb(100, 116, 139);     // #64748B (Slate 500)
+    public static readonly Color TextPrimary = Color.FromArgb(250, 250, 250);   // #FAFAFA (Zinc 50)
+    public static readonly Color TextSecondary = Color.FromArgb(161, 161, 170); // #A1A1AA (Zinc 400)
+    public static readonly Color TextMuted = Color.FromArgb(113, 113, 122);     // #71717A (Zinc 500)
 }

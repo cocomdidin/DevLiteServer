@@ -113,12 +113,12 @@ public class NavButton : Control
         // Background card fill
         if (_isActive)
         {
-            using var activeBg = new SolidBrush(Color.FromArgb(24, 34, 52));
+            using var activeBg = new SolidBrush(ModernColors.Card);
             var fillRect = new RectangleF(8, 2, Width - 16, Height - 4);
             using var path = CreateRoundedRectangle(fillRect, 6f);
             g.FillPath(activeBg, path);
 
-            // Left cyan indicator stripe
+            // Left indigo indicator stripe
             using var barBrush = new SolidBrush(ModernColors.Primary);
             var barRect = new RectangleF(8, 7, 3.5f, Height - 14);
             using var barPath = CreateRoundedRectangle(barRect, 1.75f);
@@ -126,7 +126,7 @@ public class NavButton : Control
         }
         else if (_isHovered)
         {
-            using var hoverBg = new SolidBrush(Color.FromArgb(20, 28, 42));
+            using var hoverBg = new SolidBrush(ModernColors.SurfaceHover);
             var fillRect = new RectangleF(8, 2, Width - 16, Height - 4);
             using var path = CreateRoundedRectangle(fillRect, 6f);
             g.FillPath(hoverBg, path);

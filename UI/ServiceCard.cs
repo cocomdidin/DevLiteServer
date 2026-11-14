@@ -402,10 +402,10 @@ public class ServiceCard : Panel
         // Draw left vector icon badge (34x34)
         var badgeRect = new RectangleF(14f + halfStroke, (cardH - 34f) / 2f + halfStroke, 34f - stroke, 34f - stroke);
         using var badgePath = CreateRoundedRectangle(badgeRect, 6f);
-        using var badgeBg = new SolidBrush(_service.Status == ServiceStatus.Running ? Color.FromArgb(16, 36, 32) : ModernColors.Card);
+        using var badgeBg = new SolidBrush(_service.Status == ServiceStatus.Running ? ModernColors.SuccessBg : ModernColors.Card);
         g.FillPath(badgeBg, badgePath);
 
-        using var badgeBorder = new Pen(_service.Status == ServiceStatus.Running ? Color.FromArgb(34, 197, 94, 120) : ModernColors.BorderSubtle, stroke);
+        using var badgeBorder = new Pen(_service.Status == ServiceStatus.Running ? Color.FromArgb(120, ModernColors.Success) : ModernColors.BorderSubtle, stroke);
         g.DrawPath(badgeBorder, badgePath);
 
         // Draw Vector Icon inside badge

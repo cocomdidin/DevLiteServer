@@ -9,6 +9,7 @@ public class AppConfig
     public bool MinimizeToTray { get; set; } = true;
     public bool StartWithWindows { get; set; } = false;
     public bool RegisterUserPath { get; set; } = false;
+    public bool EnableLocalDns { get; set; } = true;
 
     // Preferred text editor command or executable path ("vscode", "cursor", "antigravity", "phpstorm", "custom")
     public string PreferredEditor { get; set; } = "vscode";
@@ -84,6 +85,7 @@ public class AppConfig
         MinimizeToTray = d.MinimizeToTray;
         StartWithWindows = d.StartWithWindows;
         RegisterUserPath = d.RegisterUserPath;
+        EnableLocalDns = d.EnableLocalDns;
         PreferredEditor = d.PreferredEditor;
         CustomEditorPath = d.CustomEditorPath;
         EnableNginx = d.EnableNginx;
@@ -165,6 +167,8 @@ public static class ConfigManager
                         config.StartWithWindows = bool.Parse(val);
                     else if (key.Equals("RegisterUserPath", StringComparison.OrdinalIgnoreCase))
                         config.RegisterUserPath = bool.Parse(val);
+                    else if (key.Equals("EnableLocalDns", StringComparison.OrdinalIgnoreCase))
+                        config.EnableLocalDns = bool.Parse(val);
                     else if (key.Equals("PreferredEditor", StringComparison.OrdinalIgnoreCase))
                         config.PreferredEditor = val;
                     else if (key.Equals("CustomEditorPath", StringComparison.OrdinalIgnoreCase))
@@ -228,6 +232,7 @@ public static class ConfigManager
             $"StartWithWindows={config.StartWithWindows.ToString().ToLower()}",
             $"MinimizeToTray={config.MinimizeToTray.ToString().ToLower()}",
             $"AutoStartServices={config.AutoStartServices.ToString().ToLower()}",
+            $"EnableLocalDns={config.EnableLocalDns.ToString().ToLower()}",
             $"CheckUpdatesOnStart={config.CheckUpdatesOnStart.ToString().ToLower()}",
             $"RegisterUserPath={config.RegisterUserPath.ToString().ToLower()}",
             $"PreferredEditor={config.PreferredEditor}",

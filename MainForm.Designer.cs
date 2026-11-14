@@ -20,8 +20,8 @@ partial class MainForm
     private NavButton navSites = null!;
     private NavButton navPhp = null!;
     private NavButton navNode = null!;
-    private NavButton navServices = null!;
-    private NavButton navMail = null!;
+    private NavButton navDatabases = null!;
+    private NavButton navMailpit = null!;
     private NavButton navSettings = null!;
 
     // Right Main Pane
@@ -82,8 +82,8 @@ partial class MainForm
         navSites = new NavButton();
         navPhp = new NavButton();
         navNode = new NavButton();
-        navServices = new NavButton();
-        navMail = new NavButton();
+        navDatabases = new NavButton();
+        navMailpit = new NavButton();
         navSettings = new NavButton();
 
         // Right Main Pane Elements
@@ -103,7 +103,7 @@ partial class MainForm
         lblStatusText = new System.Windows.Forms.Label();
         lblStatsText = new System.Windows.Forms.Label();
 
-        // 7 Pages
+        // Pages
         pageDashboard = new System.Windows.Forms.Panel();
         pageSites = new System.Windows.Forms.Panel();
         pagePhp = new System.Windows.Forms.Panel();
@@ -140,29 +140,20 @@ partial class MainForm
 
             // Brand Icon Circle Badge (34x34)
             var badgeRect = new RectangleF(14, 15, 34, 34);
-            using var badgeBg = new SolidBrush(Color.FromArgb(20, 34, 52));
-            using var badgeBorder = new Pen(Color.FromArgb(56, 189, 248, 140), 1.25f);
+            using var badgeBg = new SolidBrush(ModernColors.PrimaryBg);
+            using var badgeBorder = new Pen(Color.FromArgb(120, ModernColors.Primary), 1.25f);
             g.FillEllipse(badgeBg, badgeRect);
             g.DrawEllipse(badgeBorder, badgeRect);
 
             var iconRect = new RectangleF(22, 23, 18, 18);
             VectorIcons.Draw(g, IconKind.Lightning, iconRect, ModernColors.Primary);
 
-            // Title
-            using var titleFont = new Font("Segoe UI", 10.5f, FontStyle.Bold);
-            TextRenderer.DrawText(g, "Dev Lite Server", titleFont, new Point(54, 15), ModernColors.TextPrimary);
+            // Title & Subtitle (Clean typography hierarchy)
+            using var titleFont = new Font("Segoe UI", 10f, FontStyle.Bold);
+            TextRenderer.DrawText(g, "Dev Lite Server", titleFont, new Point(54, 14), ModernColors.TextPrimary);
 
-            // "PORTABLE" pill
-            var pillRect = new RectangleF(55, 35, 56, 15);
-            using var pillBg = new SolidBrush(Color.FromArgb(24, 38, 60));
-            using var pillPen = new Pen(Color.FromArgb(56, 189, 248, 90), 1f);
-            using var pillPath = CreatePillPath(pillRect);
-            g.FillPath(pillBg, pillPath);
-            g.DrawPath(pillPen, pillPath);
-
-            using var pillFont = new Font("Segoe UI", 6.75f, FontStyle.Bold);
-            TextRenderer.DrawText(g, "PORTABLE", pillFont, Rectangle.Round(pillRect), ModernColors.Primary,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
+            using var subFont = new Font("Segoe UI", 8f, FontStyle.Regular);
+            TextRenderer.DrawText(g, "Portable Edition", subFont, new Point(55, 33), ModernColors.TextSecondary);
 
             // Bottom subtle divider
             using var borderPen = new Pen(ModernColors.BorderSubtle, 1);
@@ -175,23 +166,23 @@ partial class MainForm
         navContainer.Padding = new Padding(0, 10, 0, 10);
         navContainer.AutoScroll = true;
 
-        // Nav Buttons (Added in top-to-bottom order)
+        // Nav Buttons (Added in top-to-bottom order with reverse docking)
         navSettings.Text = "Settings";
         navSettings.Icon = IconKind.Gear;
         navSettings.Dock = DockStyle.Top;
         navSettings.Click += (s, e) => SelectNavTab(6);
 
-        navMail.Text = "Mail";
-        navMail.Icon = IconKind.Mail;
-        navMail.Dock = DockStyle.Top;
-        navMail.Click += (s, e) => SelectNavTab(5);
+        navMailpit.Text = "Mailpit";
+        navMailpit.Icon = IconKind.Mail;
+        navMailpit.Dock = DockStyle.Top;
+        navMailpit.Click += (s, e) => SelectNavTab(5);
 
-        navServices.Text = "Services";
-        navServices.Icon = IconKind.Database;
-        navServices.Dock = DockStyle.Top;
-        navServices.Click += (s, e) => SelectNavTab(4);
+        navDatabases.Text = "Databases";
+        navDatabases.Icon = IconKind.Database;
+        navDatabases.Dock = DockStyle.Top;
+        navDatabases.Click += (s, e) => SelectNavTab(4);
 
-        navNode.Text = "Node";
+        navNode.Text = "Node.js";
         navNode.Icon = IconKind.Terminal;
         navNode.Dock = DockStyle.Top;
         navNode.Click += (s, e) => SelectNavTab(3);
@@ -213,7 +204,7 @@ partial class MainForm
         navDashboard.Click += (s, e) => SelectNavTab(0);
 
         // Reverse dock order for WinForms DockStyle.Top
-        navContainer.Controls.AddRange([navSettings, navMail, navServices, navNode, navPhp, navSites, navDashboard]);
+        navContainer.Controls.AddRange([navSettings, navMailpit, navDatabases, navNode, navPhp, navSites, navDashboard]);
 
         // Sidebar Footer
         sidebarFooter.Dock = DockStyle.Bottom;
@@ -225,10 +216,10 @@ partial class MainForm
             using var borderPen = new Pen(ModernColors.BorderSubtle, 1);
             e.Graphics.DrawLine(borderPen, 0, 0, sidebarFooter.Width, 0);
 
-            // Active green indicator dot
+            // Live status indicator dot
             var g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            using var dotBrush = new SolidBrush(ModernColors.Success);
+            using var dotBrush = new SolidBrush(_sidebarDotColor);
             g.FillEllipse(dotBrush, 14, 16, 7, 7);
         };
 
@@ -275,34 +266,36 @@ partial class MainForm
         lblPageSubtitle.AutoEllipsis = true;
 
         // Action Buttons
-        btnOpenWww.Text = "Web Root";
+        var topRibbonTip = new ToolTip();
+
+        btnOpenWww.Text = "";
         btnOpenWww.IconKind = IconKind.Folder;
-        btnOpenWww.IconSize = 10;
-        btnOpenWww.Width = 82;
+        btnOpenWww.IconSize = 13;
+        btnOpenWww.Width = 32;
         btnOpenWww.Height = 30;
         btnOpenWww.BorderRadius = 6;
         btnOpenWww.ShowBorder = true;
         btnOpenWww.NormalColor = ModernColors.Card;
         btnOpenWww.HoverColor = ModernColors.SurfaceHover;
-        btnOpenWww.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
+        topRibbonTip.SetToolTip(btnOpenWww, "Open /www Web Root folder");
         btnOpenWww.Click += BtnOpenWww_Click;
 
-        btnOpenTerminal.Text = "Terminal";
+        btnOpenTerminal.Text = "";
         btnOpenTerminal.IconKind = IconKind.Terminal;
-        btnOpenTerminal.IconSize = 10;
-        btnOpenTerminal.Width = 78;
+        btnOpenTerminal.IconSize = 13;
+        btnOpenTerminal.Width = 32;
         btnOpenTerminal.Height = 30;
         btnOpenTerminal.BorderRadius = 6;
         btnOpenTerminal.ShowBorder = true;
         btnOpenTerminal.NormalColor = ModernColors.Card;
         btnOpenTerminal.HoverColor = ModernColors.SurfaceHover;
-        btnOpenTerminal.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
+        topRibbonTip.SetToolTip(btnOpenTerminal, "Open Isolated Terminal");
         btnOpenTerminal.Click += BtnOpenTerminal_Click;
 
         btnStartAll.Text = "Start All";
         btnStartAll.IconKind = IconKind.Play;
-        btnStartAll.IconSize = 10;
-        btnStartAll.Width = 78;
+        btnStartAll.IconSize = 11;
+        btnStartAll.Width = 92;
         btnStartAll.Height = 30;
         btnStartAll.BorderRadius = 6;
         btnStartAll.ShowBorder = false;
@@ -317,34 +310,27 @@ partial class MainForm
         btnStopAll.IconSize = 10;
         btnStopAll.Width = 78;
         btnStopAll.Height = 30;
-        btnStopAll.BorderRadius = 6;
-        btnStopAll.ShowBorder = true;
-        btnStopAll.BorderLineColor = Color.FromArgb(244, 63, 94, 140);
-        btnStopAll.NormalColor = ModernColors.Card;
-        btnStopAll.HoverColor = Color.FromArgb(45, 20, 28);
-        btnStopAll.PressedColor = ModernColors.DangerBg;
-        btnStopAll.ForeColor = Color.FromArgb(254, 205, 211);
-        btnStopAll.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
+        btnStopAll.Visible = false;
         btnStopAll.Click += BtnStopAll_Click;
 
-        btnExit.Text = "Exit";
+        btnExit.Text = "";
         btnExit.IconKind = IconKind.Power;
-        btnExit.IconSize = 11;
-        btnExit.Width = 62;
+        btnExit.IconSize = 12;
+        btnExit.Width = 32;
         btnExit.Height = 30;
         btnExit.BorderRadius = 6;
         btnExit.ShowBorder = true;
         btnExit.BorderLineColor = ModernColors.BorderSubtle;
         btnExit.NormalColor = ModernColors.Card;
-        btnExit.HoverColor = Color.FromArgb(40, 20, 30);
+        btnExit.HoverColor = ModernColors.DangerBg;
         btnExit.PressedColor = ModernColors.DangerBg;
         btnExit.ForeColor = ModernColors.TextSecondary;
-        btnExit.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
+        topRibbonTip.SetToolTip(btnExit, "Exit DevLite Server");
         btnExit.Click += BtnExit_Click;
 
         topRibbon.Controls.Add(lblPageTitle);
         topRibbon.Controls.Add(lblPageSubtitle);
-        topRibbon.Controls.AddRange([btnOpenWww, btnOpenTerminal, btnStartAll, btnStopAll, btnExit]);
+        topRibbon.Controls.AddRange([btnOpenWww, btnOpenTerminal, btnStartAll, btnExit]);
 
         // Page Container
         pageContainer.Dock = DockStyle.Fill;
@@ -422,9 +408,8 @@ partial class MainForm
         const int top = 15;
 
         btnExit.Location = new Point(w - btnExit.Width - rightMargin, top);
-        btnStopAll.Location = new Point(btnExit.Left - btnStopAll.Width - spacing, top);
-        btnStartAll.Location = new Point(btnStopAll.Left - btnStartAll.Width - spacing, top);
-        btnOpenTerminal.Location = new Point(btnStartAll.Left - btnOpenTerminal.Width - spacing - 8, top);
+        btnStartAll.Location = new Point(btnExit.Left - btnStartAll.Width - spacing - 4, top);
+        btnOpenTerminal.Location = new Point(btnStartAll.Left - btnOpenTerminal.Width - spacing, top);
         btnOpenWww.Location = new Point(btnOpenTerminal.Left - btnOpenWww.Width - spacing, top);
 
         // Prevent title & subtitle from ever colliding with right action buttons
@@ -440,16 +425,5 @@ partial class MainForm
         {
             lblPageSubtitle.MaximumSize = new Size(maxSubWidth, 20);
         }
-    }
-
-    private static System.Drawing.Drawing2D.GraphicsPath CreatePillPath(RectangleF rect)
-    {
-        var path = new System.Drawing.Drawing2D.GraphicsPath();
-        float radius = rect.Height / 2f;
-        float diameter = radius * 2f;
-        path.AddArc(rect.X, rect.Y, diameter, diameter, 90, 180);
-        path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 180);
-        path.CloseFigure();
-        return path;
     }
 }

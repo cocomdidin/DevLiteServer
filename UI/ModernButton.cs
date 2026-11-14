@@ -121,7 +121,7 @@ public class ModernButton : Button
         Color currentBg = _isPressed ? PressedColor : (_isHovered ? HoverColor : NormalColor);
         if (!Enabled)
         {
-            currentBg = Color.FromArgb(24, 33, 50);
+            currentBg = ModernColors.Card;
         }
 
         // Subpixel geometric inset (0.5f) guarantees exact 1.0px border stroke with 0 clipping on all 4 sides

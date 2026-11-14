@@ -77,7 +77,7 @@ Setiap ada **penambahan fitur baru**, **revisi**, **refactoring**, atau **peruba
 3. **Sinkronisasi Distribusi & Installer**:
    - Jika ada file/folder baru di luar `bin/` yang perlu di-bundle: perbarui `installer/setup.iss`, `.github/workflows/release.yml`, dan `scripts/setup-bundle.ps1`.
 4. **Verifikasi Kompilasi**:
-   - Jalankan `rtk dotnet build` dan pastikan **0 error, 0 warning**.
+   - Jalankan `dotnet build` dan pastikan **0 error, 0 warning**.
 5. **Konfirmasi & Commit**:
    - Rangkum perubahan kepada user dan minta persetujuan commit sesuai Conventional Commits.
    - DILARANG commit otomatis tanpa persetujuan eksplisit.

@@ -54,7 +54,7 @@ public class PackageRowCard : Panel
             using var path = CreateRoundedRect(rect, 6f);
             using var bg = new SolidBrush(ModernColors.Surface);
             g.FillPath(bg, path);
-            using var pen = new Pen(_pkg.IsActive(_config) ? Color.FromArgb(56, 189, 248, 120) : ModernColors.BorderSubtle, stroke);
+            using var pen = new Pen(_pkg.IsActive(_config) ? Color.FromArgb(120, ModernColors.Primary) : ModernColors.BorderSubtle, stroke);
             g.DrawPath(pen, path);
 
             // Active running pill badge indicator on left
@@ -136,7 +136,7 @@ public class PackageRowCard : Panel
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
-            HoverColor = Color.FromArgb(45, 20, 28),
+            HoverColor = ModernColors.DangerBg,
             ForeColor = ModernColors.Danger,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
@@ -245,8 +245,8 @@ public class PackageRowCard : Panel
             _btnSwitch.Text = active ? "Active" : "Use";
             _btnSwitch.IconKind = active ? IconKind.Check : IconKind.Play;
             _btnSwitch.ForeColor = active ? ModernColors.Success : ModernColors.TextPrimary;
-            _btnSwitch.NormalColor = active ? Color.FromArgb(16, 40, 32) : ModernColors.Card;
-            _btnSwitch.HoverColor = active ? Color.FromArgb(16, 40, 32) : ModernColors.SurfaceHover;
+            _btnSwitch.NormalColor = active ? ModernColors.SuccessBg : ModernColors.Card;
+            _btnSwitch.HoverColor = active ? ModernColors.SuccessBg : ModernColors.SurfaceHover;
             _btnSwitch.Cursor = active ? Cursors.Default : Cursors.Hand;
             _btnDelete.Visible = !active;
             _lblStatus.Visible = false;

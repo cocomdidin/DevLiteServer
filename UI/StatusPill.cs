@@ -77,43 +77,43 @@ public class StatusPill : Control
         switch (_status)
         {
             case ServiceStatus.Running:
-                bg = Color.FromArgb(16, 45, 30);
-                border = Color.FromArgb(34, 197, 94);
+                bg = Color.FromArgb(32, 16, 185, 129);
+                border = Color.FromArgb(120, 16, 185, 129);
                 dotColor = ModernColors.Success;
-                textColor = Color.FromArgb(220, 252, 231);
+                textColor = Color.FromArgb(209, 250, 229);
                 text = "Running";
                 break;
             case ServiceStatus.Starting:
-                bg = Color.FromArgb(45, 30, 10);
-                border = Color.FromArgb(245, 158, 11);
+                bg = Color.FromArgb(32, 245, 158, 11);
+                border = Color.FromArgb(120, 245, 158, 11);
                 dotColor = ModernColors.Warning;
-                textColor = Color.FromArgb(254, 240, 138);
+                textColor = Color.FromArgb(254, 243, 199);
                 text = "Starting...";
                 break;
             case ServiceStatus.Stopping:
-                bg = Color.FromArgb(45, 30, 10);
-                border = Color.FromArgb(245, 158, 11);
+                bg = Color.FromArgb(32, 245, 158, 11);
+                border = Color.FromArgb(120, 245, 158, 11);
                 dotColor = ModernColors.Warning;
-                textColor = Color.FromArgb(254, 240, 138);
+                textColor = Color.FromArgb(254, 243, 199);
                 text = "Stopping...";
                 break;
             case ServiceStatus.Error:
-                bg = Color.FromArgb(50, 15, 25);
-                border = Color.FromArgb(244, 63, 94);
+                bg = Color.FromArgb(32, 244, 63, 94);
+                border = Color.FromArgb(120, 244, 63, 94);
                 dotColor = ModernColors.Danger;
-                textColor = Color.FromArgb(254, 205, 211);
+                textColor = Color.FromArgb(255, 228, 230);
                 text = "Error";
                 break;
             case ServiceStatus.NotInstalled:
-                bg = Color.FromArgb(24, 27, 36);
-                border = Color.FromArgb(55, 65, 81);
-                dotColor = Color.FromArgb(107, 114, 128);
-                textColor = Color.FromArgb(156, 163, 175);
+                bg = Color.FromArgb(20, 24, 24, 27);
+                border = ModernColors.BorderSubtle;
+                dotColor = ModernColors.TextMuted;
+                textColor = ModernColors.TextMuted;
                 text = "Not Installed";
                 break;
             default:
-                bg = Color.FromArgb(20, 27, 40);
-                border = Color.FromArgb(45, 55, 75);
+                bg = Color.FromArgb(24, 24, 27);
+                border = ModernColors.BorderSubtle;
                 dotColor = ModernColors.TextMuted;
                 textColor = ModernColors.TextSecondary;
                 text = "Stopped";

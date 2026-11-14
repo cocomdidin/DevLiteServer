@@ -30,7 +30,7 @@ public class ModernToggle : Control
     public Color OnColor { get; set; } = ModernColors.Success;
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public Color OffColor { get; set; } = Color.FromArgb(30, 41, 59); // Slate 800
+    public Color OffColor { get; set; } = ModernColors.Card;
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Color ThumbColor { get; set; } = Color.White;
@@ -107,7 +107,7 @@ public class ModernToggle : Control
 
         Color currentTrackColor = _checked
             ? (_isHovered ? ModernColors.SuccessHover : OnColor)
-            : (_isHovered ? Color.FromArgb(45, 55, 75) : OffColor);
+            : (_isHovered ? ModernColors.CardHover : OffColor);
 
         // Draw pill track
         using var trackPath = CreatePillPath(trackRect);

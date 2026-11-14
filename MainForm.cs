@@ -39,6 +39,7 @@ public partial class MainForm : Form
     private Action? _refreshSqlServerCard;
     private Action? _refreshNodePackages;
     private Action? _refreshPhpPackages;
+    private Color _sidebarDotColor = ModernColors.TextMuted;
 
     public MainForm(bool startMinimized = false)
     {
@@ -92,6 +93,11 @@ public partial class MainForm : Form
         BuildTrayMenu();
         UpdateServiceStats();
         SelectNavTab(0);
+
+        if (_config.EnableLocalDns)
+        {
+            DnsServer.Instance.Start();
+        }
 
         // Check for Visual C++ runtime
         if (!DependencyChecker.IsVcRedistInstalled())
@@ -168,8 +174,8 @@ public partial class MainForm : Form
         navSites.IsActive = (index == 1);
         navPhp.IsActive = (index == 2);
         navNode.IsActive = (index == 3);
-        navServices.IsActive = (index == 4);
-        navMail.IsActive = (index == 5);
+        navDatabases.IsActive = (index == 4);
+        navMailpit.IsActive = (index == 5);
         navSettings.IsActive = (index == 6);
 
         pageDashboard.Visible = (index == 0);
@@ -192,20 +198,20 @@ public partial class MainForm : Form
                 RefreshSitesList();
                 break;
             case 2:
-                lblPageTitle.Text = "PHP Environment";
-                lblPageSubtitle.Text = "Active FastCGI runtime and extension configuration";
+                lblPageTitle.Text = "PHP FastCGI";
+                lblPageSubtitle.Text = "Multi-version switch, worker pool, and extensions";
                 break;
             case 3:
-                lblPageTitle.Text = "Node.js Environment";
-                lblPageSubtitle.Text = "Node runtime, npm package manager, and CLI tools";
+                lblPageTitle.Text = "Node.js Runtime";
+                lblPageSubtitle.Text = "Portable and Windows system Node.js version management";
                 break;
             case 4:
-                lblPageTitle.Text = "Database & Cache Services";
-                lblPageSubtitle.Text = "MySQL, PostgreSQL, and Redis daemon configuration";
+                lblPageTitle.Text = "Databases & Cache";
+                lblPageSubtitle.Text = "Manage MySQL, PostgreSQL, Redis, and GUI client tools";
                 break;
             case 5:
-                lblPageTitle.Text = "Mail Testing";
-                lblPageSubtitle.Text = "Mailpit local SMTP capture daemon and webmail inbox";
+                lblPageTitle.Text = "Mailpit Testing";
+                lblPageSubtitle.Text = "Local SMTP server and webmail inspector";
                 break;
             case 6:
                 lblPageTitle.Text = "Settings";
@@ -217,12 +223,12 @@ public partial class MainForm : Form
     }
 
     // ==========================================
-    // INITIALIZE THE 7 PAGES
+    // INITIALIZE PAGES
     // ==========================================
     private void InitPages()
     {
-        Panel[] pages = [pageDashboard, pageSites, pagePhp, pageNode, pageServices, pageMail, pageSettings];
-        foreach (var page in pages)
+        Panel[] mainPages = [pageDashboard, pageSites, pagePhp, pageNode, pageServices, pageMail, pageSettings];
+        foreach (var page in mainPages)
         {
             page.Dock = DockStyle.Fill;
             page.BackColor = ModernColors.Background;
@@ -257,13 +263,18 @@ public partial class MainForm : Form
     // ------------------------------------------
     // PAGE 6: SETTINGS
     // ------------------------------------------
+    // PAGE: SETTINGS
+    // ------------------------------------------
     private void PopulateSettingsPage()
     {
         pageSettings.Padding = new Padding(24, 16, 24, 20);
 
-        var pnlHeader = CreateSectionHeader("Preferences & Automation", "Configure system integration, tray behavior, and auto-start rules.");
+        // ==========================================
+        // 1. System & Lifecycle
+        // ==========================================
+        var secSystem = CreateSettingsSectionHeader("System & Lifecycle", isFirst: true);
 
-        // 1. Start on Windows Logon
+        // Start on Windows Logon
         var togWindows = new ModernToggle { Checked = _config.StartWithWindows };
         togWindows.CheckedChanged += (s, e) =>
         {
@@ -273,7 +284,7 @@ public partial class MainForm : Form
         };
         var cardWin = CreateOptionCard("Start with Windows Logon", "Automatically launch Dev Lite Server into system tray when logging in.", togWindows);
 
-        // 2. Minimize to Tray
+        // Minimize to Tray
         var togTray = new ModernToggle { Checked = _config.MinimizeToTray };
         togTray.CheckedChanged += (s, e) =>
         {
@@ -282,7 +293,7 @@ public partial class MainForm : Form
         };
         var cardTray = CreateOptionCard("Minimize to System Tray", "Closing the main window keeps services running in the background tray.", togTray);
 
-        // 4. Auto-start enabled services on launch
+        // Auto-start enabled services on launch
         var togAuto = new ModernToggle { Checked = _config.AutoStartServices };
         togAuto.CheckedChanged += (s, e) =>
         {
@@ -292,7 +303,12 @@ public partial class MainForm : Form
         };
         var cardAuto = CreateOptionCard("Auto-start Enabled Services", "Automatically launch all enabled services when Dev Lite Server opens.", togAuto);
 
-        // 5. Register LiteServer tools to Windows User PATH
+        // ==========================================
+        // 2. Developer Environment
+        // ==========================================
+        var secDev = CreateSettingsSectionHeader("Developer Environment");
+
+        // Register LiteServer tools to Windows User PATH
         var togUserPath = new ModernToggle { Checked = _config.RegisterUserPath };
         togUserPath.CheckedChanged += (s, e) =>
         {
@@ -305,7 +321,7 @@ public partial class MainForm : Form
         };
         var cardUserPath = CreateOptionCard("Register to Windows User PATH", "Enables any external terminal or IDE (CMD, PowerShell, VS Code) to access PHP, Node, and Composer globally without Administrator privileges.", togUserPath);
 
-        // 6. Preferred Code Editor
+        // Preferred Code Editor
         var cmbEditor = new ModernComboBox
         {
             Width = 160,
@@ -389,7 +405,29 @@ public partial class MainForm : Form
 
         var cardEditor = CreateOptionCard("Preferred Code Editor", "Choose the editor used to open site codebases from the Sites tab.", pnlEditorCtrl);
 
-        // 7. SSL / HTTPS Local Root CA
+        // ==========================================
+        // 3. Networking & Security
+        // ==========================================
+        var secNet = CreateSettingsSectionHeader("Networking & Security");
+
+        // Local Wildcard DNS Server
+        var togDns = new ModernToggle { Checked = _config.EnableLocalDns };
+        togDns.CheckedChanged += (s, e) =>
+        {
+            _config.EnableLocalDns = togDns.Checked;
+            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+            if (_config.EnableLocalDns)
+            {
+                DnsServer.Instance.Start();
+            }
+            else
+            {
+                DnsServer.Instance.Stop();
+            }
+        };
+        var cardDns = CreateOptionCard("Local Wildcard DNS Server (*.test)", "Runs an embedded loopback DNS server on 127.0.0.1:53 to automatically route all *.test domains without editing hosts file.", togDns);
+
+        // SSL / HTTPS Local Root CA
         var pnlCaCtrl = new Panel { Width = 205, Height = 28, BackColor = Color.Transparent };
         var btnTrustCa = new ModernButton
         {
@@ -455,7 +493,11 @@ public partial class MainForm : Form
 
         var cardSsl = CreateOptionCard("SSL / HTTPS Local Root CA", "Install local Root CA to make all .test and localhost HTTPS sites fully trusted by browsers without security warnings.", pnlCaCtrl);
 
-        // 8. Action Buttons Bar (Reset Settings & Open config.ini)
+        // ==========================================
+        // 4. Maintenance & Configuration
+        // ==========================================
+        var secMaint = CreateSettingsSectionHeader("Maintenance & Configuration");
+
         var pnlActions = new Panel
         {
             Height = 44,
@@ -549,9 +591,23 @@ public partial class MainForm : Form
         pnlActions.Controls.Add(btnResetDefaults);
         pnlActions.Controls.Add(btnCoreSetup);
 
-        // Add to settings page in reverse dock order so pnlHeader is on top
-        pageSettings.Controls.AddRange([pnlActions, cardUserPath, cardEditor, cardSsl, cardAuto, cardTray, cardWin, pnlHeader]);
-        pnlHeader.SendToBack();
+        // Add to settings page in forward logical order
+        Control[] settingsControls = [
+            secSystem,
+            cardWin,
+            cardTray,
+            cardAuto,
+            secDev,
+            cardUserPath,
+            cardEditor,
+            secNet,
+            cardDns,
+            cardSsl,
+            secMaint,
+            pnlActions
+        ];
+
+        pageSettings.Controls.AddRange(settingsControls.Reverse().ToArray());
     }
 
     // ------------------------------------------
@@ -636,6 +692,15 @@ public partial class MainForm : Form
             btnSyncHosts.Enabled = true;
         };
 
+        var btnLocalDns = new ModernButton
+        {
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = true,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(208, 2)
+        };
+
         var btnRefresh = new ModernButton
         {
             Text = "Refresh",
@@ -689,6 +754,90 @@ public partial class MainForm : Form
             if (File.Exists(confFile))
             {
                 Process.Start(new ProcessStartInfo("notepad.exe", $"\"{confFile}\"") { UseShellExecute = true });
+            }
+        };
+
+        void UpdateDnsButtonState()
+        {
+            if (InvokeRequired) { Invoke(UpdateDnsButtonState); return; }
+            bool running = DnsServer.Instance.IsRunning;
+            bool winDns = DnsServer.IsWindowsDnsConfigured();
+
+            if (running && winDns)
+            {
+                btnLocalDns.Text = "DNS: Zero-UAC";
+                btnLocalDns.IconKind = IconKind.Check;
+                btnLocalDns.NormalColor = ModernColors.SuccessBg;
+                btnLocalDns.HoverColor = ModernColors.SuccessBg;
+                btnLocalDns.ForeColor = ModernColors.Success;
+                btnLocalDns.BorderLineColor = Color.FromArgb(120, ModernColors.Success);
+                btnLocalDns.Width = 118;
+            }
+            else if (running)
+            {
+                btnLocalDns.Text = "Enable Zero-UAC DNS";
+                btnLocalDns.IconKind = IconKind.Lightning;
+                btnLocalDns.NormalColor = ModernColors.Card;
+                btnLocalDns.HoverColor = ModernColors.SurfaceHover;
+                btnLocalDns.ForeColor = ModernColors.Primary;
+                btnLocalDns.BorderLineColor = Color.FromArgb(120, ModernColors.Primary);
+                btnLocalDns.Width = 158;
+            }
+            else
+            {
+                btnLocalDns.Text = "Start Local DNS";
+                btnLocalDns.IconKind = IconKind.Play;
+                btnLocalDns.NormalColor = ModernColors.Card;
+                btnLocalDns.HoverColor = ModernColors.SurfaceHover;
+                btnLocalDns.ForeColor = ModernColors.TextSecondary;
+                btnLocalDns.BorderLineColor = ModernColors.BorderSubtle;
+                btnLocalDns.Width = 125;
+            }
+
+            btnRefresh.Location = new Point(btnLocalDns.Right + 8, 2);
+            btnOpenFolder.Location = new Point(btnRefresh.Right + 8, 2);
+            btnOpenConf.Location = new Point(btnOpenFolder.Right + 8, 2);
+            btnLocalDns.Invalidate();
+        }
+
+        UpdateDnsButtonState();
+        DnsServer.Instance.StatusChanged += _ => UpdateDnsButtonState();
+
+        btnLocalDns.Click += async (s, e) =>
+        {
+            if (!DnsServer.Instance.IsRunning)
+            {
+                bool ok = DnsServer.Instance.Start();
+                if (ok)
+                {
+                    _config.EnableLocalDns = true;
+                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                }
+                UpdateDnsButtonState();
+                return;
+            }
+
+            if (DnsServer.IsWindowsDnsConfigured())
+            {
+                var ask = MessageBox.Show(this, "Windows DNS is currently configured to route *.test through DevLite's Micro DNS server (Zero UAC mode).\n\nDo you want to reset Windows DNS back to default / DHCP?", "Zero-UAC DNS Configured", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (ask == DialogResult.Yes)
+                {
+                    await DnsServer.ConfigureWindowsDnsAsync(false);
+                    UpdateDnsButtonState();
+                }
+                return;
+            }
+
+            var confirm = MessageBox.Show(this, "Configure Windows DNS to route *.test wildcard domains to 127.0.0.1 via DevLite's Micro DNS Server?\n\nOnce configured, any new *.test virtual host works instantly without modifying hosts file or needing UAC prompts.", "Enable Zero-UAC DNS", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirm == DialogResult.Yes)
+            {
+                bool configured = await DnsServer.ConfigureWindowsDnsAsync(true);
+                if (configured)
+                {
+                    lblStatusText.Text = "Zero-UAC DNS configured successfully for all *.test domains.";
+                    lblStatusText.ForeColor = ModernColors.Success;
+                }
+                UpdateDnsButtonState();
             }
         };
 
@@ -748,7 +897,8 @@ public partial class MainForm : Form
             // Row 1 buttons:
             btnAddSite.Location = new Point(0, 2);
             btnSyncHosts.Location = new Point(btnAddSite.Right + 8, 2);
-            btnRefresh.Location = new Point(btnSyncHosts.Right + 8, 2);
+            btnLocalDns.Location = new Point(btnSyncHosts.Right + 8, 2);
+            btnRefresh.Location = new Point(btnLocalDns.Right + 8, 2);
             btnOpenFolder.Location = new Point(btnRefresh.Right + 8, 2);
             btnOpenConf.Location = new Point(btnOpenFolder.Right + 8, 2);
 
@@ -777,6 +927,7 @@ public partial class MainForm : Form
 
         pnlTop.Controls.Add(btnAddSite);
         pnlTop.Controls.Add(btnSyncHosts);
+        pnlTop.Controls.Add(btnLocalDns);
         pnlTop.Controls.Add(btnRefresh);
         pnlTop.Controls.Add(btnOpenFolder);
         pnlTop.Controls.Add(btnOpenConf);
@@ -1245,8 +1396,6 @@ public partial class MainForm : Form
         pagePhp.Padding = new Padding(24, 14, 24, 16);
         pagePhp.AutoScroll = true;
 
-        var pnlHeader = CreateSectionHeader("PHP FastCGI Runtime", "Multi-version PHP environment managed by FastCGI worker supervisor.");
-
         // Hero Control Banner (Streamlined horizontal bar, Height: 58 + 8px gap)
         var heroCard = new Panel
         {
@@ -1363,25 +1512,22 @@ public partial class MainForm : Form
 
         var btnOpenExt = new ModernButton
         {
-            Text = "ext/",
-            IconKind = IconKind.Folder,
+            Text = "Extensions",
+            IconKind = IconKind.Lightning,
             IconSize = 10,
-            Width = 66,
+            Width = 92,
             Height = 28,
             BorderRadius = 6,
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
-            ForeColor = ModernColors.TextSecondary,
+            ForeColor = ModernColors.Primary,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
         btnOpenExt.Click += (s, e) =>
         {
-            string extDir = Path.Combine(_php.GetPhpDirectory(), "ext");
-            if (Directory.Exists(extDir))
-            {
-                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{extDir}\"") { UseShellExecute = true });
-            }
+            using var dlg = new PhpExtensionDialog(_php.GetPhpDirectory(), _config.ActivePhp, _php);
+            dlg.ShowDialog(this);
         };
 
         var lblPortTitle = new Label
@@ -1430,7 +1576,7 @@ public partial class MainForm : Form
         var heroTip = new ToolTip();
         heroTip.SetToolTip(btnRestartPhp, "Restart PHP FastCGI supervisor");
         heroTip.SetToolTip(btnOpenPhpIni, "Open php.ini configuration");
-        heroTip.SetToolTip(btnOpenExt, "Open PHP extensions folder");
+        heroTip.SetToolTip(btnOpenExt, "Manage PHP extensions in php.ini");
         heroTip.SetToolTip(txtFastCgiPort, "FastCGI listening TCP port");
 
         heroCard.Resize += (s, e) => LayoutHeroControls();
@@ -1439,8 +1585,41 @@ public partial class MainForm : Form
 
         var cardSqlServer = CreateSqlServerCard();
 
-        // Subheader for available packages
-        var pnlPhpPacksHeader = CreateSubSectionHeader("Available PHP Versions (Official windows.php.net)");
+        // Subheader for installed packages + Install Version button
+        var pnlPhpPacksHeader = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 36,
+            Padding = new Padding(0, 4, 0, 4)
+        };
+        var lblPhpPacks = new Label
+        {
+            Text = "Installed PHP Versions",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            Location = new Point(0, 8),
+            AutoSize = true
+        };
+        var btnAddPhp = new ModernButton
+        {
+            Text = "+ Install Version",
+            Width = 118,
+            Height = 28,
+            BorderRadius = 6,
+            NormalColor = ModernColors.Primary,
+            HoverColor = ModernColors.PrimaryHover,
+            ForeColor = Color.White,
+            ShowBorder = false,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
+        };
+        void LayoutPhpPacksHeader()
+        {
+            btnAddPhp.Location = new Point(pnlPhpPacksHeader.ClientSize.Width - btnAddPhp.Width - 2, 4);
+        }
+        pnlPhpPacksHeader.Resize += (s, e) => LayoutPhpPacksHeader();
+        LayoutPhpPacksHeader();
+
+        pnlPhpPacksHeader.Controls.AddRange([lblPhpPacks, btnAddPhp]);
 
         _pnlPhpPackages = new Panel
         {
@@ -1452,7 +1631,21 @@ public partial class MainForm : Form
         void RefreshPhpPackagesList()
         {
             _pnlPhpPackages.Controls.Clear();
-            var packages = PackageCatalog.GetPhpPackages();
+            var packages = PackageCatalog.GetPhpPackages().Where(p => p.IsInstalled(_appRoot)).ToList();
+            if (packages.Count == 0)
+            {
+                var lblEmpty = new Label
+                {
+                    Text = "No PHP versions installed. Click '+ Install Version' above to download an official runtime.",
+                    ForeColor = ModernColors.TextMuted,
+                    Font = new Font("Segoe UI", 9f),
+                    AutoSize = true,
+                    Padding = new Padding(4, 10, 4, 10)
+                };
+                _pnlPhpPackages.Controls.Add(lblEmpty);
+                return;
+            }
+
             var cards = new List<Control>();
             foreach (var pkg in packages)
             {
@@ -1469,11 +1662,26 @@ public partial class MainForm : Form
             _pnlPhpPackages.Controls.AddRange(cards.ToArray());
         }
 
+        btnAddPhp.Click += (s, e) =>
+        {
+            using var dlg = new RuntimeCatalogDialog("PHP", _appRoot, _config, async p =>
+            {
+                RefreshPhpPackagesList();
+                RefreshPhpVersionsCombo();
+                await Task.CompletedTask;
+            });
+            dlg.ShowDialog(this);
+            if (dlg.HasInstalledAny)
+            {
+                RefreshPhpPackagesList();
+                RefreshPhpVersionsCombo();
+            }
+        };
+
         _refreshPhpPackages = RefreshPhpPackagesList;
         RefreshPhpPackagesList();
 
-        pagePhp.Controls.AddRange([pnlHeader, heroCard, cardSqlServer, pnlPhpPacksHeader, _pnlPhpPackages]);
-        pnlHeader.BringToFront();
+        pagePhp.Controls.AddRange([heroCard, cardSqlServer, pnlPhpPacksHeader, _pnlPhpPackages]);
         heroCard.BringToFront();
         cardSqlServer.BringToFront();
         pnlPhpPacksHeader.BringToFront();
@@ -1702,8 +1910,6 @@ public partial class MainForm : Form
         pageNode.Padding = new Padding(24, 16, 24, 20);
         pageNode.AutoScroll = true;
 
-        var pnlHeader = CreateSectionHeader("Node.js & JavaScript Runtime", "Portable Node.js environment or manage Windows-installed Node.js runtimes.");
-
         // ------------------------------------------
         // Hero Card: Active Runtime Status
         // ------------------------------------------
@@ -1931,7 +2137,40 @@ public partial class MainForm : Form
         pnlContentContainer.Controls.AddRange([pnlSystemView, pnlLiteServerView]);
 
         // Section A: LiteServer Portable Content
-        var pnlNodePacksHeader = CreateSubSectionHeader("Available LiteServer Runtimes (Official nodejs.org)");
+        var pnlNodePacksHeader = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 36,
+            Padding = new Padding(0, 4, 0, 4)
+        };
+        var lblNodePacks = new Label
+        {
+            Text = "Installed LiteServer Runtimes",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            Location = new Point(0, 8),
+            AutoSize = true
+        };
+        var btnAddNode = new ModernButton
+        {
+            Text = "+ Install Version",
+            Width = 118,
+            Height = 28,
+            BorderRadius = 6,
+            NormalColor = ModernColors.Primary,
+            HoverColor = ModernColors.PrimaryHover,
+            ForeColor = Color.White,
+            ShowBorder = false,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
+        };
+        void LayoutNodePacksHeader()
+        {
+            btnAddNode.Location = new Point(pnlNodePacksHeader.ClientSize.Width - btnAddNode.Width - 2, 4);
+        }
+        pnlNodePacksHeader.Resize += (s, e) => LayoutNodePacksHeader();
+        LayoutNodePacksHeader();
+
+        pnlNodePacksHeader.Controls.AddRange([lblNodePacks, btnAddNode]);
 
         _pnlNodePackages = new Panel
         {
@@ -1945,7 +2184,21 @@ public partial class MainForm : Form
         void RefreshNodePackagesList()
         {
             _pnlNodePackages.Controls.Clear();
-            var packages = PackageCatalog.GetNodePackages();
+            var packages = PackageCatalog.GetNodePackages().Where(p => p.IsInstalled(_appRoot)).ToList();
+            if (packages.Count == 0)
+            {
+                var lblEmpty = new Label
+                {
+                    Text = "No portable Node.js versions installed. Click '+ Install Version' above to download one.",
+                    ForeColor = ModernColors.TextMuted,
+                    Font = new Font("Segoe UI", 9f),
+                    AutoSize = true,
+                    Padding = new Padding(4, 10, 4, 10)
+                };
+                _pnlNodePackages.Controls.Add(lblEmpty);
+                return;
+            }
+
             var cards = new List<Control>();
             foreach (var pkg in packages)
             {
@@ -1972,6 +2225,20 @@ public partial class MainForm : Form
             cards.Reverse();
             _pnlNodePackages.Controls.AddRange(cards.ToArray());
         }
+
+        btnAddNode.Click += (s, e) =>
+        {
+            using var dlg = new RuntimeCatalogDialog("Node.js", _appRoot, _config, async p =>
+            {
+                RefreshNodePackagesList();
+                await Task.CompletedTask;
+            });
+            dlg.ShowDialog(this);
+            if (dlg.HasInstalledAny)
+            {
+                RefreshNodePackagesList();
+            }
+        };
 
         pnlLiteServerView.Controls.AddRange([pnlNodePacksHeader, _pnlNodePackages]);
         pnlNodePacksHeader.BringToFront();
@@ -2305,13 +2572,11 @@ public partial class MainForm : Form
         SetNodeMode(isCurrentSystem);
 
         pageNode.Controls.AddRange([
-            pnlHeader,
             heroCard,
             pnlModeSelector,
             pnlContentContainer
         ]);
 
-        pnlHeader.BringToFront();
         heroCard.BringToFront();
         pnlModeSelector.BringToFront();
         pnlContentContainer.BringToFront();
@@ -2323,8 +2588,6 @@ public partial class MainForm : Form
     private void PopulateServicesPage()
     {
         pageServices.Padding = new Padding(24, 16, 24, 20);
-
-        var pnlHeader = CreateSectionHeader("Databases & Cache Engines", "Relational databases and in-memory key-value cache services.");
 
         // 1. MySQL Card
         var cardMySql = CreateServiceManagementCard(
@@ -2359,8 +2622,7 @@ public partial class MainForm : Form
             null,
             (force) => OpenDatabaseClient("redis", force));
 
-        pageServices.Controls.AddRange([pnlHeader, cardMySql, cardPg, cardRedis]);
-        pnlHeader.BringToFront();
+        pageServices.Controls.AddRange([cardMySql, cardPg, cardRedis]);
         cardMySql.BringToFront();
         cardPg.BringToFront();
         cardRedis.BringToFront();
@@ -2628,8 +2890,6 @@ public partial class MainForm : Form
     private void PopulateMailPage()
     {
         pageMail.Padding = new Padding(24, 16, 24, 20);
-
-        var pnlHeader = CreateSectionHeader("Mailpit Local Mail Testing", "Zero-configuration SMTP capture daemon and real-time webmail inbox.");
 
         // Hero Card
         var heroCard = new Panel
@@ -2995,8 +3255,7 @@ public partial class MainForm : Form
         snippetCard.Controls.Add(btnCopyEnv);
         snippetCard.Controls.Add(txtSnippet);
 
-        pageMail.Controls.AddRange([snippetCard, heroCard, pnlHeader]);
-        pnlHeader.SendToBack();
+        pageMail.Controls.AddRange([snippetCard, heroCard]);
     }
 
     // ==========================================
@@ -3047,35 +3306,6 @@ public partial class MainForm : Form
         return txt;
     }
 
-    private static Panel CreateSectionHeader(string title, string subtitle)
-    {
-        var pnl = new Panel
-        {
-            Dock = DockStyle.Top,
-            Height = 44,
-            Padding = new Padding(0, 0, 0, 8)
-        };
-        var lblT = new Label
-        {
-            Text = title,
-            ForeColor = ModernColors.TextPrimary,
-            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
-            Location = new Point(0, 0),
-            AutoSize = true
-        };
-        var lblS = new Label
-        {
-            Text = subtitle,
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8.25f),
-            Location = new Point(1, 22),
-            AutoSize = true
-        };
-        pnl.Controls.Add(lblT);
-        pnl.Controls.Add(lblS);
-        return pnl;
-    }
-
     private static Panel CreateSubSectionHeader(string title)
     {
         var pnl = new Panel
@@ -3090,6 +3320,26 @@ public partial class MainForm : Form
             ForeColor = ModernColors.TextSecondary,
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
             Location = new Point(0, 4),
+            AutoSize = true
+        };
+        pnl.Controls.Add(lblT);
+        return pnl;
+    }
+
+    private static Panel CreateSettingsSectionHeader(string title, bool isFirst = false)
+    {
+        var pnl = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = isFirst ? 28 : 42,
+            Padding = new Padding(0, isFirst ? 0 : 14, 0, 4)
+        };
+        var lblT = new Label
+        {
+            Text = title,
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.75f, FontStyle.Bold),
+            Location = new Point(0, isFirst ? 0 : 14),
             AutoSize = true
         };
         pnl.Controls.Add(lblT);
@@ -3191,12 +3441,39 @@ public partial class MainForm : Form
 
         int enabledCount = _services.Count(s => s != _php && _config.IsServiceEnabled(s.Name));
         int runningCount = _services.Count(s => s != _php && _config.IsServiceEnabled(s.Name) && s.Status == ServiceStatus.Running);
+        bool anyError = _services.Any(s => s != _php && _config.IsServiceEnabled(s.Name) && s.Status == ServiceStatus.Error);
 
         lblStatsText.Text = $"Services: {runningCount} / {enabledCount} running";
         lblStatsText.ForeColor = runningCount > 0 ? ModernColors.Success : ModernColors.TextMuted;
         lblStatsText.Location = new Point(footerPanel.ClientSize.Width - lblStatsText.Width - 20, 7);
 
-        lblSidebarStatus.Text = runningCount > 0 ? $"{runningCount} running" : "Stopped";
+        _sidebarDotColor = anyError ? ModernColors.Danger : (runningCount > 0 ? ModernColors.Success : ModernColors.TextMuted);
+        lblSidebarStatus.Text = anyError ? "Service Error" : (runningCount > 0 ? $"{runningCount} running" : "Stopped");
+        sidebarFooter.Invalidate();
+
+        // Dynamic Smart Master Hero Button
+        if (runningCount > 0)
+        {
+            btnStartAll.Text = "Stop All";
+            btnStartAll.IconKind = IconKind.Stop;
+            btnStartAll.NormalColor = ModernColors.Card;
+            btnStartAll.HoverColor = ModernColors.DangerBg;
+            btnStartAll.PressedColor = ModernColors.DangerBg;
+            btnStartAll.ForeColor = ModernColors.Danger;
+            btnStartAll.ShowBorder = true;
+            btnStartAll.BorderLineColor = Color.FromArgb(120, ModernColors.Danger);
+        }
+        else
+        {
+            btnStartAll.Text = "Start All";
+            btnStartAll.IconKind = IconKind.Play;
+            btnStartAll.NormalColor = ModernColors.Success;
+            btnStartAll.HoverColor = ModernColors.SuccessHover;
+            btnStartAll.PressedColor = ModernColors.SuccessBg;
+            btnStartAll.ForeColor = Color.White;
+            btnStartAll.ShowBorder = false;
+        }
+        btnStartAll.Invalidate();
     }
 
     private async Task InstallServiceWithUiAsync(string serviceKey, IService targetService)
@@ -3659,7 +3936,18 @@ public partial class MainForm : Form
         }
     }
 
-    private async void BtnStartAll_Click(object? sender, EventArgs e) => await StartAllServicesAsync();
+    private async void BtnStartAll_Click(object? sender, EventArgs e)
+    {
+        int runningCount = _services.Count(s => s != _php && _config.IsServiceEnabled(s.Name) && s.Status == ServiceStatus.Running);
+        if (runningCount > 0)
+        {
+            await StopAllServicesAsync();
+        }
+        else
+        {
+            await StartAllServicesAsync();
+        }
+    }
     private async void BtnStopAll_Click(object? sender, EventArgs e) => await StopAllServicesAsync();
     private async void BtnExit_Click(object? sender, EventArgs e) => await ExitApplicationAsync();
 
@@ -3673,6 +3961,7 @@ public partial class MainForm : Form
         lblStatusText.ForeColor = ModernColors.Warning;
 
         await StopAllServicesAsync();
+        DnsServer.Instance.Stop();
         _job.Dispose();
         notifyIcon.Visible = false;
         Application.Exit();
