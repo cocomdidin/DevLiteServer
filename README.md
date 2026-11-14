@@ -2,91 +2,115 @@
 
 # ⚡ Dev Lite Server
 
-**High-performance, portable, lightweight, and zero-registry local WEMP stack for Windows.**
-
-An open-source, modern alternative to Laragon and XAMPP powered by .NET 10 LTS and Win32 Job Objects.
+**High-performance, portable, and modern local web server for Windows.**  
+A clean, lightweight alternative to Laragon and XAMPP for web developers.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0%20LTS-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![Windows](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20x64-0078D6?logo=windows)](https://microsoft.com/windows)
 [![Release](https://img.shields.io/github/v/release/cocomdidin/DevLiteServer?color=success&include_prereleases)](https://github.com/cocomdidin/DevLiteServer/releases)
-[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits)](COMMIT_CONVENTION.md)
 
-[Features](#-key-features) •
 [Quick Start](#-quick-start) •
+[Why Dev Lite Server?](#-why-dev-lite-server) •
+[Features](#-features-at-a-glance) •
 [Default Stack & Ports](#-default-stack--ports) •
-[Architecture](#-architecture) •
-[Building from Source](#-building-from-source) •
-[Contributing](#-contributing)
+[Configuration](#-configuration)
 
 ---
 
 </div>
 
-## 📖 Overview
+## 🚀 Quick Start
 
-**Dev Lite Server** is designed for web developers who want a blazing-fast local server environment without system bloat, registry pollution, or rogue background services. 
+### 1. Download & Install
+Download the latest installer (`DevLiteServer-Setup-vX.Y.Z.exe`) or portable archive from [GitHub Releases](https://github.com/cocomdidin/DevLiteServer/releases).
 
-Unlike traditional solutions, Dev Lite Server does not install Windows Services or alter global system environment variables. It operates with a **portable-first philosophy** and relies on **Win32 Job Object kernel primitives** to guarantee that every daemon (Nginx, PHP-CGI, MySQL, Mailpit) cleanly terminates the moment you close the application.
+### 2. Launch
+Run **Dev Lite Server**. On the very first launch, the built-in wizard will offer to download and set up core dependencies (Nginx, PHP 8.4, Composer CLI, and MSVCRT) with a single click.
 
----
-
-## ✨ Key Features
-
-- ⚡ **True Portability & Zero-Registry**:
-  Run from anywhere (`C:\DevLiteServer`, a secondary SSD, or a USB drive). No Windows services registered, no leftover registry entries.
-- 🚀 **First-Run Core Auto-Setup (Herd-Style)**:
-  On fresh launch, automatically detects missing core dependencies (MSVCRT x64, Nginx 1.26, PHP 8.4 NTS, Composer CLI, MinGit Portable, AdminerEvo) and provisions them in a sequential 1-click wizard with 1-click Windows User PATH registration and starter dashboard initialization.
-- 🛡️ **Win32 Job Object Process Supervision**:
-  All child daemon processes are assigned to a kernel Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. Even in the event of an abrupt crash, zero orphan daemons remain.
-- 🔒 **Single-Instance Mutex & Focus Activation**:
-  Prevents duplicate application instances. Double-clicking desktop or portable shortcuts while minimized automatically restores and focuses the active window.
-- ⚡ **PHP Multi-Worker Concurrency Pool & FastCGI Auto-Pairing (Herd-Style)**:
-  Eliminates `502 Bad Gateway` and freeze/hang under heavy or concurrent traffic. Runs multi-process `php-cgi.exe` worker pools (default 8 workers per PHP version) with enabled Zend OpCache, coupled with Nginx dynamic `upstream` round-robin load balancing, persistent `fastcgi_keep_conn on`, and FastCGI buffer & timeout tuning. Auto-recovery loop independently respawns dead workers without downtime.
-- 🔌 **Interactive Port Conflict Resolver**:
-  Automatically detects port collisions on startup (80, 9000, 3306, 5432, 6379, 1025, 8025) and offers 1-click reassignment to recommended free ports without manual config editing.
-- 🧩 **System Dependency Checker (MSVCRT)**:
-  Scans for `VCRUNTIME140.dll` on startup with 1-click automated download and installation of the official Microsoft Visual C++ 2015-2022 x64 Redistributable.
-- 💻 **Isolated Developer Terminal**:
-  One-click launcher for PowerShell / CMD with an isolated `PATH` containing PHP, Node.js, Git, Composer, MySQL, PostgreSQL, and Redis client binaries without polluting your Windows environment.
-- 📬 **Built-in Mailpit Suite**:
-  Zero-configuration local SMTP testing (`127.0.0.1:1025`) and beautiful web inbox viewer (`http://localhost:8025`).
-- 🗄️ **Zero-Fuss MySQL 8.4 & PostgreSQL 17**:
-  Out-of-the-box local database with empty root password / trust auth preset for instant development.
-- 🗃️ **Multi-Persona Database Client Manager**:
-  Interactive DB client selector tailored to all user levels: **phpMyAdmin** (classic web UI for MySQL), **AdminerEvo** (lightweight multi-engine web manager for MySQL, PostgreSQL, SQLite), **HeidiSQL Portable** (high-performance native desktop GUI connecting directly via TCP), **Tiny RDM Portable** (modern desktop GUI for Redis key-value stores), and **redis-cli** (interactive loopback terminal). Auto-detects existing system clients (DBeaver, TablePlus, Beekeeper Studio, RedisInsight).
-- 🚀 **In-App Auto-Update System**:
-  Built-in GitHub Release checker with one-click direct download, progress bar, graceful daemon shutdown, and installer execution.
-- 🎨 **Modern Dark OLED UI, Dedicated Settings & Clean Dashboard**:
-  High-DPI optimized, responsive WinForms dashboard that displays only currently enabled services. Includes a dedicated **Settings & Configuration** dialog with port management, per-service dashboard visibility toggles, auto-start options, and dedicated one-click **Exit** button that cleanly terminates all daemons and the application.
-- 💻 **Configurable Code Editor & Sites Shortcut**:
-  Set your preferred text/code editor (VS Code, Cursor, Antigravity, PhpStorm, or custom executable) in Settings. Open any site's codebase or `/www` web root directly into your editor with a single click from the Sites tab.
-- 🪟 **Windows Logon Auto-Start**:
-  Optional single-click startup on Windows logon (`StartWithWindows=true`) registering into `HKCU` Run key, launching minimized to tray with zero UAC prompts.
+### 3. Start Coding
+- Put your projects in the `www/` folder or create custom virtual hosts in the **Sites** tab.
+- Click **Start All** on the Dashboard.
+- Open your browser at `http://localhost` or `http://yourproject.test`.
 
 ---
 
-## ⚙️ Configuration (`config.ini` & Settings Dialog)
+## 💡 Why Dev Lite Server?
 
-Dev Lite Server can be configured either via the built-in **Settings** UI dialog (click the `Settings` button on the toolbar or right-click the System Tray icon) or directly via `config.ini`:
+- **True Portability (Zero-Registry)**:  
+  No Windows Services installed. No permanent registry entries. Move your entire server folder to another drive or PC anytime.
+- **Zero-UAC Dynamic Domains**:  
+  Thanks to the built-in Micro DNS server, any `*.test` domain works instantly without needing administrator permission or manual `hosts` file editing.
+- **No Orphan Processes**:  
+  When you close Dev Lite Server, every single daemon (Nginx, PHP-CGI workers, MySQL, Mailpit) cleanly terminates instantly.
+- **Multi-Worker PHP (No More 502 Bad Gateway)**:  
+  PHP runs in an isolated worker pool with Nginx load balancing, keeping your local sites fast and responsive under concurrent requests.
+- **Clean, Modern Dark UI**:  
+  Fast, responsive interface with Dark Obsidian & Electric Indigo theme, designed to keep your local stack intuitive and out of your way.
+
+---
+
+## ✨ Features at a Glance
+
+### 🌐 Sites & Virtual Hosts
+- **Instant Local Domains**: Create virtual hosts like `myproject.test` with custom document roots and individual PHP versions.
+- **One-Click Domain Sync**: Single "Sync Domains" button that routes domains via local DNS (Zero-UAC) with an automatic fallback to the Windows hosts file.
+- **Open in Editor**: Launch your configured code editor (VS Code, Cursor, PhpStorm, etc.) directly into your project directory with a single click.
+
+### 🐘 PHP & Extension Manager
+- **Extension Manager GUI**: Enable or disable PHP extensions (`pdo_mysql`, `curl`, `mbstring`, `intl`, `xdebug`, `redis`, etc.) with simple checkboxes—no manual `php.ini` editing needed.
+- **Multi-Version Support**: Switch between PHP 7.4, 8.1, 8.2, 8.3, and 8.4 per site or globally.
+- **Download Catalogs**: Download and install additional PHP versions directly from within the app.
+
+### 🗄️ Database & Clients
+- **Pre-configured MySQL 8.4 & PostgreSQL 17**: Ready out of the box with default credentials for instant local development.
+- **Database Client Selector**: Choose your favorite client—**HeidiSQL**, **AdminerEvo**, **phpMyAdmin**, or **Tiny RDM** for Redis—with auto-detection for existing tools like DBeaver and TablePlus.
+
+### 📬 Built-in Local Mailpit
+- Local SMTP server listening on `127.0.0.1:1025` to safely capture test emails sent by your applications.
+- Clean web inbox viewer at `http://localhost:8025` to inspect email contents, headers, and HTML formatting.
+
+### 💻 Developer Tools & Terminal
+- **Isolated Developer Terminal**: Launch PowerShell or CMD with pre-configured environment paths for PHP, Composer, Node.js, Git, and MySQL clients without altering your global Windows environment.
+- **Interactive Port Conflict Resolver**: Automatically detects occupied ports on startup (80, 3306, etc.) and suggests free alternatives with 1-click reassignment.
+
+---
+
+## 📦 Default Stack & Ports
+
+Dev Lite Server uses lightweight, standard local ports:
+
+| Component | Default Port / Access | Notes |
+|---|---|---|
+| **Nginx** | `http://localhost:80` | High-performance reverse proxy & web server |
+| **Local Domains** | `http://*.test` | Handled automatically via local DNS |
+| **PHP FastCGI** | `127.0.0.1:9000-9003` | Multi-worker pool (default 4 workers per version) |
+| **MySQL** | `localhost:3306` | User: `root` (no password) |
+| **PostgreSQL** | `localhost:5432` | User: `postgres` (trust auth, no password) |
+| **Redis** | `127.0.0.1:6379` | In-memory key-value cache |
+| **Mailpit Web UI**| `http://localhost:8025` | Local webmail viewer |
+| **Mailpit SMTP** | `127.0.0.1:1025` | Local test mail capture |
+
+---
+
+## ⚙️ Configuration
+
+You can configure ports, default editors, and auto-start behaviors directly from the **Settings** tab in the application.
+
+Advanced options can also be adjusted in `config.ini`:
 
 ```ini
 [General]
-AppName=Dev Lite Server
 StartWithWindows=false
 MinimizeToTray=true
 AutoStartServices=false
 CheckUpdatesOnStart=true
 PreferredEditor=vscode
-CustomEditorPath=
 
-[AutoStart]
-Nginx=false
-Php=false
-Mysql=false
-Mailpit=false
-Postgresql=false
-Redis=false
+[Networking]
+EnableLocalDns=true
+HttpPort=80
+HttpsPort=443
 
 [Services]
 Nginx=true
@@ -95,156 +119,38 @@ Mysql=true
 Postgresql=false
 Redis=false
 Mailpit=true
-
-[Php]
-WorkerCount=8
-
-[Tools]
-DefaultMySqlClient=ask
-DefaultPgClient=ask
-DefaultRedisClient=ask
-```
-
-> **Note**:
-> - **Enabled Services (`[Services]`)**: Controls whether a service is active in the environment. Services marked `false` (Disabled) are hidden from the dashboard and skipped by **Start All** and **Auto-start**. You can toggle active services directly from the **Settings** dialog or the System Tray menu under **Enabled Services**.
-> - **Auto-Start (`[AutoStart]`)**: By default, no services auto-start until enabled. You can toggle auto-start behavior per-service and Windows logon startup from the **Settings** dialog or System Tray context menu under **Auto-start Services** and **Start with Windows**.
-
----
-
-## 📦 Stack & Ports
-
-### Slim Zero-Bundle Architecture
-Dev Lite Server ships as an ultra-compact starter package (~16 MB). All services and runtimes are provisioned on-demand with 1-click installation directly from official sources:
-
-| Service / Tool | Version | Port / Access | Notes |
-|---|---|---|---|
-| **Nginx** | 1.26.x | `http://localhost:80` | High-performance reverse proxy & web server (1-click install) |
-| **PHP (NTS x64)** | 7.4, 8.1, 8.2, 8.3, 8.4 | `127.0.0.1:9000-9007` | FastCGI multi-worker pool (default 8 workers) with Zend OpCache & auto-supervision |
-| **Node.js** | v18, v20, v22, v24 | CLI | Portable runtime with NPM & NPX or System Node |
-| **MySQL** | 8.4.x | `3306` | Default user: `root` (no password) |
-| **PostgreSQL** | 17.x | `5432` | Default user: `postgres` (trust auth, no password) |
-| **Redis** | 5.x / 7.x | `6379` | In-memory key-value cache store |
-| **Mailpit Web UI** | Latest | `http://localhost:8025` | Webmail inbox viewer |
-| **Mailpit SMTP** | Latest | `127.0.0.1:1025` | Local mail capture daemon |
-| **MinGit** | Latest | CLI | Isolated Git for Windows CLI |
-| **Composer** | Latest | CLI | PHP package manager |
-| **Database Clients** | phpMyAdmin, AdminerEvo, HeidiSQL, Tiny RDM, redis-cli | GUI / Web / CLI | Selectable on-the-fly or saved preference per database engine |
-
----
-
-## 🚀 Quick Start
-
-### Option A: Windows Installer (Recommended)
-1. Download the latest `DevLiteServer-Setup-vX.Y.Z.exe` from [GitHub Releases](https://github.com/cocomdidin/DevLiteServer/releases).
-2. Double-click the installer and choose your destination (default: `C:\DevLiteServer`).
-3. Launch **Dev Lite Server** from the Desktop shortcut or Start Menu.
-4. Open your browser and navigate to `http://localhost`.
-
-### Option B: Portable ZIP
-1. Download `DevLiteServer-vX.Y.Z-portable.zip` from [GitHub Releases](https://github.com/cocomdidin/DevLiteServer/releases).
-2. Extract the archive to any folder.
-3. Run `DevLiteServer.exe`.
-
----
-
-## 📁 Directory Structure
-
-```text
-C:\DevLiteServer/
-├── DevLiteServer.exe          # .NET 10 application supervisor
-├── config.ini                 # Active ports, versions, and service flags
-├── assets/                    # Application icons (app.ico, app.png)
-├── bin/
-│   ├── nginx/                 # Nginx binaries and configurations
-│   ├── php/
-│   │   └── php-8.4/           # PHP FastCGI binary & php.ini
-│   ├── mysql/                 # MySQL daemon & database data/
-│   ├── nodejs/
-│   │   └── node-v24/          # Node.js and npm binaries
-│   ├── git/                   # Isolated Portable MinGit
-│   └── mailpit/               # Mailpit executable
-├── templates/                 # Dynamic config templates (nginx.conf.tpl, php.ini.tpl)
-├── tools/
-│   ├── composer/              # Composer binary & runner script
-│   └── adminer/               # Adminer database management UI
-└── www/                       # Web root (DocumentRoot for http://localhost)
-    └── index.php              # Starter dashboard landing page
 ```
 
 ---
 
-## 🛠️ Architecture
+## ❓ Frequently Asked Questions (FAQ)
 
-```
-┌────────────────────────────────────────────────────────┐
-│            Dev Lite Server (WinForms .NET 10)          │
-│  ┌──────────────────────┐    ┌──────────────────────┐  │
-│  │   UI & System Tray   │    │  JobObject (Kernel)  │  │
-│  └──────────┬───────────┘    └──────────┬───────────┘  │
-│             │                           │              │
-│  ┌──────────▼───────────────────────────▼───────────┐  │
-│  │           Process Supervisor & Lifecycle          │  │
-│  └──────┬─────────────┬─────────────┬─────────────┬─┘  │
-└─────────┼─────────────┼─────────────┼─────────────┼────┘
-          ▼             ▼             ▼             ▼
-     ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐
-     │  Nginx  │   │ PHP-CGI │   │  MySQL  │   │ Mailpit │
-     │ (80)    │   │ (9000)  │   │ (3306)  │   │ (8025)  │
-     └─────────┘   └─────────┘   └─────────┘   └─────────┘
-```
+<details>
+<summary><strong>Do I need to run Dev Lite Server as Administrator?</strong></summary>
 
-- **Runtime Target**: .NET 10 LTS (`net10.0-windows`)
-- **Process Management**: Native Win32 API P/Invoke (`CreateJobObject`, `SetInformationJobObject`, `AssignProcessToJobObject`)
-- **Template Engine**: Dynamic token interpolation (`{{HTTP_PORT}}`, `{{ROOT_DIR}}`, `{{PHP_PORT}}`)
-- **CI/CD Pipeline**: GitHub Actions with automated Semantic Versioning (`paulhatch/semantic-version`), automated binary packaging, and Inno Setup compilation.
+No! Standard features (Nginx, PHP, MySQL, Mailpit) run entirely under normal user privileges. An elevation prompt (UAC) is only requested once if you configure Windows DNS for Zero-UAC local domains or when using the hosts file fallback.
+</details>
+
+<details>
+<summary><strong>Port 80 or 3306 is already in use by another program. What should I do?</strong></summary>
+
+Dev Lite Server includes an automatic port conflict resolver. When a conflict is detected on startup, the app will notify you and offer to switch to a recommended free port (e.g., port 8080 or 3307) with a single click.
+</details>
+
+<details>
+<summary><strong>How do I connect to MySQL from my application?</strong></summary>
+
+- **Host**: `127.0.0.1` or `localhost`
+- **Port**: `3306`
+- **Username**: `root`
+- **Password**: *(leave blank)*
+</details>
 
 ---
 
-## 💻 Building from Source
+## 🤝 Contributing & Building from Source
 
-### Prerequisites
-- Windows 10 / 11 (64-bit)
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- PowerShell 7+ (pwsh) or Windows PowerShell 5.1
-- (Optional) [Inno Setup 6](https://jrsoftware.org/isdl.php) for building the installer
-
-### 1. Clone the Repository
-```powershell
-git clone https://github.com/cocomdidin/DevLiteServer.git
-cd DevLiteServer
-```
-
-### 2. Provision Runtime Binaries
-Run the provisioning script to download clean upstream binaries into `/bin` and `/tools`:
-```powershell
-.\scripts\setup-bundle.ps1 -Component All
-```
-
-### 3. Build & Run
-```powershell
-dotnet run
-```
-
-### 4. Build Installer Locally (Optional)
-```powershell
-dotnet publish DevLiteServer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o ./dist/app
-iscc.exe /DMyAppVersion=1.0.0 /DSourceDir=..\dist\app installer\setup.iss
-```
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please review our commit guidelines before submitting pull requests:
-
-1. **Commit Convention**: This project strictly enforces [Conventional Commits](https://www.conventionalcommits.org/). Automated Semantic Versioning depends on clean commit types (`feat`, `fix`, `perf`, `refactor`, `chore`, `docs`). See [COMMIT_CONVENTION.md](COMMIT_CONVENTION.md).
-2. **Install Local Git Hooks**:
-   ```powershell
-   .\scripts\install-git-hooks.ps1
-   ```
-3. Create a feature branch: `git checkout -b feat/my-new-feature`
-4. Commit your changes: `git commit -m "feat(ui): add dark mode toggle"`
-5. Push to your fork and submit a Pull Request.
+Interested in contributing or building the app from source? Please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 

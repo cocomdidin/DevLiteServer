@@ -405,6 +405,68 @@ public partial class MainForm : Form
 
         var cardEditor = CreateOptionCard("Preferred Code Editor", "Choose the editor used to open site codebases from the Sites tab.", pnlEditorCtrl);
 
+        // PHP Worker Process Pool Count
+        var cmbWorkers = new ModernComboBox
+        {
+            Width = 140,
+            Height = 28,
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        int[] workerOptions = [2, 4, 6, 8, 12, 16];
+        foreach (int opt in workerOptions)
+        {
+            string label = opt switch
+            {
+                2 => "2 Workers (Light)",
+                4 => "4 Workers (Default)",
+                8 => "8 Workers (High)",
+                12 => "12 Workers (Heavy)",
+                16 => "16 Workers (Max)",
+                _ => $"{opt} Workers"
+            };
+            cmbWorkers.Items.Add(label);
+        }
+        int curCount = Math.Clamp(_config.PhpWorkerCount, 2, 16);
+        int matchedIdx = Array.IndexOf(workerOptions, curCount);
+        cmbWorkers.SelectedIndex = matchedIdx >= 0 ? matchedIdx : 1; // Default to 4 if not matched
+
+        cmbWorkers.SelectedIndexChanged += async (s, e) =>
+        {
+            if (cmbWorkers.SelectedIndex >= 0 && cmbWorkers.SelectedIndex < workerOptions.Length)
+            {
+                int newCount = workerOptions[cmbWorkers.SelectedIndex];
+                if (_config.PhpWorkerCount != newCount)
+                {
+                    _config.PhpWorkerCount = newCount;
+                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+
+                    // Re-generate Nginx vhosts with updated dynamic upstream ports
+                    VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
+
+                    // If PHP is active, respawn worker pool dynamically
+                    if (_php.Status == ServiceStatus.Running)
+                    {
+                        lblStatusText.Text = $"Applying {newCount} PHP workers...";
+                        lblStatusText.ForeColor = ModernColors.Primary;
+                        await _php.RestartAsync();
+                        if (_nginx.Status == ServiceStatus.Running)
+                        {
+                            await _nginx.RestartAsync();
+                        }
+                        lblStatusText.Text = $"PHP worker pool updated to {newCount} processes.";
+                        lblStatusText.ForeColor = ModernColors.Success;
+                    }
+                    else
+                    {
+                        lblStatusText.Text = $"PHP worker count set to {newCount}.";
+                        lblStatusText.ForeColor = ModernColors.Success;
+                    }
+                }
+            }
+        };
+
+        var cardWorkers = CreateOptionCard("PHP Concurrency Pool (Workers)", "Number of php-cgi worker processes per PHP version (min 2, max 16) for load balancing and preventing 502 Bad Gateway.", cmbWorkers);
+
         // ==========================================
         // 3. Networking & Security
         // ==========================================
@@ -600,6 +662,7 @@ public partial class MainForm : Form
             secDev,
             cardUserPath,
             cardEditor,
+            cardWorkers,
             secNet,
             cardDns,
             cardSsl,
@@ -655,12 +718,12 @@ public partial class MainForm : Form
             }
         };
 
-        var btnSyncHosts = new ModernButton
+        var btnSyncDomains = new ModernButton
         {
-            Text = "Sync Hosts",
+            Text = "Sync Domains",
             IconKind = IconKind.Lightning,
             IconSize = 10,
-            Width = 98,
+            Width = 118,
             Height = 30,
             BorderRadius = 6,
             ShowBorder = false,
@@ -668,37 +731,6 @@ public partial class MainForm : Form
             HoverColor = ModernColors.PrimaryHover,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
             Location = new Point(104, 2)
-        };
-        btnSyncHosts.Click += async (s, e) =>
-        {
-            btnSyncHosts.Enabled = false;
-            lblStatusText.Text = "Syncing *.test virtual domains to Windows hosts file...";
-            lblStatusText.ForeColor = ModernColors.Primary;
-            bool ok = await VirtualHostManager.SyncHostsFileBatchAsync(_appRoot);
-            if (ok)
-            {
-                lblStatusText.Text = "Windows hosts file synced with all *.test domains.";
-                lblStatusText.ForeColor = ModernColors.Success;
-                if (_nginx.Status == ServiceStatus.Running)
-                {
-                    await _nginx.RestartAsync();
-                }
-            }
-            else
-            {
-                lblStatusText.Text = "Failed or canceled hosts sync.";
-                lblStatusText.ForeColor = ModernColors.Warning;
-            }
-            btnSyncHosts.Enabled = true;
-        };
-
-        var btnLocalDns = new ModernButton
-        {
-            Height = 30,
-            BorderRadius = 6,
-            ShowBorder = true,
-            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(208, 2)
         };
 
         var btnRefresh = new ModernButton
@@ -713,7 +745,7 @@ public partial class MainForm : Form
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(210, 2)
+            Location = new Point(230, 2)
         };
         btnRefresh.Click += (s, e) => RefreshSitesList();
 
@@ -729,7 +761,7 @@ public partial class MainForm : Form
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(302, 2)
+            Location = new Point(322, 2)
         };
         btnOpenFolder.Click += BtnOpenWww_Click;
 
@@ -746,7 +778,7 @@ public partial class MainForm : Form
             HoverColor = ModernColors.SurfaceHover,
             ForeColor = ModernColors.TextSecondary,
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(415, 2)
+            Location = new Point(435, 2)
         };
         btnOpenConf.Click += (s, e) =>
         {
@@ -757,87 +789,118 @@ public partial class MainForm : Form
             }
         };
 
-        void UpdateDnsButtonState()
+        void UpdateDomainSyncButtonState()
         {
-            if (InvokeRequired) { Invoke(UpdateDnsButtonState); return; }
-            bool running = DnsServer.Instance.IsRunning;
-            bool winDns = DnsServer.IsWindowsDnsConfigured();
-
-            if (running && winDns)
+            if (InvokeRequired) { Invoke(UpdateDomainSyncButtonState); return; }
+            if (DnsServer.IsZeroUacActive)
             {
-                btnLocalDns.Text = "DNS: Zero-UAC";
-                btnLocalDns.IconKind = IconKind.Check;
-                btnLocalDns.NormalColor = ModernColors.SuccessBg;
-                btnLocalDns.HoverColor = ModernColors.SuccessBg;
-                btnLocalDns.ForeColor = ModernColors.Success;
-                btnLocalDns.BorderLineColor = Color.FromArgb(120, ModernColors.Success);
-                btnLocalDns.Width = 118;
-            }
-            else if (running)
-            {
-                btnLocalDns.Text = "Enable Zero-UAC DNS";
-                btnLocalDns.IconKind = IconKind.Lightning;
-                btnLocalDns.NormalColor = ModernColors.Card;
-                btnLocalDns.HoverColor = ModernColors.SurfaceHover;
-                btnLocalDns.ForeColor = ModernColors.Primary;
-                btnLocalDns.BorderLineColor = Color.FromArgb(120, ModernColors.Primary);
-                btnLocalDns.Width = 158;
+                btnSyncDomains.Text = "Domains Active";
+                btnSyncDomains.IconKind = IconKind.Check;
+                btnSyncDomains.NormalColor = ModernColors.SuccessBg;
+                btnSyncDomains.HoverColor = ModernColors.SuccessBg;
+                btnSyncDomains.ForeColor = ModernColors.Success;
+                btnSyncDomains.ShowBorder = true;
+                btnSyncDomains.BorderLineColor = Color.FromArgb(120, ModernColors.Success);
+                btnSyncDomains.Width = 125;
             }
             else
             {
-                btnLocalDns.Text = "Start Local DNS";
-                btnLocalDns.IconKind = IconKind.Play;
-                btnLocalDns.NormalColor = ModernColors.Card;
-                btnLocalDns.HoverColor = ModernColors.SurfaceHover;
-                btnLocalDns.ForeColor = ModernColors.TextSecondary;
-                btnLocalDns.BorderLineColor = ModernColors.BorderSubtle;
-                btnLocalDns.Width = 125;
+                btnSyncDomains.Text = "Sync Domains";
+                btnSyncDomains.IconKind = IconKind.Lightning;
+                btnSyncDomains.NormalColor = ModernColors.Primary;
+                btnSyncDomains.HoverColor = ModernColors.PrimaryHover;
+                btnSyncDomains.ForeColor = Color.White;
+                btnSyncDomains.ShowBorder = false;
+                btnSyncDomains.BorderLineColor = Color.Transparent;
+                btnSyncDomains.Width = 118;
             }
 
-            btnRefresh.Location = new Point(btnLocalDns.Right + 8, 2);
+            btnRefresh.Location = new Point(btnSyncDomains.Right + 8, 2);
             btnOpenFolder.Location = new Point(btnRefresh.Right + 8, 2);
             btnOpenConf.Location = new Point(btnOpenFolder.Right + 8, 2);
-            btnLocalDns.Invalidate();
+            btnSyncDomains.Invalidate();
         }
 
-        UpdateDnsButtonState();
-        DnsServer.Instance.StatusChanged += _ => UpdateDnsButtonState();
+        UpdateDomainSyncButtonState();
+        DnsServer.Instance.StatusChanged += _ => UpdateDomainSyncButtonState();
 
-        btnLocalDns.Click += async (s, e) =>
+        btnSyncDomains.Click += async (s, e) =>
         {
-            if (!DnsServer.Instance.IsRunning)
+            btnSyncDomains.Enabled = false;
+
+            try
             {
-                bool ok = DnsServer.Instance.Start();
+                // Step 1: Check if Zero-UAC local DNS is already fully active
+                if (DnsServer.IsZeroUacActive)
+                {
+                    lblStatusText.Text = "Local DNS active (Zero-UAC). All *.test domains resolve dynamically.";
+                    lblStatusText.ForeColor = ModernColors.Success;
+                    UpdateDomainSyncButtonState();
+                    return;
+                }
+
+                // Step 2: Ensure local DNS server is started if enabled in config
+                if (!DnsServer.Instance.IsRunning)
+                {
+                    if (DnsServer.Instance.Start())
+                    {
+                        _config.EnableLocalDns = true;
+                        ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
+                    }
+                }
+
+                // Step 3: If DNS server is running, offer 1-click Windows DNS configuration (once)
+                if (DnsServer.Instance.IsRunning && !DnsServer.IsWindowsDnsConfigured())
+                {
+                    var askDns = MessageBox.Show(this,
+                        "Enable Zero-UAC DNS mode?\n\nThis configures your network adapter to route *.test domains automatically via DevLite's Micro DNS server (UAC prompt once, no hosts file edits needed ever again).\n\nClick 'Yes' to enable Zero-UAC DNS, or 'No' to fallback to Windows hosts file sync.",
+                        "Domain Resolution Setup",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+
+                    if (askDns == DialogResult.Yes)
+                    {
+                        lblStatusText.Text = "Configuring Windows DNS for Zero-UAC mode...";
+                        lblStatusText.ForeColor = ModernColors.Primary;
+                        bool configured = await DnsServer.ConfigureWindowsDnsAsync(true);
+                        if (configured && DnsServer.IsWindowsDnsConfigured())
+                        {
+                            lblStatusText.Text = "Zero-UAC DNS enabled! All *.test domains resolve instantly without hosts sync.";
+                            lblStatusText.ForeColor = ModernColors.Success;
+                            UpdateDomainSyncButtonState();
+                            return;
+                        }
+                        else
+                        {
+                            lblStatusText.Text = "DNS adapter setup bypassed or failed. Falling back to hosts file sync...";
+                            lblStatusText.ForeColor = ModernColors.Warning;
+                        }
+                    }
+                }
+
+                // Step 4: Fallback to hosts file sync
+                lblStatusText.Text = "Syncing *.test virtual domains to Windows hosts file (fallback)...";
+                lblStatusText.ForeColor = ModernColors.Primary;
+                bool ok = await VirtualHostManager.SyncHostsFileBatchAsync(_appRoot);
                 if (ok)
                 {
-                    _config.EnableLocalDns = true;
-                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-                }
-                UpdateDnsButtonState();
-                return;
-            }
-
-            if (DnsServer.IsWindowsDnsConfigured())
-            {
-                var ask = MessageBox.Show(this, "Windows DNS is currently configured to route *.test through DevLite's Micro DNS server (Zero UAC mode).\n\nDo you want to reset Windows DNS back to default / DHCP?", "Zero-UAC DNS Configured", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (ask == DialogResult.Yes)
-                {
-                    await DnsServer.ConfigureWindowsDnsAsync(false);
-                    UpdateDnsButtonState();
-                }
-                return;
-            }
-
-            var confirm = MessageBox.Show(this, "Configure Windows DNS to route *.test wildcard domains to 127.0.0.1 via DevLite's Micro DNS Server?\n\nOnce configured, any new *.test virtual host works instantly without modifying hosts file or needing UAC prompts.", "Enable Zero-UAC DNS", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm == DialogResult.Yes)
-            {
-                bool configured = await DnsServer.ConfigureWindowsDnsAsync(true);
-                if (configured)
-                {
-                    lblStatusText.Text = "Zero-UAC DNS configured successfully for all *.test domains.";
+                    lblStatusText.Text = "Windows hosts file synced with all *.test domains.";
                     lblStatusText.ForeColor = ModernColors.Success;
+                    if (_nginx.Status == ServiceStatus.Running)
+                    {
+                        await _nginx.RestartAsync();
+                    }
                 }
-                UpdateDnsButtonState();
+                else
+                {
+                    lblStatusText.Text = "Hosts sync canceled or failed.";
+                    lblStatusText.ForeColor = ModernColors.Warning;
+                }
+            }
+            finally
+            {
+                btnSyncDomains.Enabled = true;
+                UpdateDomainSyncButtonState();
             }
         };
 
@@ -896,9 +959,8 @@ public partial class MainForm : Form
         {
             // Row 1 buttons:
             btnAddSite.Location = new Point(0, 2);
-            btnSyncHosts.Location = new Point(btnAddSite.Right + 8, 2);
-            btnLocalDns.Location = new Point(btnSyncHosts.Right + 8, 2);
-            btnRefresh.Location = new Point(btnLocalDns.Right + 8, 2);
+            btnSyncDomains.Location = new Point(btnAddSite.Right + 8, 2);
+            btnRefresh.Location = new Point(btnSyncDomains.Right + 8, 2);
             btnOpenFolder.Location = new Point(btnRefresh.Right + 8, 2);
             btnOpenConf.Location = new Point(btnOpenFolder.Right + 8, 2);
 
@@ -926,8 +988,7 @@ public partial class MainForm : Form
         LayoutSitesTop();
 
         pnlTop.Controls.Add(btnAddSite);
-        pnlTop.Controls.Add(btnSyncHosts);
-        pnlTop.Controls.Add(btnLocalDns);
+        pnlTop.Controls.Add(btnSyncDomains);
         pnlTop.Controls.Add(btnRefresh);
         pnlTop.Controls.Add(btnOpenFolder);
         pnlTop.Controls.Add(btnOpenConf);
@@ -3856,8 +3917,8 @@ public partial class MainForm : Form
         lblStatusText.Text = "Starting all enabled services...";
         lblStatusText.ForeColor = ModernColors.Warning;
 
-        // Auto-sync hosts file for any newly added *.test projects if needed
-        if (VirtualHostManager.NeedsHostsSync(_appRoot))
+        // Auto-sync hosts file for any newly added *.test projects if needed (only when Zero-UAC local DNS is not active)
+        if (!DnsServer.IsZeroUacActive && VirtualHostManager.NeedsHostsSync(_appRoot))
         {
             lblStatusText.Text = "Syncing *.test virtual hosts to hosts file...";
             await VirtualHostManager.SyncHostsFileBatchAsync(_appRoot);

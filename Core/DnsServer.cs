@@ -295,6 +295,12 @@ public class DnsServer : IDisposable
         });
     }
 
+    /// <summary>
+    /// Checks whether local DNS is operational and Windows is pointed to 127.0.0.1.
+    /// If operational, all *.test / *.localhost domains resolve with zero UAC and no hosts file sync needed.
+    /// </summary>
+    public static bool IsZeroUacActive => Instance.IsRunning && IsWindowsDnsConfigured();
+
     public void Dispose()
     {
         Stop();
