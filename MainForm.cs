@@ -1069,20 +1069,20 @@ public partial class MainForm : Form
             float cardH = card.Height - 10f;
             var rect = new RectangleF(halfStroke, halfStroke, card.Width - stroke, cardH - stroke);
             using var path = CreateRoundedRectangle(rect, 6f);
-            using var bgBrush = new SolidBrush(ModernColors.Surface);
+            using var bgBrush = new SolidBrush(ModernColors.Card);
             g.FillPath(bgBrush, path);
-            using var pen = new Pen(ModernColors.BorderSubtle, stroke);
+            using var pen = new Pen(ModernColors.Border, stroke);
             g.DrawPath(pen, path);
 
             // Badge
             var badgeRect = new RectangleF(14, (cardH - 34) / 2f, 34, 34);
-            using var badgeBg = new SolidBrush(ModernColors.Card);
-            using var badgeBorder = new Pen(ModernColors.BorderSubtle, 1f);
+            using var badgeBg = new SolidBrush(Color.FromArgb(45, 63, 87));
+            using var badgeBorder = new Pen(ModernColors.Border, 1f);
             g.FillEllipse(badgeBg, badgeRect);
             g.DrawEllipse(badgeBorder, badgeRect);
 
             var iconRect = new RectangleF(22, (cardH - 34) / 2f + 8, 18, 18);
-            VectorIcons.Draw(g, IconKind.Server, iconRect, ModernColors.Primary);
+            VectorIcons.Draw(g, IconKind.Server, iconRect, Color.FromArgb(120, 150, 215));
         };
 
         var lblName = new Label
@@ -1122,10 +1122,10 @@ public partial class MainForm : Form
             Width = 64,
             Height = 28,
             BorderRadius = 5,
-            ShowBorder = true,
-            NormalColor = ModernColors.Card,
-            HoverColor = ModernColors.SurfaceHover,
-            ForeColor = ModernColors.Primary,
+            ShowBorder = false,
+            NormalColor = ModernColors.Primary,
+            HoverColor = ModernColors.PrimaryHover,
+            ForeColor = Color.White,
             Font = new Font("Segoe UI", 8f, FontStyle.Bold)
         };
         btnBrowse.Click += (s, e) =>
@@ -1225,26 +1225,26 @@ public partial class MainForm : Form
             float cardH = card.Height - 10f;
             var rect = new RectangleF(halfStroke, halfStroke, card.Width - stroke, cardH - stroke);
             using var path = CreateRoundedRectangle(rect, 6f);
-            using var bgBrush = new SolidBrush(ModernColors.Surface);
+            using var bgBrush = new SolidBrush(site.SslEnabled ? Color.FromArgb(13, 60, 70) : ModernColors.Card);
             g.FillPath(bgBrush, path);
-            using var pen = new Pen(ModernColors.BorderSubtle, stroke);
+            using var pen = new Pen(site.SslEnabled ? Color.FromArgb(64, 83, 100) : ModernColors.Border, stroke);
             g.DrawPath(pen, path);
 
             // Icon circle badge
             var badgeRect = new RectangleF(14, (cardH - 34) / 2f, 34, 34);
-            using var badgeBg = new SolidBrush(site.SslEnabled ? Color.FromArgb(16, 36, 32) : ModernColors.Card);
-            using var badgeBorder = new Pen(site.SslEnabled ? Color.FromArgb(34, 197, 94, 120) : ModernColors.BorderSubtle, 1f);
+            using var badgeBg = new SolidBrush(site.SslEnabled ? Color.FromArgb(23, 87, 89) : Color.FromArgb(45, 63, 87));
+            using var badgeBorder = new Pen(site.SslEnabled ? Color.FromArgb(40, 180, 150) : ModernColors.Border, 1f);
             g.FillEllipse(badgeBg, badgeRect);
             g.DrawEllipse(badgeBorder, badgeRect);
 
             var iconRect = new RectangleF(22, (cardH - 34) / 2f + 8, 18, 18);
             if (site.SslEnabled)
             {
-                VectorIcons.Draw(g, IconKind.Lock, iconRect, ModernColors.Success);
+                VectorIcons.Draw(g, IconKind.Lock, iconRect, Color.FromArgb(113, 207, 193));
             }
             else
             {
-                VectorIcons.Draw(g, IconKind.Server, iconRect, ModernColors.Primary);
+                VectorIcons.Draw(g, IconKind.Server, iconRect, Color.FromArgb(120, 150, 215));
             }
         };
 
@@ -1292,10 +1292,10 @@ public partial class MainForm : Form
             Width = 64,
             Height = 28,
             BorderRadius = 5,
-            ShowBorder = true,
-            NormalColor = ModernColors.Card,
-            HoverColor = ModernColors.SurfaceHover,
-            ForeColor = site.SslEnabled ? ModernColors.Success : ModernColors.Primary,
+            ShowBorder = false,
+            NormalColor = site.SslEnabled ? ModernColors.Success : ModernColors.Primary,
+            HoverColor = site.SslEnabled ? ModernColors.SuccessHover : ModernColors.PrimaryHover,
+            ForeColor = Color.White,
             Font = new Font("Segoe UI", 8f, FontStyle.Bold)
         };
         btnBrowse.Click += (s, e) =>

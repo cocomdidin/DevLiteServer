@@ -154,10 +154,6 @@ partial class MainForm
 
             using var subFont = new Font("Segoe UI", 8f, FontStyle.Regular);
             TextRenderer.DrawText(g, "Portable Edition", subFont, new Point(55, 33), ModernColors.TextSecondary);
-
-            // Bottom subtle divider
-            using var borderPen = new Pen(ModernColors.BorderSubtle, 1);
-            g.DrawLine(borderPen, 0, brandPanel.Height - 1, brandPanel.Width, brandPanel.Height - 1);
         };
 
         // Navigation Container
@@ -213,9 +209,6 @@ partial class MainForm
         sidebarFooter.Padding = new Padding(14, 8, 14, 8);
         sidebarFooter.Paint += (s, e) =>
         {
-            using var borderPen = new Pen(ModernColors.BorderSubtle, 1);
-            e.Graphics.DrawLine(borderPen, 0, 0, sidebarFooter.Width, 0);
-
             // Live status indicator dot
             var g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -235,16 +228,67 @@ partial class MainForm
         sidebarPanel.Controls.Add(sidebarFooter);
 
         // ==========================================
-        // 2. RIGHT MAIN PANE
+        // 2. RIGHT MAIN PANE (Seamless Canvas with Rounded Top/Bottom-Left Corners)
         // ==========================================
         mainPane.Dock = DockStyle.Fill;
-        mainPane.BackColor = ModernColors.Background;
+        mainPane.BackColor = ModernColors.Surface; // Outer frame matches sidebar tone
+        mainPane.Padding = new Padding(0);
+
+        var contentCard = new System.Windows.Forms.Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = ModernColors.Background
+        };
+
+        void UpdateContentCardRegion()
+        {
+            if (contentCard.Width <= 20 || contentCard.Height <= 20) return;
+            const float r = 12f;
+            using var path = new System.Drawing.Drawing2D.GraphicsPath();
+            float w = contentCard.Width;
+            float h = contentCard.Height;
+
+            // Top-left arc (curving inward from sidebar)
+            path.AddArc(0, 0, r * 2f, r * 2f, 180, 90);
+            // Top edge to right
+            path.AddLine(r, 0, w, 0);
+            // Right edge to bottom
+            path.AddLine(w, 0, w, h);
+            // Bottom edge to bottom-left
+            path.AddLine(w, h, r, h);
+            // Bottom-left arc
+            path.AddArc(0, h - (r * 2f), r * 2f, r * 2f, 90, 90);
+            path.CloseFigure();
+
+            contentCard.Region = new Region(path);
+        }
+
+        contentCard.Resize += (s, e) => UpdateContentCardRegion();
+        contentCard.Paint += (s, e) =>
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            const float r = 12f;
+            float w = contentCard.Width;
+            float h = contentCard.Height;
+
+            using var path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddArc(0.5f, 0.5f, r * 2f, r * 2f, 180, 90);
+            path.AddLine(r, 0.5f, w, 0.5f);
+            path.AddLine(w, 0.5f, w, h);
+            path.AddLine(w, h, r, h);
+            path.AddArc(0.5f, h - (r * 2f), r * 2f, r * 2f, 90, 90);
+            path.CloseFigure();
+
+            using var pen = new Pen(ModernColors.BorderSubtle, 1.25f);
+            g.DrawPath(pen, path);
+        };
 
         // Top Ribbon Header (Height: 60)
         topRibbon.Dock = DockStyle.Top;
         topRibbon.Height = 60;
-        topRibbon.BackColor = ModernColors.Surface;
-        topRibbon.Padding = new Padding(20, 10, 20, 10);
+        topRibbon.BackColor = ModernColors.Background; // Seamlessly matches content canvas
+        topRibbon.Padding = new Padding(24, 10, 20, 10);
         topRibbon.Resize += (s, e) => LayoutTopRibbonButtons();
         topRibbon.Paint += (s, e) =>
         {
@@ -332,15 +376,15 @@ partial class MainForm
         topRibbon.Controls.Add(lblPageSubtitle);
         topRibbon.Controls.AddRange([btnOpenWww, btnOpenTerminal, btnStartAll, btnExit]);
 
-        // Page Container
+        // Page Container (Content Wrapper)
         pageContainer.Dock = DockStyle.Fill;
         pageContainer.BackColor = ModernColors.Background;
 
         // Bottom Footer
         footerPanel.Dock = DockStyle.Bottom;
         footerPanel.Height = 30;
-        footerPanel.BackColor = ModernColors.Surface;
-        footerPanel.Padding = new Padding(20, 6, 20, 6);
+        footerPanel.BackColor = ModernColors.Background; // Seamlessly matches content canvas
+        footerPanel.Padding = new Padding(24, 6, 20, 6);
         footerPanel.Paint += (s, e) =>
         {
             using var borderPen = new Pen(ModernColors.BorderSubtle, 1);
@@ -373,9 +417,11 @@ partial class MainForm
         footerPanel.Controls.Add(lblStatusText);
         footerPanel.Controls.Add(lblStatsText);
 
-        mainPane.Controls.Add(pageContainer);
-        mainPane.Controls.Add(topRibbon);
-        mainPane.Controls.Add(footerPanel);
+        contentCard.Controls.Add(pageContainer);
+        contentCard.Controls.Add(topRibbon);
+        contentCard.Controls.Add(footerPanel);
+
+        mainPane.Controls.Add(contentCard);
 
         // ==========================================
         // 3. MAIN FORM SHELL
