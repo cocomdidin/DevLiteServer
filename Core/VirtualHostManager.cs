@@ -285,11 +285,16 @@ public static class VirtualHostManager
             sb.AppendLine("    }");
             sb.AppendLine();
 
-            // Herd-style static storage fallback:
-            // When Windows NTFS symlink in public/storage is unreadable by Nginx,
-            // route /storage/ requests to Laravel's standard index.php front controller.
+            // Herd-style static storage bypass:
+            // Bypass Windows Error 448 (untrusted mount point on NTFS symlink/junction).
+            // Nginx will not attempt Win32 GetFileAttributesEx, passing directly to PHP front controller.
             sb.AppendLine("    location ^~ /storage/ {");
-            sb.AppendLine("        try_files $uri $uri/ /index.php?$query_string;");
+            sb.AppendLine($"        fastcgi_pass   {upstreamName};");
+            sb.AppendLine("        fastcgi_index  index.php;");
+            sb.AppendLine("        fastcgi_param  SCRIPT_FILENAME $document_root/index.php;");
+            sb.AppendLine("        fastcgi_param  QUERY_STRING $query_string;");
+            sb.AppendLine("        include        fastcgi_params;");
+            sb.AppendLine("        fastcgi_keep_conn on;");
             sb.AppendLine("    }");
             sb.AppendLine();
             sb.AppendLine("    location ~ \\.php$ {");
