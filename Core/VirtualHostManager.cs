@@ -284,6 +284,14 @@ public static class VirtualHostManager
             sb.AppendLine("        try_files $uri $uri/ /index.php?$query_string;");
             sb.AppendLine("    }");
             sb.AppendLine();
+
+            // Herd-style static storage fallback:
+            // When Windows NTFS symlink in public/storage is unreadable by Nginx,
+            // route /storage/ requests to Laravel's standard index.php front controller.
+            sb.AppendLine("    location ^~ /storage/ {");
+            sb.AppendLine("        try_files $uri $uri/ /index.php?$query_string;");
+            sb.AppendLine("    }");
+            sb.AppendLine();
             sb.AppendLine("    location ~ \\.php$ {");
             sb.AppendLine("        try_files $uri =404;");
             sb.AppendLine($"        fastcgi_pass   {upstreamName};");
