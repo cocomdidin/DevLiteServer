@@ -79,11 +79,18 @@ public class ModernToggle : Control
         {
             return ModernColors.Surface;
         }
-        if (Parent != null && Parent.BackColor != Color.Transparent && Parent.BackColor.A == 255)
+
+        Control? current = Parent;
+        while (current != null)
         {
-            return Parent.BackColor;
+            if (current.BackColor != Color.Transparent && current.BackColor.A == 255)
+            {
+                return current.BackColor;
+            }
+            current = current.Parent;
         }
-        return ModernColors.Surface;
+
+        return ModernColors.Background;
     }
 
     protected override void OnPaintBackground(PaintEventArgs pevent)

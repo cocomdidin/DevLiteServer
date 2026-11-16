@@ -50,7 +50,7 @@ public class ModernComboBox : ComboBox
         DrawMode = DrawMode.OwnerDrawFixed;
         DropDownStyle = ComboBoxStyle.DropDownList;
         FlatStyle = FlatStyle.Flat;
-        ItemHeight = 24;
+        ItemHeight = 22;
         BackColor = ModernColors.Card;
         ForeColor = ModernColors.TextPrimary;
         Font = new Font("Segoe UI", 8.5f);
@@ -110,11 +110,18 @@ public class ModernComboBox : ComboBox
         {
             return ModernColors.Surface;
         }
-        if (Parent != null && Parent.BackColor != Color.Transparent && Parent.BackColor.A == 255)
+
+        Control? current = Parent;
+        while (current != null)
         {
-            return Parent.BackColor;
+            if (current.BackColor != Color.Transparent && current.BackColor.A == 255)
+            {
+                return current.BackColor;
+            }
+            current = current.Parent;
         }
-        return ModernColors.Surface;
+
+        return ModernColors.Background;
     }
 
     protected override void OnPaintBackground(PaintEventArgs pevent)

@@ -8,7 +8,7 @@ public class AppConfig
     public bool CheckUpdatesOnStart { get; set; } = true;
     public bool MinimizeToTray { get; set; } = true;
     public bool StartWithWindows { get; set; } = false;
-    public bool RegisterUserPath { get; set; } = false;
+    public bool RegisterUserPath { get; set; } = true;
     public bool EnableLocalDns { get; set; } = true;
 
     // Preferred text editor command or executable path ("vscode", "cursor", "antigravity", "phpstorm", "custom")
@@ -28,7 +28,24 @@ public class AppConfig
     public string ActiveNode { get; set; } = "node-v24";
 
     // PHP FastCGI Worker Pool (concurrency)
-    public int PhpWorkerCount { get; set; } = 4;
+    // 0 = Auto (detected from CPU cores, clamped to 2..16)
+    public int PhpWorkerCount { get; set; } = 0;
+
+    /// <summary>
+    /// Gets the effective PHP FastCGI worker count. If set to 0 (Auto),
+    /// scales dynamically to match CPU cores (min 2, max 16).
+    /// </summary>
+    public int EffectivePhpWorkerCount
+    {
+        get
+        {
+            if (PhpWorkerCount <= 0)
+            {
+                return Math.Clamp(Environment.ProcessorCount, 2, 16);
+            }
+            return Math.Clamp(PhpWorkerCount, 2, 16);
+        }
+    }
 
     // Database client preferences ("ask", "heidisql", "phpmyadmin", "adminer", "tinyrdm", "cli")
     public string DefaultMySqlClient { get; set; } = "ask";
@@ -192,13 +209,23 @@ public static class ConfigManager
                 case "VERSIONS":
                     if (key.Equals("ActivePhp", StringComparison.OrdinalIgnoreCase)) config.ActivePhp = val;
                     else if (key.Equals("ActiveNode", StringComparison.OrdinalIgnoreCase)) config.ActiveNode = val;
-                    else if (key.Equals("WorkerCount", StringComparison.OrdinalIgnoreCase) && int.TryParse(val, out int wcVer))
-                        config.PhpWorkerCount = Math.Clamp(wcVer, 2, 16);
+                    else if (key.Equals("WorkerCount", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (val.Equals("auto", StringComparison.OrdinalIgnoreCase) || val.Equals("0"))
+                            config.PhpWorkerCount = 0;
+                        else if (int.TryParse(val, out int wcVer))
+                            config.PhpWorkerCount = Math.Clamp(wcVer, 0, 16);
+                    }
                     break;
 
                 case "PHP":
-                    if (key.Equals("WorkerCount", StringComparison.OrdinalIgnoreCase) && int.TryParse(val, out int wcPhp))
-                        config.PhpWorkerCount = Math.Clamp(wcPhp, 2, 16);
+                    if (key.Equals("WorkerCount", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (val.Equals("auto", StringComparison.OrdinalIgnoreCase) || val.Equals("0"))
+                            config.PhpWorkerCount = 0;
+                        else if (int.TryParse(val, out int wcPhp))
+                            config.PhpWorkerCount = Math.Clamp(wcPhp, 0, 16);
+                    }
                     break;
 
                 case "TOOLS":

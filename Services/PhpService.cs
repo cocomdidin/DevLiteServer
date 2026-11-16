@@ -19,7 +19,7 @@ public class PhpService : BaseService
     private readonly Dictionary<string, PhpWorkerInfo> _extraWorkers = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<Process?> _primaryWorkers = new();
 
-    public int WorkerCount => Math.Clamp(_config.PhpWorkerCount, 1, 16);
+    public int WorkerCount => _config.EffectivePhpWorkerCount;
 
     public override string Name => "PHP (FastCGI)";
     public override int Port => _config.PhpFastCgiPort;

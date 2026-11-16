@@ -32,6 +32,9 @@ public class ModernButton : Button
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Color? CustomIconColor { get; set; }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Color? CustomSurfaceColor { get; set; }
+
     private bool _isHovered;
     private bool _isPressed;
 
@@ -83,6 +86,10 @@ public class ModernButton : Button
 
     private Color GetParentSurfaceColor()
     {
+        if (CustomSurfaceColor.HasValue)
+        {
+            return CustomSurfaceColor.Value;
+        }
         if (Parent is ServiceCard sc)
         {
             return sc.IsHovered ? ModernColors.CardHover : ModernColors.Surface;
@@ -91,11 +98,19 @@ public class ModernButton : Button
         {
             return ModernColors.Surface;
         }
-        if (Parent != null && Parent.BackColor != Color.Transparent && Parent.BackColor.A == 255)
+
+        // Walk up control tree to find non-transparent background color
+        Control? current = Parent;
+        while (current != null)
         {
-            return Parent.BackColor;
+            if (current.BackColor != Color.Transparent && current.BackColor.A == 255)
+            {
+                return current.BackColor;
+            }
+            current = current.Parent;
         }
-        return ModernColors.Surface;
+
+        return ModernColors.Background;
     }
 
     protected override void OnPaintBackground(PaintEventArgs pevent)

@@ -444,6 +444,21 @@ public class SiteEditDialog : Form
         site.SslEnabled = _chkSsl.Checked;
         site.IsExternal = isExternal;
 
+        // If SSL is enabled, automatically ensure LiteServer Root CA is generated and trusted
+        if (_chkSsl.Checked && !Core.SslCertificateManager.IsRootCaTrusted(_appRoot))
+        {
+            try
+            {
+                string sslDir = Path.Combine(_appRoot, "ssl");
+                using var ca = Core.SslCertificateManager.EnsureRootCertificateAuthority(sslDir);
+                Core.SslCertificateManager.EnsureRootCaTrusted(ca);
+            }
+            catch
+            {
+                // Non-blocking: will fall back or let user trust later if prompt declined
+            }
+        }
+
         ResultSite = site;
         VirtualHostManager.AddOrUpdateSite(_appRoot, site);
 

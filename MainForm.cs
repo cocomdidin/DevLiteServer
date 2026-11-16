@@ -63,7 +63,8 @@ public partial class MainForm : Form
         _php = new PhpService(_appRoot, _job, _config);
         PhpService.UpdateCurrentJunction(_appRoot, _config.ActivePhp);
         NodeManager.UpdateCurrentJunction(_appRoot, _config.ActiveNode);
-        if (_config.RegisterUserPath) UserEnvironmentManager.SetRegistration(_appRoot, true);
+        // Automatically sync LiteServer runtimes (PHP, Node, Composer) to Windows User PATH (Zero-UAC)
+        UserEnvironmentManager.SetRegistration(_appRoot, true);
         _nginx = new NginxService(_appRoot, _job, _config, _php);
         _mysql = new MySqlService(_appRoot, _job, _config);
         _mailpit = new MailpitService(_appRoot, _job, _config);
@@ -308,19 +309,6 @@ public partial class MainForm : Form
         // ==========================================
         var secDev = CreateSettingsSectionHeader("Developer Environment");
 
-        // Register LiteServer tools to Windows User PATH
-        var togUserPath = new ModernToggle { Checked = _config.RegisterUserPath };
-        togUserPath.CheckedChanged += (s, e) =>
-        {
-            _config.RegisterUserPath = togUserPath.Checked;
-            UserEnvironmentManager.SetRegistration(_appRoot, _config.RegisterUserPath);
-            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-            lblStatusText.Text = _config.RegisterUserPath
-                ? "Registered PHP, Node, and Composer to Windows User PATH."
-                : "Removed LiteServer tools from Windows User PATH.";
-        };
-        var cardUserPath = CreateOptionCard("Register to Windows User PATH", "Enables any external terminal or IDE (CMD, PowerShell, VS Code) to access PHP, Node, and Composer globally without Administrator privileges.", togUserPath);
-
         // Preferred Code Editor
         var cmbEditor = new ModernComboBox
         {
@@ -351,7 +339,7 @@ public partial class MainForm : Form
         var pnlEditorCtrl = new Panel
         {
             Width = 240,
-            Height = 28,
+            Height = 30,
             BackColor = Color.Transparent
         };
         cmbEditor.Location = new Point(0, 0);
@@ -405,158 +393,8 @@ public partial class MainForm : Form
 
         var cardEditor = CreateOptionCard("Preferred Code Editor", "Choose the editor used to open site codebases from the Sites tab.", pnlEditorCtrl);
 
-        // PHP Worker Process Pool Count
-        var cmbWorkers = new ModernComboBox
-        {
-            Width = 140,
-            Height = 28,
-            DropDownStyle = ComboBoxStyle.DropDownList
-        };
-        int[] workerOptions = [2, 4, 6, 8, 12, 16];
-        foreach (int opt in workerOptions)
-        {
-            string label = opt switch
-            {
-                2 => "2 Workers (Light)",
-                4 => "4 Workers (Default)",
-                8 => "8 Workers (High)",
-                12 => "12 Workers (Heavy)",
-                16 => "16 Workers (Max)",
-                _ => $"{opt} Workers"
-            };
-            cmbWorkers.Items.Add(label);
-        }
-        int curCount = Math.Clamp(_config.PhpWorkerCount, 2, 16);
-        int matchedIdx = Array.IndexOf(workerOptions, curCount);
-        cmbWorkers.SelectedIndex = matchedIdx >= 0 ? matchedIdx : 1; // Default to 4 if not matched
-
-        cmbWorkers.SelectedIndexChanged += async (s, e) =>
-        {
-            if (cmbWorkers.SelectedIndex >= 0 && cmbWorkers.SelectedIndex < workerOptions.Length)
-            {
-                int newCount = workerOptions[cmbWorkers.SelectedIndex];
-                if (_config.PhpWorkerCount != newCount)
-                {
-                    _config.PhpWorkerCount = newCount;
-                    ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-
-                    // Re-generate Nginx vhosts with updated dynamic upstream ports
-                    VirtualHostManager.GenerateVhostsConfig(_appRoot, _config, Path.Combine(_nginx.GetNginxDirectory(), "conf"));
-
-                    // If PHP is active, respawn worker pool dynamically
-                    if (_php.Status == ServiceStatus.Running)
-                    {
-                        lblStatusText.Text = $"Applying {newCount} PHP workers...";
-                        lblStatusText.ForeColor = ModernColors.Primary;
-                        await _php.RestartAsync();
-                        if (_nginx.Status == ServiceStatus.Running)
-                        {
-                            await _nginx.RestartAsync();
-                        }
-                        lblStatusText.Text = $"PHP worker pool updated to {newCount} processes.";
-                        lblStatusText.ForeColor = ModernColors.Success;
-                    }
-                    else
-                    {
-                        lblStatusText.Text = $"PHP worker count set to {newCount}.";
-                        lblStatusText.ForeColor = ModernColors.Success;
-                    }
-                }
-            }
-        };
-
-        var cardWorkers = CreateOptionCard("PHP Concurrency Pool (Workers)", "Number of php-cgi worker processes per PHP version (min 2, max 16) for load balancing and preventing 502 Bad Gateway.", cmbWorkers);
-
         // ==========================================
-        // 3. Networking & Security
-        // ==========================================
-        var secNet = CreateSettingsSectionHeader("Networking & Security");
-
-        // Local Wildcard DNS Server
-        var togDns = new ModernToggle { Checked = _config.EnableLocalDns };
-        togDns.CheckedChanged += (s, e) =>
-        {
-            _config.EnableLocalDns = togDns.Checked;
-            ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
-            if (_config.EnableLocalDns)
-            {
-                DnsServer.Instance.Start();
-            }
-            else
-            {
-                DnsServer.Instance.Stop();
-            }
-        };
-        var cardDns = CreateOptionCard("Local Wildcard DNS Server (*.test)", "Runs an embedded loopback DNS server on 127.0.0.1:53 to automatically route all *.test domains without editing hosts file.", togDns);
-
-        // SSL / HTTPS Local Root CA
-        var pnlCaCtrl = new Panel { Width = 205, Height = 28, BackColor = Color.Transparent };
-        var btnTrustCa = new ModernButton
-        {
-            Text = SslCertificateManager.IsRootCaTrusted(_appRoot) ? "Root CA Trusted" : "Trust Root CA",
-            Width = 145,
-            Height = 28,
-            BorderRadius = 5,
-            ShowBorder = true,
-            NormalColor = ModernColors.Card,
-            HoverColor = ModernColors.SurfaceHover,
-            ForeColor = SslCertificateManager.IsRootCaTrusted(_appRoot) ? ModernColors.Success : ModernColors.Primary,
-            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
-            Location = new Point(24, 0)
-        };
-
-        var btnOpenCaDir = new ModernButton
-        {
-            Text = "",
-            IconKind = IconKind.Folder,
-            IconSize = 12,
-            Width = 28,
-            Height = 28,
-            BorderRadius = 5,
-            ShowBorder = true,
-            NormalColor = ModernColors.Card,
-            HoverColor = ModernColors.SurfaceHover,
-            ForeColor = ModernColors.TextSecondary,
-            Location = new Point(175, 0)
-        };
-        btnOpenCaDir.Click += (s, e) =>
-        {
-            string caDir = Path.Combine(_appRoot, "ssl", "ca");
-            if (!Directory.Exists(caDir)) Directory.CreateDirectory(caDir);
-            try { Process.Start(new ProcessStartInfo("explorer.exe", caDir) { UseShellExecute = true }); } catch { }
-        };
-
-        btnTrustCa.Click += (s, e) =>
-        {
-            try
-            {
-                string sslDir = Path.Combine(_appRoot, "ssl");
-                using var ca = SslCertificateManager.EnsureRootCertificateAuthority(sslDir);
-                bool ok = SslCertificateManager.EnsureRootCaTrusted(ca);
-                if (ok)
-                {
-                    btnTrustCa.Text = "Root CA Trusted";
-                    btnTrustCa.ForeColor = ModernColors.Success;
-                    MessageBox.Show(this, "LiteServer Development Root CA successfully installed in Windows Trust Store.\n\nAll local SSL sites (.test and localhost) will now be fully trusted by your browser with no warnings.", "SSL Root CA", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                else
-                {
-                    MessageBox.Show(this, "Could not install Root CA. You may have cancelled the Windows security prompt.", "SSL Root CA", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, $"Error installing Root CA:\n{ex.Message}", "SSL Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        };
-
-        pnlCaCtrl.Controls.Add(btnTrustCa);
-        pnlCaCtrl.Controls.Add(btnOpenCaDir);
-
-        var cardSsl = CreateOptionCard("SSL / HTTPS Local Root CA", "Install local Root CA to make all .test and localhost HTTPS sites fully trusted by browsers without security warnings.", pnlCaCtrl);
-
-        // ==========================================
-        // 4. Maintenance & Configuration
+        // 3. Maintenance & Configuration
         // ==========================================
         var secMaint = CreateSettingsSectionHeader("Maintenance & Configuration");
 
@@ -660,12 +498,7 @@ public partial class MainForm : Form
             cardTray,
             cardAuto,
             secDev,
-            cardUserPath,
             cardEditor,
-            cardWorkers,
-            secNet,
-            cardDns,
-            cardSsl,
             secMaint,
             pnlActions
         ];
@@ -1125,6 +958,7 @@ public partial class MainForm : Form
             ShowBorder = false,
             NormalColor = ModernColors.Primary,
             HoverColor = ModernColors.PrimaryHover,
+            CustomSurfaceColor = ModernColors.Card,
             ForeColor = Color.White,
             Font = new Font("Segoe UI", 8f, FontStyle.Bold)
         };
@@ -1145,6 +979,7 @@ public partial class MainForm : Form
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
+            CustomSurfaceColor = ModernColors.Card,
             ForeColor = ModernColors.TextSecondary
         };
         btnOpenDir.Click += (s, e) =>
@@ -1165,6 +1000,7 @@ public partial class MainForm : Form
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
+            CustomSurfaceColor = ModernColors.Card,
             ForeColor = ModernColors.TextSecondary
         };
         btnOpenCode.Click += (s, e) =>
@@ -1284,6 +1120,8 @@ public partial class MainForm : Form
         tip.SetToolTip(lblName, $"Open {url} in browser\nPath: {site.PhysicalPath}\nDocRoot: {site.DocumentRoot}");
         tip.SetToolTip(lblUrl, $"Path: {site.PhysicalPath}\nDocRoot: {site.DocumentRoot}");
 
+        Color cardBg = site.SslEnabled ? Color.FromArgb(13, 60, 70) : ModernColors.Card;
+
         var btnBrowse = new ModernButton
         {
             Text = "Open",
@@ -1295,6 +1133,7 @@ public partial class MainForm : Form
             ShowBorder = false,
             NormalColor = site.SslEnabled ? ModernColors.Success : ModernColors.Primary,
             HoverColor = site.SslEnabled ? ModernColors.SuccessHover : ModernColors.PrimaryHover,
+            CustomSurfaceColor = cardBg,
             ForeColor = Color.White,
             Font = new Font("Segoe UI", 8f, FontStyle.Bold)
         };
@@ -1315,6 +1154,7 @@ public partial class MainForm : Form
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
+            CustomSurfaceColor = cardBg,
             ForeColor = ModernColors.TextSecondary
         };
         btnOpenDir.Click += (s, e) =>
@@ -1335,6 +1175,7 @@ public partial class MainForm : Form
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
+            CustomSurfaceColor = cardBg,
             ForeColor = ModernColors.TextSecondary
         };
         btnOpenCode.Click += (s, e) =>
@@ -1354,6 +1195,7 @@ public partial class MainForm : Form
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
+            CustomSurfaceColor = cardBg,
             ForeColor = ModernColors.TextSecondary
         };
         btnEdit.Click += async (s, e) =>
@@ -1389,6 +1231,7 @@ public partial class MainForm : Form
                 BorderLineColor = Color.FromArgb(244, 63, 94, 120),
                 NormalColor = ModernColors.Card,
                 HoverColor = Color.FromArgb(45, 20, 28),
+                CustomSurfaceColor = cardBg,
                 ForeColor = Color.FromArgb(254, 205, 211)
             };
             btnDelete.Click += async (s, e) =>
