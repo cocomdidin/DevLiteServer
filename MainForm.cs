@@ -19,6 +19,7 @@ public partial class MainForm : Form
     private readonly MailpitService _mailpit;
     private readonly PostgreSqlService _postgresql;
     private readonly RedisService _redis;
+    private readonly MinioService _minio;
     private readonly List<IService> _services = new();
 
     private readonly bool _startMinimized;
@@ -74,8 +75,9 @@ public partial class MainForm : Form
         _mailpit = new MailpitService(_appRoot, _job, _config);
         _postgresql = new PostgreSqlService(_appRoot, _job, _config);
         _redis = new RedisService(_appRoot, _job, _config);
+        _minio = new MinioService(_appRoot, _job, _config);
 
-        _services.AddRange([_php, _nginx, _mysql, _mailpit, _postgresql, _redis]);
+        _services.AddRange([_php, _nginx, _mysql, _mailpit, _postgresql, _redis, _minio]);
 
         foreach (var svc in _services)
         {
@@ -3998,6 +4000,12 @@ public partial class MainForm : Form
         }
 
         // Add enabled service cards in reverse dock order
+        if (_config.EnableMinio)
+        {
+            var minioCard = new ServiceCard(_minio, IconKind.Database, onInstall: async svc => await InstallServiceWithUiAsync("minio", svc));
+            cardContainer.Controls.Add(minioCard);
+        }
+
         if (_config.EnableRedis)
         {
             var redisCard = new ServiceCard(_redis, IconKind.Server, onInstall: async svc => await InstallServiceWithUiAsync("redis", svc));

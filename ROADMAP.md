@@ -30,7 +30,7 @@ Dokumen ini mencatat rencana strategis dan teknis pengembangan **DevLiteServer**
   - Status monitor tunnel dan tombol copy URL langsung dari GUI/Tray.
 
 ### Phase 3: Background Worker & Task Manager ("Windows Supervisor") (Priority: Medium-High)
-- [ ] **Process Monitor Dashboard**:
+- [x] **Process Monitor Dashboard**:
   - Menjalankan background long-running command seperti `php artisan queue:listen`, `npm run dev`, atau `php artisan octane:start`.
   - Pengelolaan lifecycle (Start/Stop/Restart) via Windows `JobObject` agar proses mati total saat aplikasi ditutup.
   - Streaming stdout/stderr log sederhana per worker di GUI.
@@ -38,7 +38,7 @@ Dokumen ini mencatat rencana strategis dan teknis pengembangan **DevLiteServer**
   - Scheduler emulator (misal trigger `php artisan schedule:run` tiap 60 detik) tanpa perlu menyentuh Windows Task Scheduler.
 
 ### Phase 4: Extended Cloud & Storage Mocks (Priority: Medium)
-- [ ] **Local S3 Object Storage Mock (MinIO)**:
+- [x] **Local S3 Object Storage Mock (MinIO)**:
   - Integrasi binary MinIO sebagai service opsional untuk testing upload file S3 lokal.
 - [ ] **Search Engine Mock (Meilisearch / Typesense)**:
   - Binary service opsional untuk search engine lokal yang ringan.
@@ -63,5 +63,5 @@ Dokumen ini mencatat rencana strategis dan teknis pengembangan **DevLiteServer**
 | Smart Framework Detection | ✅ Selesai | v1.1.0 | Laravel / WordPress auto-docroot & framework detection |
 | Node.js Reverse Proxy VHost | ✅ Selesai | v1.1.0 | Dukungan HMR WebSocket & custom proxy port |
 | Cloudflare Tunnel 1-Click Share | ✅ Selesai | v1.1.0 | Alternatif Ngrok gratis via `cloudflared` (One-click public URL) |
-| Windows Supervisor (Worker Manager) | ⏳ Direncanakan | v1.2.0 | Queue & Vite background runner |
-| MinIO S3 Mock | ⏳ Direncanakan | v1.3.0 | Service catalog baru |
+| Windows Supervisor (Worker Manager) | ✅ Selesai | v1.2.0 | Queue, Vite (`npm run dev`), & background task runner via `JobObject` |
+| MinIO S3 Mock | ✅ Selesai | v1.3.0 | S3 API (:9100) & Web Console (:9101) via `minio.exe` |

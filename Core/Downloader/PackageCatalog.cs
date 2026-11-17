@@ -184,6 +184,17 @@ public static class PackageCatalog
             DownloadUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe",
             FolderName = "cloudflared",
             ApproximateSizeBytes = 40_000_000
+        },
+        ["minio"] = new PackageItem
+        {
+            Id = "service-minio",
+            Name = "MinIO (S3 Mock)",
+            Category = "Service",
+            ServiceKey = "minio",
+            Tag = "Local S3-Compatible Object Storage (x64)",
+            DownloadUrl = "https://dl.min.io/server/minio/release/windows-amd64/minio.exe",
+            FolderName = "minio",
+            ApproximateSizeBytes = 95_000_000
         }
     };
 

@@ -22,6 +22,7 @@ public class AppConfig
     public bool EnablePostgresql { get; set; } = false;
     public bool EnableRedis { get; set; } = false;
     public bool EnableMailpit { get; set; } = true;
+    public bool EnableMinio { get; set; } = false;
 
     // Active versions
     public string ActivePhp { get; set; } = "php-8.4";
@@ -61,6 +62,10 @@ public class AppConfig
     public int RedisPort { get; set; } = 6379;
     public int MailpitSmtpPort { get; set; } = 1025;
     public int MailpitWebPort { get; set; } = 8025;
+    public int MinioApiPort { get; set; } = 9100;
+    public int MinioConsolePort { get; set; } = 9101;
+    public string MinioRootUser { get; set; } = "minioadmin";
+    public string MinioRootPassword { get; set; } = "minioadmin";
 
     public bool IsServiceEnabled(string serviceName)
     {
@@ -70,6 +75,7 @@ public class AppConfig
             "php" or "php-cgi" => EnablePhp,
             "mysql" or "mysqld" => EnableMysql,
             "mailpit" => EnableMailpit,
+            "minio" => EnableMinio,
             "postgresql" or "postgres" => EnablePostgresql,
             "redis" => EnableRedis,
             _ => true
@@ -84,6 +90,7 @@ public class AppConfig
             case "php" or "php-cgi": EnablePhp = enabled; break;
             case "mysql" or "mysqld": EnableMysql = enabled; break;
             case "mailpit": EnableMailpit = enabled; break;
+            case "minio": EnableMinio = enabled; break;
             case "postgresql" or "postgres": EnablePostgresql = enabled; break;
             case "redis": EnableRedis = enabled; break;
         }
@@ -111,6 +118,7 @@ public class AppConfig
         EnablePostgresql = d.EnablePostgresql;
         EnableRedis = d.EnableRedis;
         EnableMailpit = d.EnableMailpit;
+        EnableMinio = d.EnableMinio;
         ActivePhp = d.ActivePhp;
         ActiveNode = d.ActiveNode;
         PhpWorkerCount = d.PhpWorkerCount;
@@ -125,6 +133,10 @@ public class AppConfig
         RedisPort = d.RedisPort;
         MailpitSmtpPort = d.MailpitSmtpPort;
         MailpitWebPort = d.MailpitWebPort;
+        MinioApiPort = d.MinioApiPort;
+        MinioConsolePort = d.MinioConsolePort;
+        MinioRootUser = d.MinioRootUser;
+        MinioRootPassword = d.MinioRootPassword;
     }
 }
 
@@ -204,6 +216,7 @@ public static class ConfigManager
                     else if (key.Equals("Postgresql", StringComparison.OrdinalIgnoreCase)) config.EnablePostgresql = bool.Parse(val);
                     else if (key.Equals("Redis", StringComparison.OrdinalIgnoreCase)) config.EnableRedis = bool.Parse(val);
                     else if (key.Equals("Mailpit", StringComparison.OrdinalIgnoreCase)) config.EnableMailpit = bool.Parse(val);
+                    else if (key.Equals("Minio", StringComparison.OrdinalIgnoreCase)) config.EnableMinio = bool.Parse(val);
                     break;
 
                 case "VERSIONS":
@@ -243,6 +256,10 @@ public static class ConfigManager
                     else if (key.Equals("RedisPort", StringComparison.OrdinalIgnoreCase)) config.RedisPort = int.Parse(val);
                     else if (key.Equals("MailpitSmtpPort", StringComparison.OrdinalIgnoreCase)) config.MailpitSmtpPort = int.Parse(val);
                     else if (key.Equals("MailpitWebPort", StringComparison.OrdinalIgnoreCase)) config.MailpitWebPort = int.Parse(val);
+                    else if (key.Equals("MinioApiPort", StringComparison.OrdinalIgnoreCase)) config.MinioApiPort = int.Parse(val);
+                    else if (key.Equals("MinioConsolePort", StringComparison.OrdinalIgnoreCase)) config.MinioConsolePort = int.Parse(val);
+                    else if (key.Equals("MinioRootUser", StringComparison.OrdinalIgnoreCase)) config.MinioRootUser = val;
+                    else if (key.Equals("MinioRootPassword", StringComparison.OrdinalIgnoreCase)) config.MinioRootPassword = val;
                     break;
             }
         }
@@ -272,6 +289,7 @@ public static class ConfigManager
             $"Postgresql={config.EnablePostgresql.ToString().ToLower()}",
             $"Redis={config.EnableRedis.ToString().ToLower()}",
             $"Mailpit={config.EnableMailpit.ToString().ToLower()}",
+            $"Minio={config.EnableMinio.ToString().ToLower()}",
             "",
             "[Versions]",
             $"ActivePhp={config.ActivePhp}",
@@ -293,7 +311,11 @@ public static class ConfigManager
             $"PostgreSqlPort={config.PostgreSqlPort}",
             $"RedisPort={config.RedisPort}",
             $"MailpitSmtpPort={config.MailpitSmtpPort}",
-            $"MailpitWebPort={config.MailpitWebPort}"
+            $"MailpitWebPort={config.MailpitWebPort}",
+            $"MinioApiPort={config.MinioApiPort}",
+            $"MinioConsolePort={config.MinioConsolePort}",
+            $"MinioRootUser={config.MinioRootUser}",
+            $"MinioRootPassword={config.MinioRootPassword}"
         };
 
         File.WriteAllLines(iniPath, lines);
