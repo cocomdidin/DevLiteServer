@@ -12,7 +12,12 @@ public class SiteEditDialog : Form
 
     private readonly ModernTextBox _txtPath;
     private readonly ModernTextBox _txtDomain;
+    private readonly ModernComboBox _cmbType;
+    private readonly ModernTextBox _txtProxyPort;
+    private readonly Label _lblProxyPort;
+    private readonly Label _lblDocRoot;
     private readonly ModernComboBox _cmbDocRoot;
+    private readonly Label _lblPhp;
     private readonly ModernComboBox _cmbPhp;
     private readonly CheckBox _chkSsl;
     private readonly Label _lblError;
@@ -26,7 +31,7 @@ public class SiteEditDialog : Form
         _existingSite = existingSite;
 
         Text = existingSite == null ? "Add Site - Dev Lite Server" : "Edit Site - Dev Lite Server";
-        ClientSize = new Size(520, 440);
+        ClientSize = new Size(520, 510);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterParent;
         MaximizeBox = false;
@@ -146,8 +151,57 @@ public class SiteEditDialog : Form
         };
         top += fieldH + spacing;
 
-        // 3. Document Root Subfolder
-        var lblDocRoot = new Label
+        // 3. Site Type (PHP FastCGI vs Node.js/SSR Reverse Proxy)
+        var lblType = new Label
+        {
+            Text = "Project Stack / Type:",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            Location = new Point(24, top),
+            AutoSize = true
+        };
+        top += labelH + 2;
+
+        _cmbType = new ModernComboBox
+        {
+            Location = new Point(24, top),
+            Width = fieldW,
+            Height = fieldH,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = ModernColors.Card,
+            ForeColor = ModernColors.TextPrimary,
+            BorderRadius = 6
+        };
+        _cmbType.Items.Add("PHP FastCGI (Laravel, WordPress, Symfony, etc.)");
+        _cmbType.Items.Add("Reverse Proxy (Node.js, Next.js, Nuxt, Vite, etc.)");
+        _cmbType.SelectedIndex = (existingSite?.IsProxy ?? false) ? 1 : 0;
+        top += fieldH + spacing;
+
+        // Proxy Target Port (shown only when Reverse Proxy is selected)
+        _lblProxyPort = new Label
+        {
+            Text = "Target Local Port (e.g. 3000):",
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            Location = new Point(24, top),
+            AutoSize = true,
+            Visible = existingSite?.IsProxy ?? false
+        };
+
+        _txtProxyPort = new ModernTextBox
+        {
+            Location = new Point(24, top + labelH + 2),
+            Width = fieldW,
+            Height = fieldH,
+            BackColor = ModernColors.Card,
+            ForeColor = ModernColors.TextPrimary,
+            BorderRadius = 6,
+            Text = (existingSite?.ProxyPort ?? 3000).ToString(),
+            Visible = existingSite?.IsProxy ?? false
+        };
+
+        // 4. Document Root Subfolder
+        _lblDocRoot = new Label
         {
             Text = "Document Root Subfolder:",
             ForeColor = ModernColors.TextSecondary,
@@ -170,8 +224,8 @@ public class SiteEditDialog : Form
         PopulateDocRoots(existingSite?.PhysicalPath, existingSite?.DocumentRoot);
         top += fieldH + spacing;
 
-        // 4. PHP Version Dropdown
-        var lblPhp = new Label
+        // 5. PHP Version Dropdown
+        _lblPhp = new Label
         {
             Text = "PHP Version:",
             ForeColor = ModernColors.TextSecondary,
@@ -215,6 +269,25 @@ public class SiteEditDialog : Form
         }
         top += fieldH + spacing;
 
+        void UpdateTypeVisibility()
+        {
+            bool isProxy = _cmbType.SelectedIndex == 1;
+            _lblProxyPort.Visible = isProxy;
+            _txtProxyPort.Visible = isProxy;
+            _lblDocRoot.Visible = !isProxy;
+            _cmbDocRoot.Visible = !isProxy;
+            _lblPhp.Visible = !isProxy;
+            _cmbPhp.Visible = !isProxy;
+
+            if (isProxy)
+            {
+                _lblProxyPort.Location = _lblDocRoot.Location;
+                _txtProxyPort.Location = _cmbDocRoot.Location;
+            }
+        }
+        _cmbType.SelectedIndexChanged += (s, e) => UpdateTypeVisibility();
+        UpdateTypeVisibility();
+
         // 5. SSL Checkbox
         _chkSsl = new CheckBox
         {
@@ -241,8 +314,10 @@ public class SiteEditDialog : Form
         body.Controls.AddRange([
             lblPath, _txtPath, btnBrowse,
             lblDomain, _txtDomain,
-            lblDocRoot, _cmbDocRoot,
-            lblPhp, _cmbPhp,
+            lblType, _cmbType,
+            _lblProxyPort, _txtProxyPort,
+            _lblDocRoot, _cmbDocRoot,
+            _lblPhp, _cmbPhp,
             _chkSsl,
             _lblError
         ]);
@@ -330,6 +405,18 @@ public class SiteEditDialog : Form
             }
 
             PopulateDocRoots(fbd.SelectedPath);
+
+            // Auto-detect project type (PHP vs Node.js)
+            var (detectedType, detectedDocRoot, recPort) = VirtualHostManager.DetectProjectType(fbd.SelectedPath);
+            if (detectedType == "proxy")
+            {
+                _cmbType.SelectedIndex = 1;
+                _txtProxyPort.Text = recPort.ToString();
+            }
+            else
+            {
+                _cmbType.SelectedIndex = 0;
+            }
         }
     }
 
@@ -430,6 +517,19 @@ public class SiteEditDialog : Form
             phpVersion = selected;
         }
 
+        // Determine site type and proxy port
+        bool isProxy = _cmbType.SelectedIndex == 1;
+        int proxyPort = 3000;
+        if (isProxy)
+        {
+            if (!int.TryParse(_txtProxyPort.Text.Trim(), out proxyPort) || proxyPort <= 0 || proxyPort > 65535)
+            {
+                _lblError.Text = "Please enter a valid target port (1-65535) for reverse proxy.";
+                _txtProxyPort.Focus();
+                return;
+            }
+        }
+
         // Determine if external (outside /www)
         string wwwRoot = Path.GetFullPath(Path.Combine(_appRoot, "www"));
         string normPath = Path.GetFullPath(path);
@@ -443,6 +543,8 @@ public class SiteEditDialog : Form
         site.PhpVersion = phpVersion;
         site.SslEnabled = _chkSsl.Checked;
         site.IsExternal = isExternal;
+        site.SiteType = isProxy ? "proxy" : "php";
+        site.ProxyPort = proxyPort;
 
         // If SSL is enabled, automatically ensure LiteServer Root CA is generated and trusted
         if (_chkSsl.Checked && !Core.SslCertificateManager.IsRootCaTrusted(_appRoot))

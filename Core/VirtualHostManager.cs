@@ -17,8 +17,16 @@ public class SiteItem
     public bool SslEnabled { get; set; } = false;
     public bool IsExternal { get; set; } = false;
 
+    // Site Type: "php" or "proxy" (for Node.js, Next.js, Nuxt, Vite, etc.)
+    public string SiteType { get; set; } = "php";
+    public int ProxyPort { get; set; } = 3000;
+
+    [JsonIgnore]
+    public bool IsProxy => string.Equals(SiteType, "proxy", StringComparison.OrdinalIgnoreCase);
+
     [JsonIgnore]
     public bool HasPublicSubfolder =>
+        !IsProxy &&
         !string.IsNullOrEmpty(DocumentRoot) &&
         !DocumentRoot.Equals(PhysicalPath, StringComparison.OrdinalIgnoreCase);
 }
@@ -82,17 +90,19 @@ public static class VirtualHostManager
                 {
                     // New discovered project in /www
                     string domain = $"{folderName.ToLowerInvariant()}.test";
-                    string docRoot = DetectDocumentRoot(normalizedDir);
+                    var (detectedType, detectedDocRoot, proxyPort) = DetectProjectType(normalizedDir);
 
                     var newSite = new SiteItem
                     {
                         Name = folderName,
                         Domain = domain,
                         PhysicalPath = normalizedDir,
-                        DocumentRoot = docRoot,
+                        DocumentRoot = detectedDocRoot,
                         PhpVersion = "default",
                         SslEnabled = false,
-                        IsExternal = false
+                        IsExternal = false,
+                        SiteType = detectedType,
+                        ProxyPort = proxyPort
                     };
                     resultList.Add(newSite);
                     changed = true;
@@ -162,12 +172,54 @@ public static class VirtualHostManager
 
     public static string DetectDocumentRoot(string projectDir)
     {
+        // 1. Check Laravel / Modern framework public/
         string publicDir = Path.Combine(projectDir, "public");
-        string htdocsDir = Path.Combine(projectDir, "htdocs");
-
         if (Directory.Exists(publicDir)) return publicDir;
+
+        // 2. Check legacy / custom htdocs/ or web/ or dist/
+        string htdocsDir = Path.Combine(projectDir, "htdocs");
         if (Directory.Exists(htdocsDir)) return htdocsDir;
+
+        string webDir = Path.Combine(projectDir, "web");
+        if (Directory.Exists(webDir)) return webDir;
+
+        string distDir = Path.Combine(projectDir, "dist");
+        if (Directory.Exists(distDir)) return distDir;
+
         return projectDir;
+    }
+
+    /// <summary>
+    /// Detects project framework and recommended configuration.
+    /// </summary>
+    public static (string Type, string DocRoot, int RecommendedProxyPort) DetectProjectType(string projectDir)
+    {
+        if (string.IsNullOrWhiteSpace(projectDir) || !Directory.Exists(projectDir))
+            return ("php", projectDir, 3000);
+
+        string packageJson = Path.Combine(projectDir, "package.json");
+        string composerJson = Path.Combine(projectDir, "composer.json");
+
+        // Check Node.js / SSR projects
+        if (File.Exists(packageJson))
+        {
+            try
+            {
+                string content = File.ReadAllText(packageJson);
+                // Next.js, Nuxt, Astro, SvelteKit, Nest, Express
+                if (content.Contains("\"next\"") || content.Contains("\"nuxt\"") ||
+                    content.Contains("\"astro\"") || content.Contains("\"@sveltejs/kit\"") ||
+                    content.Contains("\"express\"") || content.Contains("\"@nestjs/core\""))
+                {
+                    return ("proxy", projectDir, 3000);
+                }
+            }
+            catch { }
+        }
+
+        // Check Composer / PHP projects
+        string docRoot = DetectDocumentRoot(projectDir);
+        return ("php", docRoot, 3000);
     }
 
     public static string GetUpstreamName(string? version, string activePhp)
@@ -254,7 +306,14 @@ public static class VirtualHostManager
 
             string upstreamName = GetUpstreamName(site.PhpVersion, config.ActivePhp);
 
-            sb.AppendLine($"# Virtual Host for {site.Domain} (PHP: {site.PhpVersion}, Upstream: {upstreamName})");
+            if (site.IsProxy)
+            {
+                sb.AppendLine($"# Reverse Proxy Virtual Host for {site.Domain} -> http://127.0.0.1:{site.ProxyPort}");
+            }
+            else
+            {
+                sb.AppendLine($"# Virtual Host for {site.Domain} (PHP: {site.PhpVersion}, Upstream: {upstreamName})");
+            }
             sb.AppendLine("server {");
             sb.AppendLine($"    listen       {config.HttpPort};");
 
@@ -277,34 +336,57 @@ public static class VirtualHostManager
             }
 
             sb.AppendLine($"    server_name  {site.Domain};");
-            sb.AppendLine($"    root         \"{forwardRoot}\";");
-            sb.AppendLine("    index        index.php index.html index.htm;");
-            sb.AppendLine();
-            sb.AppendLine("    location / {");
-            sb.AppendLine("        try_files $uri $uri/ /index.php?$query_string;");
-            sb.AppendLine("    }");
-            sb.AppendLine();
 
-            // Herd-style static storage bypass:
-            // Bypass Windows Error 448 (untrusted mount point on NTFS symlink/junction).
-            // Nginx will not attempt Win32 GetFileAttributesEx, passing directly to PHP front controller.
-            sb.AppendLine("    location ^~ /storage/ {");
-            sb.AppendLine($"        fastcgi_pass   {upstreamName};");
-            sb.AppendLine("        fastcgi_index  index.php;");
-            sb.AppendLine("        fastcgi_param  SCRIPT_FILENAME $document_root/index.php;");
-            sb.AppendLine("        fastcgi_param  QUERY_STRING $query_string;");
-            sb.AppendLine("        include        fastcgi_params;");
-            sb.AppendLine("        fastcgi_keep_conn on;");
-            sb.AppendLine("    }");
-            sb.AppendLine();
-            sb.AppendLine("    location ~ \\.php$ {");
-            sb.AppendLine("        try_files $uri =404;");
-            sb.AppendLine($"        fastcgi_pass   {upstreamName};");
-            sb.AppendLine("        fastcgi_index  index.php;");
-            sb.AppendLine("        fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;");
-            sb.AppendLine("        include        fastcgi_params;");
-            sb.AppendLine("        fastcgi_keep_conn on;");
-            sb.AppendLine("    }");
+            if (site.IsProxy)
+            {
+                // Reverse Proxy for Node.js / SSR / Vite with WebSocket upgrade support
+                int targetPort = site.ProxyPort > 0 ? site.ProxyPort : 3000;
+                sb.AppendLine();
+                sb.AppendLine("    location / {");
+                sb.AppendLine($"        proxy_pass         http://127.0.0.1:{targetPort};");
+                sb.AppendLine("        proxy_http_version 1.1;");
+                sb.AppendLine("        proxy_set_header   Upgrade $http_upgrade;");
+                sb.AppendLine("        proxy_set_header   Connection \"upgrade\";");
+                sb.AppendLine("        proxy_set_header   Host $host;");
+                sb.AppendLine("        proxy_set_header   X-Real-IP $remote_addr;");
+                sb.AppendLine("        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;");
+                sb.AppendLine("        proxy_set_header   X-Forwarded-Proto $scheme;");
+                sb.AppendLine("        proxy_cache_bypass $http_upgrade;");
+                sb.AppendLine("        proxy_read_timeout 86400s;");
+                sb.AppendLine("        proxy_send_timeout 86400s;");
+                sb.AppendLine("    }");
+            }
+            else
+            {
+                // Standard PHP-CGI FastCGI Front Controller
+                sb.AppendLine($"    root         \"{forwardRoot}\";");
+                sb.AppendLine("    index        index.php index.html index.htm;");
+                sb.AppendLine();
+                sb.AppendLine("    location / {");
+                sb.AppendLine("        try_files $uri $uri/ /index.php?$query_string;");
+                sb.AppendLine("    }");
+                sb.AppendLine();
+
+                // Herd-style static storage bypass
+                sb.AppendLine("    location ^~ /storage/ {");
+                sb.AppendLine($"        fastcgi_pass   {upstreamName};");
+                sb.AppendLine("        fastcgi_index  index.php;");
+                sb.AppendLine("        fastcgi_param  SCRIPT_FILENAME $document_root/index.php;");
+                sb.AppendLine("        fastcgi_param  QUERY_STRING $query_string;");
+                sb.AppendLine("        include        fastcgi_params;");
+                sb.AppendLine("        fastcgi_keep_conn on;");
+                sb.AppendLine("    }");
+                sb.AppendLine();
+                sb.AppendLine("    location ~ \\.php$ {");
+                sb.AppendLine("        try_files $uri =404;");
+                sb.AppendLine($"        fastcgi_pass   {upstreamName};");
+                sb.AppendLine("        fastcgi_index  index.php;");
+                sb.AppendLine("        fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;");
+                sb.AppendLine("        include        fastcgi_params;");
+                sb.AppendLine("        fastcgi_keep_conn on;");
+                sb.AppendLine("    }");
+            }
+
             sb.AppendLine();
             sb.AppendLine("    error_page   500 502 503 504  /50x.html;");
             sb.AppendLine("    location = /50x.html {");

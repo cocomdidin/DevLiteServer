@@ -1099,12 +1099,16 @@ public partial class MainForm : Form
             try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
         };
 
-        string phpDesc = string.IsNullOrEmpty(site.PhpVersion) || site.PhpVersion.Equals("default", StringComparison.OrdinalIgnoreCase)
-            ? $"PHP {_config.ActivePhp} (Default)"
-            : site.PhpVersion;
+        string phpDesc = site.IsProxy
+            ? $"Proxy :{site.ProxyPort} (Node/SSR)"
+            : (string.IsNullOrEmpty(site.PhpVersion) || site.PhpVersion.Equals("default", StringComparison.OrdinalIgnoreCase)
+                ? $"PHP {_config.ActivePhp} (Default)"
+                : site.PhpVersion);
 
         string sslDesc = site.SslEnabled ? "SSL (443)" : "HTTP";
-        string locationDesc = site.IsExternal ? "External" : (site.HasPublicSubfolder ? "public/" : "Local");
+        string locationDesc = site.IsProxy
+            ? "Reverse Proxy"
+            : (site.IsExternal ? "External" : (site.HasPublicSubfolder ? "public/" : "Local"));
 
         var lblUrl = new Label
         {
