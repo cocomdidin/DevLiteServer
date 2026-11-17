@@ -62,6 +62,6 @@ Dokumen ini mencatat rencana strategis dan teknis pengembangan **DevLiteServer**
 | Micro DNS + Zero-UAC `*.test` | ✅ Selesai | v1.0.0 | Fallback hosts file |
 | Smart Framework Detection | ✅ Selesai | v1.1.0 | Laravel / WordPress auto-docroot & framework detection |
 | Node.js Reverse Proxy VHost | ✅ Selesai | v1.1.0 | Dukungan HMR WebSocket & custom proxy port |
-| Cloudflare Tunnel 1-Click Share | ⏳ Direncanakan | v1.1.0 | Alternatif Ngrok gratis |
+| Cloudflare Tunnel 1-Click Share | ✅ Selesai | v1.1.0 | Alternatif Ngrok gratis via `cloudflared` (One-click public URL) |
 | Windows Supervisor (Worker Manager) | ⏳ Direncanakan | v1.2.0 | Queue & Vite background runner |
 | MinIO S3 Mock | ⏳ Direncanakan | v1.3.0 | Service catalog baru |

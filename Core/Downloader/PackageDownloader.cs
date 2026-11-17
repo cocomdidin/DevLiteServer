@@ -74,36 +74,52 @@ public static class PackageDownloader
             }
 
             // Extraction phase
-            progress?.Report(new PackageDownloadProgress(100, bytesReceived, totalBytes, "Extracting package contents..."));
-
-            if (Directory.Exists(tempExtract)) Directory.Delete(tempExtract, true);
-            Directory.CreateDirectory(tempExtract);
-
-            await Task.Run(() => ZipFile.ExtractToDirectory(tempZip, tempExtract, overwriteFiles: true), ct);
-
-            // Cleanup zip immediately
-            if (File.Exists(tempZip)) File.Delete(tempZip);
-
-            if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
-
-            // Folder flattening: archives often contain a single root folder (e.g. pgsql, mysql-8.4..., node-v20...)
-            string[] subDirs = Directory.GetDirectories(tempExtract);
-            string sourceExtractDir = tempExtract;
-            if (Directory.GetFiles(tempExtract).Length == 0 && subDirs.Length == 1)
+            if (pkg.DownloadUrl.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
             {
-                sourceExtractDir = subDirs[0];
+                progress?.Report(new PackageDownloadProgress(100, bytesReceived, totalBytes, "Installing executable..."));
+                if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
+
+                string exeName = string.Equals(pkg.ServiceKey, "cloudflared", StringComparison.OrdinalIgnoreCase)
+                    ? "cloudflared.exe"
+                    : Path.GetFileName(pkg.DownloadUrl);
+
+                string targetExe = Path.Combine(targetDir, exeName);
+                if (File.Exists(targetExe)) File.Delete(targetExe);
+                File.Move(tempZip, targetExe);
             }
-            else if (pkg.Category.Equals("Node", StringComparison.OrdinalIgnoreCase) && subDirs.Length == 1 &&
-                File.Exists(Path.Combine(subDirs[0], "node.exe")))
+            else
             {
-                sourceExtractDir = subDirs[0];
+                progress?.Report(new PackageDownloadProgress(100, bytesReceived, totalBytes, "Extracting package contents..."));
+
+                if (Directory.Exists(tempExtract)) Directory.Delete(tempExtract, true);
+                Directory.CreateDirectory(tempExtract);
+
+                await Task.Run(() => ZipFile.ExtractToDirectory(tempZip, tempExtract, overwriteFiles: true), ct);
+
+                // Cleanup zip immediately
+                if (File.Exists(tempZip)) File.Delete(tempZip);
+
+                if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
+
+                // Folder flattening: archives often contain a single root folder (e.g. pgsql, mysql-8.4..., node-v20...)
+                string[] subDirs = Directory.GetDirectories(tempExtract);
+                string sourceExtractDir = tempExtract;
+                if (Directory.GetFiles(tempExtract).Length == 0 && subDirs.Length == 1)
+                {
+                    sourceExtractDir = subDirs[0];
+                }
+                else if (pkg.Category.Equals("Node", StringComparison.OrdinalIgnoreCase) && subDirs.Length == 1 &&
+                    File.Exists(Path.Combine(subDirs[0], "node.exe")))
+                {
+                    sourceExtractDir = subDirs[0];
+                }
+
+                // Move files into targetDir
+                await Task.Run(() => CopyDirectoryContents(sourceExtractDir, targetDir), ct);
+
+                // Cleanup temp extract folder
+                try { Directory.Delete(tempExtract, true); } catch { }
             }
-
-            // Move files into targetDir
-            await Task.Run(() => CopyDirectoryContents(sourceExtractDir, targetDir), ct);
-
-            // Cleanup temp extract folder
-            try { Directory.Delete(tempExtract, true); } catch { }
 
             // Post-install PHP php.ini configuration
             if (pkg.Category.Equals("PHP", StringComparison.OrdinalIgnoreCase))

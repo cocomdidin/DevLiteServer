@@ -1188,6 +1188,28 @@ public partial class MainForm : Form
         };
         tip.SetToolTip(btnOpenCode, $"Open codebase in {editorName}: {site.PhysicalPath}");
 
+        var btnShare = new ModernButton
+        {
+            Text = "",
+            IconKind = IconKind.Lightning,
+            IconSize = 12,
+            Width = 28,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            CustomSurfaceColor = cardBg,
+            ForeColor = CloudflareTunnelManager.IsTunnelActive(site.Domain) ? ModernColors.Success : ModernColors.TextSecondary
+        };
+        btnShare.Click += (s, e) =>
+        {
+            using var dlg = new TunnelDialog(_appRoot, _job, site, _config);
+            dlg.ShowDialog(this);
+            btnShare.ForeColor = CloudflareTunnelManager.IsTunnelActive(site.Domain) ? ModernColors.Success : ModernColors.TextSecondary;
+        };
+        tip.SetToolTip(btnShare, $"Share {site.Domain} via Cloudflare Tunnel (One-click public URL)");
+
         var btnEdit = new ModernButton
         {
             Text = "",
@@ -1270,7 +1292,8 @@ public partial class MainForm : Form
             btnBrowse.Location = new Point(rightX, (cardH - btnBrowse.Height) / 2);
             btnOpenDir.Location = new Point(btnBrowse.Left - btnOpenDir.Width - 6, (cardH - btnOpenDir.Height) / 2);
             btnOpenCode.Location = new Point(btnOpenDir.Left - btnOpenCode.Width - 6, (cardH - btnOpenCode.Height) / 2);
-            btnEdit.Location = new Point(btnOpenCode.Left - btnEdit.Width - 6, (cardH - btnEdit.Height) / 2);
+            btnShare.Location = new Point(btnOpenCode.Left - btnShare.Width - 6, (cardH - btnShare.Height) / 2);
+            btnEdit.Location = new Point(btnShare.Left - btnEdit.Width - 6, (cardH - btnEdit.Height) / 2);
 
             int leftBoundary = btnEdit.Left;
             if (btnDelete != null)
@@ -1289,6 +1312,7 @@ public partial class MainForm : Form
         card.Controls.Add(lblName);
         card.Controls.Add(lblUrl);
         card.Controls.Add(btnOpenCode);
+        card.Controls.Add(btnShare);
         card.Controls.Add(btnEdit);
         card.Controls.Add(btnOpenDir);
         card.Controls.Add(btnBrowse);

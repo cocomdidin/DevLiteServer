@@ -69,6 +69,11 @@ public class PackageItem
                 if (File.Exists(Path.Combine(dir, "mailpit.exe"))) return true;
                 return Directory.GetFiles(dir, "mailpit.exe", SearchOption.AllDirectories).Length > 0;
             }
+            if (key.Equals("cloudflared", StringComparison.OrdinalIgnoreCase))
+            {
+                if (File.Exists(Path.Combine(dir, "cloudflared.exe"))) return true;
+                return Directory.GetFiles(dir, "cloudflared.exe", SearchOption.AllDirectories).Length > 0;
+            }
         }
 
         return false;

@@ -173,6 +173,17 @@ public static class PackageCatalog
             DownloadUrl = "https://cdn.mysql.com/archives/mysql-8.4/mysql-8.4.4-winx64.zip",
             FolderName = "mysql",
             ApproximateSizeBytes = 230_000_000
+        },
+        ["cloudflared"] = new PackageItem
+        {
+            Id = "tool-cloudflared",
+            Name = "Cloudflare Tunnel",
+            Category = "Service",
+            ServiceKey = "cloudflared",
+            Tag = "Public HTTPS Tunnel Client (x64)",
+            DownloadUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe",
+            FolderName = "cloudflared",
+            ApproximateSizeBytes = 40_000_000
         }
     };
 
