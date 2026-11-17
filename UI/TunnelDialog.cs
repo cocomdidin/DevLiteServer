@@ -21,6 +21,8 @@ public class TunnelDialog : Form
     private readonly Label _lblInfo;
 
     private TunnelSession? _session;
+    private Action<string>? _logHandler;
+    private Action<string>? _urlHandler;
 
     public TunnelDialog(string appRoot, JobObject job, SiteItem site, AppConfig config)
     {
@@ -32,9 +34,10 @@ public class TunnelDialog : Form
         Text = $"Public Share Tunnel - {site.Domain}";
         ClientSize = new Size(580, 420);
         FormBorderStyle = FormBorderStyle.FixedDialog;
-        StartPosition = FormStartPosition.CenterParent;
+        StartPosition = FormStartPosition.CenterScreen;
         MaximizeBox = false;
-        MinimizeBox = false;
+        MinimizeBox = true;
+        ShowInTaskbar = false;
         BackColor = ModernColors.Background;
         ForeColor = ModernColors.TextPrimary;
         Font = new Font("Segoe UI", 9f);
@@ -249,8 +252,27 @@ public class TunnelDialog : Form
         }
     }
 
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        DetachSessionHandlers();
+        base.OnFormClosed(e);
+    }
+
+    private void DetachSessionHandlers()
+    {
+        if (_session != null)
+        {
+            if (_logHandler != null) _session.LogReceived -= _logHandler;
+            if (_urlHandler != null) _session.UrlDiscovered -= _urlHandler;
+            _logHandler = null;
+            _urlHandler = null;
+        }
+    }
+
     private void AttachSession(TunnelSession session)
     {
+        DetachSessionHandlers();
+
         _session = session;
         _pillStatus.Text = session.Status;
         _pillStatus.Status = session.Status == "Online" ? ServiceStatus.Running : ServiceStatus.Starting;
@@ -266,7 +288,7 @@ public class TunnelDialog : Form
             _btnOpen.Enabled = true;
         }
 
-        session.LogReceived += line =>
+        _logHandler = line =>
         {
             if (IsDisposed) return;
             try
@@ -279,7 +301,7 @@ public class TunnelDialog : Form
             catch { }
         };
 
-        session.UrlDiscovered += url =>
+        _urlHandler = url =>
         {
             if (IsDisposed) return;
             try
@@ -295,6 +317,9 @@ public class TunnelDialog : Form
             }
             catch { }
         };
+
+        session.LogReceived += _logHandler;
+        session.UrlDiscovered += _urlHandler;
     }
 
     private async Task ToggleTunnelAsync()
@@ -302,6 +327,7 @@ public class TunnelDialog : Form
         if (_session != null && _session.IsActive)
         {
             // Stop
+            DetachSessionHandlers();
             CloudflareTunnelManager.StopTunnel(_site.Domain);
             _session = null;
             _pillStatus.Text = "Stopped";

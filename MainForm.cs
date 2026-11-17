@@ -40,6 +40,7 @@ public partial class MainForm : Form
     private Action? _refreshNodePackages;
     private Action? _refreshPhpPackages;
     private Color _sidebarDotColor = ModernColors.TextMuted;
+    private readonly Dictionary<string, TunnelDialog> _openTunnelDialogs = new(StringComparer.OrdinalIgnoreCase);
 
     public MainForm(bool startMinimized = false)
     {
@@ -1204,8 +1205,29 @@ public partial class MainForm : Form
         };
         btnShare.Click += (s, e) =>
         {
-            using var dlg = new TunnelDialog(_appRoot, _job, site, _config);
-            dlg.ShowDialog(this);
+            if (_openTunnelDialogs.TryGetValue(site.Domain, out var existingDlg) && !existingDlg.IsDisposed)
+            {
+                if (existingDlg.WindowState == FormWindowState.Minimized)
+                    existingDlg.WindowState = FormWindowState.Normal;
+                existingDlg.BringToFront();
+                existingDlg.Focus();
+                return;
+            }
+
+            var dlg = new TunnelDialog(_appRoot, _job, site, _config);
+            _openTunnelDialogs[site.Domain] = dlg;
+            dlg.FormClosed += (_, _) =>
+            {
+                _openTunnelDialogs.Remove(site.Domain);
+                if (!IsDisposed)
+                {
+                    Invoke(() =>
+                    {
+                        btnShare.ForeColor = CloudflareTunnelManager.IsTunnelActive(site.Domain) ? ModernColors.Success : ModernColors.TextSecondary;
+                    });
+                }
+            };
+            dlg.Show(this);
             btnShare.ForeColor = CloudflareTunnelManager.IsTunnelActive(site.Domain) ? ModernColors.Success : ModernColors.TextSecondary;
         };
         tip.SetToolTip(btnShare, $"Share {site.Domain} via Cloudflare Tunnel (One-click public URL)");
