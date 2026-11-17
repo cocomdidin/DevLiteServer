@@ -297,6 +297,7 @@ public class WorkerDialog : Form
         {
             Dock = DockStyle.Bottom,
             Height = 56,
+            Width = ClientSize.Width,
             BackColor = ModernColors.Surface,
             Padding = new Padding(20, 12, 20, 12)
         };
@@ -315,7 +316,8 @@ public class WorkerDialog : Form
             ShowBorder = true,
             NormalColor = ModernColors.Card,
             HoverColor = ModernColors.SurfaceHover,
-            Location = new Point(ClientSize.Width - 200, 12),
+            Location = new Point(ClientSize.Width - 240, 12),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold)
         };
         btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
@@ -325,13 +327,14 @@ public class WorkerDialog : Form
             Text = existingWorker == null ? "Create Worker" : "Save Changes",
             IconKind = IconKind.Check,
             IconSize = 10,
-            Width = 112,
+            Width = 124,
             Height = 32,
             BorderRadius = 6,
             ShowBorder = false,
             NormalColor = ModernColors.Primary,
             HoverColor = ModernColors.PrimaryHover,
-            Location = new Point(ClientSize.Width - 104, 12),
+            Location = new Point(ClientSize.Width - 144, 12),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold)
         };
         btnSave.Click += BtnSave_Click;
