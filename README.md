@@ -14,7 +14,8 @@ A clean, lightweight alternative to Laragon and XAMPP for web developers.
 [Why Dev Lite Server?](#-why-dev-lite-server) •
 [Features](#-features-at-a-glance) •
 [Default Stack & Ports](#-default-stack--ports) •
-[Configuration](#-configuration)
+[Configuration](#-configuration) •
+[Roadmap](#-roadmap--future-vision)
 
 ---
 
@@ -69,6 +70,7 @@ Run **Dev Lite Server**. On the very first launch, the built-in wizard will offe
 ### 📬 Built-in Local Mailpit
 - Local SMTP server listening on `127.0.0.1:1025` to safely capture test emails sent by your applications.
 - Clean web inbox viewer at `http://localhost:8025` to inspect email contents, headers, and HTML formatting.
+- Persistent SQLite inbox storage enabled out of the box (`bin/mailpit/data/mailpit.db`).
 
 ### 💻 Developer Tools & Terminal
 - **Isolated Developer Terminal**: Launch PowerShell or CMD with pre-configured environment paths for PHP, Composer, Node.js, Git, and MySQL clients without altering your global Windows environment.
@@ -120,6 +122,18 @@ Postgresql=false
 Redis=false
 Mailpit=true
 ```
+
+---
+
+## 🗺️ Roadmap & Future Vision
+
+We are actively expanding Dev Lite Server to be the best zero-virtualization development suite on Windows. See [ROADMAP.md](ROADMAP.md) for detailed technical specifications and upcoming milestones:
+
+- **Smart Framework Auto-Detection**: Instant docroot detection for Laravel (`/public`), WordPress, and Symfony.
+- **Hybrid Proxying (Node.js/SSR)**: Nginx reverse proxy with full WebSocket HMR support for Vite, Next.js, and Nuxt.
+- **Cloudflare Tunnel (1-Click Share)**: Instant public HTTPS demo URLs (`*.trycloudflare.com`) powered by `cloudflared`.
+- **Windows Supervisor (Background Workers)**: GUI task manager to run queues (`artisan queue:work`) and dev servers (`npm run dev`) with zero orphaned processes.
+- **Local S3 (MinIO) & SQLite Tools**: Built-in mock storage and SQLite viewers for modern app stacks.
 
 ---
 
