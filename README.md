@@ -43,7 +43,7 @@ Run **Dev Lite Server**. On the very first launch, the built-in wizard will offe
 - **Zero-UAC Dynamic Domains**:  
   Thanks to the built-in Micro DNS server, any `*.test` domain works instantly without needing administrator permission or manual `hosts` file editing.
 - **No Orphan Processes**:  
-  When you close Dev Lite Server, every single daemon (Nginx, PHP-CGI workers, MySQL, Mailpit) cleanly terminates instantly.
+  When you close Dev Lite Server, every single daemon (Nginx, PHP-CGI workers, MySQL, PostgreSQL, Redis, Mailpit, MinIO, and background workers) cleanly terminates via Windows Job Objects.
 - **Multi-Worker PHP (No More 502 Bad Gateway)**:  
   PHP runs in an isolated worker pool with Nginx load balancing, keeping your local sites fast and responsive under concurrent requests.
 - **Clean, Modern Dark UI**:  
@@ -53,8 +53,10 @@ Run **Dev Lite Server**. On the very first launch, the built-in wizard will offe
 
 ## ✨ Features at a Glance
 
-### 🌐 Sites & Virtual Hosts
-- **Instant Local Domains**: Create virtual hosts like `myproject.test` with custom document roots and individual PHP versions.
+### 🌐 Sites, SSL & Virtual Hosts
+- **Instant Local Domains & Hybrid Proxying**: Create virtual hosts like `myproject.test` with custom document roots, individual PHP versions, or Node.js/SSR reverse proxy with WebSocket HMR support (Vite, Next.js, Nuxt).
+- **Zero-Config Local & Outbound SSL**: 1-click trusted local Root CA & per-domain HTTPS certificates for Nginx, plus automatic Mozilla `cacert.pem` provisioning (`curl.cainfo` & `openssl.cafile`) so PHP cURL/Guzzle outbound HTTPS requests work out of the box.
+- **1-Click Cloudflare Tunnel**: Share local sites instantly via public HTTPS URLs (`*.trycloudflare.com`) powered by `cloudflared`.
 - **One-Click Domain Sync**: Single "Sync Domains" button that routes domains via local DNS (Zero-UAC) with an automatic fallback to the Windows hosts file.
 - **Open in Editor**: Launch your configured code editor (VS Code, Cursor, PhpStorm, etc.) directly into your project directory with a single click.
 
@@ -72,6 +74,13 @@ Run **Dev Lite Server**. On the very first launch, the built-in wizard will offe
 - Clean web inbox viewer at `http://localhost:8025` to inspect email contents, headers, and HTML formatting.
 - Persistent SQLite inbox storage enabled out of the box (`bin/mailpit/data/mailpit.db`).
 
+### ⚙️ Background Workers & Task Manager
+- **Windows Supervisor (`Workers` tab)**: Run and monitor persistent project tasks such as `php artisan queue:work`, `php artisan horizon`, or `npm run dev` directly inside Dev Lite Server.
+- **Live Logs & Clean Shutdown**: View real-time stdout/stderr logs, configure auto-start per worker, and guarantee zero orphaned processes on exit.
+
+### 🪣 Built-in MinIO S3 Mock
+- Local S3-compatible object storage running on `127.0.0.1:9100` (API) with Web Console at `http://127.0.0.1:9101` (`minioadmin` / `minioadmin`), avoiding conflicts with PHP FastCGI port `9000`.
+
 ### 💻 Developer Tools & Terminal
 - **Isolated Developer Terminal**: Launch PowerShell or CMD with pre-configured environment paths for PHP, Composer, Node.js, Git, and MySQL clients without altering your global Windows environment.
 - **Interactive Port Conflict Resolver**: Automatically detects occupied ports on startup (80, 3306, etc.) and suggests free alternatives with 1-click reassignment.
@@ -84,14 +93,16 @@ Dev Lite Server uses lightweight, standard local ports:
 
 | Component | Default Port / Access | Notes |
 |---|---|---|
-| **Nginx** | `http://localhost:80` | High-performance reverse proxy & web server |
-| **Local Domains** | `http://*.test` | Handled automatically via local DNS |
+| **Nginx** | `http://localhost:80` / `https://localhost:443` | High-performance reverse proxy & web server (HTTP/HTTPS) |
+| **Local Domains** | `http://*.test` / `https://*.test` | Handled automatically via local DNS & trusted local CA |
 | **PHP FastCGI** | `127.0.0.1:9000-9003` | Multi-worker pool (default 4 workers per version) |
 | **MySQL** | `localhost:3306` | User: `root` (no password) |
 | **PostgreSQL** | `localhost:5432` | User: `postgres` (trust auth, no password) |
 | **Redis** | `127.0.0.1:6379` | In-memory key-value cache |
 | **Mailpit Web UI**| `http://localhost:8025` | Local webmail viewer |
 | **Mailpit SMTP** | `127.0.0.1:1025` | Local test mail capture |
+| **MinIO S3 API** | `http://127.0.0.1:9100` | S3-compatible local storage (`minioadmin` / `minioadmin`) |
+| **MinIO Console** | `http://127.0.0.1:9101` | MinIO web admin dashboard |
 
 ---
 
@@ -121,6 +132,7 @@ Mysql=true
 Postgresql=false
 Redis=false
 Mailpit=true
+Minio=false
 ```
 
 ---
@@ -129,11 +141,14 @@ Mailpit=true
 
 We are actively expanding Dev Lite Server to be the best zero-virtualization development suite on Windows. See [ROADMAP.md](ROADMAP.md) for detailed technical specifications and upcoming milestones:
 
-- **Smart Framework Auto-Detection**: Instant docroot detection for Laravel (`/public`), WordPress, and Symfony.
-- **Hybrid Proxying (Node.js/SSR)**: Nginx reverse proxy with full WebSocket HMR support for Vite, Next.js, and Nuxt.
-- **Cloudflare Tunnel (1-Click Share)**: Instant public HTTPS demo URLs (`*.trycloudflare.com`) powered by `cloudflared`.
-- **Windows Supervisor (Background Workers)**: GUI task manager to run queues (`artisan queue:work`) and dev servers (`npm run dev`) with zero orphaned processes.
-- **Local S3 (MinIO) & SQLite Tools**: Built-in mock storage and SQLite viewers for modern app stacks.
+- ✅ **Smart Framework Auto-Detection**: Instant docroot detection for Laravel (`/public`), WordPress, and Symfony.
+- ✅ **Hybrid Proxying (Node.js/SSR)**: Nginx reverse proxy with full WebSocket HMR support for Vite, Next.js, and Nuxt.
+- ✅ **Cloudflare Tunnel (1-Click Share)**: Instant public HTTPS demo URLs (`*.trycloudflare.com`) powered by `cloudflared`.
+- ✅ **Windows Supervisor (Background Workers)**: GUI task manager to run queues (`artisan queue:work`) and dev servers (`npm run dev`) with zero orphaned processes.
+- ✅ **Local S3 Storage (MinIO)**: Built-in S3-compatible object storage mock.
+- 🔲 **Mini Scheduler Runner**: Lightweight cron/task scheduler for `php artisan schedule:run`.
+- 🔲 **Search Engine Mock & SQLite GUI Viewer**: Local Meilisearch/Typesense integration and built-in SQLite table browser.
+- 🔲 **Unified Log Viewer & Dump Interceptor**: Centralized real-time viewer for Nginx, PHP, MySQL, and Laravel logs.
 
 ---
 
