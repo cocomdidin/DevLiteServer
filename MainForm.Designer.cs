@@ -22,6 +22,7 @@ partial class MainForm
     private NavButton navNode = null!;
     private NavButton navDatabases = null!;
     private NavButton navMailpit = null!;
+    private NavButton navWorkers = null!;
     private NavButton navSettings = null!;
 
     // Right Main Pane
@@ -50,6 +51,7 @@ partial class MainForm
     private System.Windows.Forms.Panel pageNode = null!;
     private System.Windows.Forms.Panel pageServices = null!;
     private System.Windows.Forms.Panel pageMail = null!;
+    private System.Windows.Forms.Panel pageWorkers = null!;
     private System.Windows.Forms.Panel pageSettings = null!;
 
     // Dashboard specific controls
@@ -84,6 +86,7 @@ partial class MainForm
         navNode = new NavButton();
         navDatabases = new NavButton();
         navMailpit = new NavButton();
+        navWorkers = new NavButton();
         navSettings = new NavButton();
 
         // Right Main Pane Elements
@@ -110,6 +113,7 @@ partial class MainForm
         pageNode = new System.Windows.Forms.Panel();
         pageServices = new System.Windows.Forms.Panel();
         pageMail = new System.Windows.Forms.Panel();
+        pageWorkers = new System.Windows.Forms.Panel();
         pageSettings = new System.Windows.Forms.Panel();
 
         cardContainer = new System.Windows.Forms.Panel();
@@ -166,7 +170,12 @@ partial class MainForm
         navSettings.Text = "Settings";
         navSettings.Icon = IconKind.Gear;
         navSettings.Dock = DockStyle.Top;
-        navSettings.Click += (s, e) => SelectNavTab(6);
+        navSettings.Click += (s, e) => SelectNavTab(7);
+
+        navWorkers.Text = "Workers";
+        navWorkers.Icon = IconKind.Play;
+        navWorkers.Dock = DockStyle.Top;
+        navWorkers.Click += (s, e) => SelectNavTab(6);
 
         navMailpit.Text = "Mailpit";
         navMailpit.Icon = IconKind.Mail;
@@ -200,7 +209,7 @@ partial class MainForm
         navDashboard.Click += (s, e) => SelectNavTab(0);
 
         // Reverse dock order for WinForms DockStyle.Top
-        navContainer.Controls.AddRange([navSettings, navMailpit, navDatabases, navNode, navPhp, navSites, navDashboard]);
+        navContainer.Controls.AddRange([navSettings, navWorkers, navMailpit, navDatabases, navNode, navPhp, navSites, navDashboard]);
 
         // Sidebar Footer
         sidebarFooter.Dock = DockStyle.Bottom;

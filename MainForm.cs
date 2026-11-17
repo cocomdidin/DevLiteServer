@@ -29,6 +29,8 @@ public partial class MainForm : Form
 
     // Sites Page dynamic container
     private FlowLayoutPanel _pnlSitesContainer = null!;
+    private FlowLayoutPanel _pnlWorkersContainer = null!;
+    private readonly Dictionary<string, WorkerLogsDialog> _openWorkerLogs = new(StringComparer.OrdinalIgnoreCase);
     private Panel _pnlPhpPackages = null!;
     private Panel _pnlNodePackages = null!;
     private ModernComboBox _cmbPhpVersions = null!;
@@ -60,6 +62,7 @@ public partial class MainForm : Form
         }
 
         _job = new JobObject();
+        WorkerManager.Load(_appRoot);
 
         _php = new PhpService(_appRoot, _job, _config);
         PhpService.UpdateCurrentJunction(_appRoot, _config.ActivePhp);
@@ -178,7 +181,8 @@ public partial class MainForm : Form
         navNode.IsActive = (index == 3);
         navDatabases.IsActive = (index == 4);
         navMailpit.IsActive = (index == 5);
-        navSettings.IsActive = (index == 6);
+        navWorkers.IsActive = (index == 6);
+        navSettings.IsActive = (index == 7);
 
         pageDashboard.Visible = (index == 0);
         pageSites.Visible = (index == 1);
@@ -186,7 +190,8 @@ public partial class MainForm : Form
         pageNode.Visible = (index == 3);
         pageServices.Visible = (index == 4);
         pageMail.Visible = (index == 5);
-        pageSettings.Visible = (index == 6);
+        pageWorkers.Visible = (index == 6);
+        pageSettings.Visible = (index == 7);
 
         switch (index)
         {
@@ -216,6 +221,11 @@ public partial class MainForm : Form
                 lblPageSubtitle.Text = "Local SMTP server and webmail inspector";
                 break;
             case 6:
+                lblPageTitle.Text = "Background Workers";
+                lblPageSubtitle.Text = "Windows Supervisor for queues, dev servers, and scheduled tasks";
+                RefreshWorkersList();
+                break;
+            case 7:
                 lblPageTitle.Text = "Settings";
                 lblPageSubtitle.Text = "System integration, tray behavior, and automation preferences";
                 break;
@@ -229,7 +239,7 @@ public partial class MainForm : Form
     // ==========================================
     private void InitPages()
     {
-        Panel[] mainPages = [pageDashboard, pageSites, pagePhp, pageNode, pageServices, pageMail, pageSettings];
+        Panel[] mainPages = [pageDashboard, pageSites, pagePhp, pageNode, pageServices, pageMail, pageWorkers, pageSettings];
         foreach (var page in mainPages)
         {
             page.Dock = DockStyle.Fill;
@@ -245,6 +255,7 @@ public partial class MainForm : Form
         PopulateNodePage();
         PopulateServicesPage();
         PopulateMailPage();
+        PopulateWorkersPage();
         PopulateSettingsPage();
     }
 
@@ -1232,6 +1243,55 @@ public partial class MainForm : Form
         };
         tip.SetToolTip(btnShare, $"Share {site.Domain} via Cloudflare Tunnel (One-click public URL)");
 
+        var linkedWorker = WorkerManager.FindByDomain(site.Domain);
+        var btnWorker = new ModernButton
+        {
+            Text = "",
+            IconKind = linkedWorker != null && linkedWorker.IsRunning ? IconKind.Stop : IconKind.Terminal,
+            IconSize = 12,
+            Width = 28,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            CustomSurfaceColor = cardBg,
+            ForeColor = linkedWorker != null && linkedWorker.IsRunning ? ModernColors.Success : ModernColors.TextSecondary
+        };
+        btnWorker.Click += (s, e) =>
+        {
+            var w = WorkerManager.FindByDomain(site.Domain);
+            if (w != null)
+            {
+                if (w.IsRunning)
+                {
+                    WorkerManager.StopWorker(w);
+                }
+                else
+                {
+                    WorkerManager.StartWorker(w, _appRoot, _job);
+                }
+                btnWorker.IconKind = w.IsRunning ? IconKind.Stop : IconKind.Terminal;
+                btnWorker.ForeColor = w.IsRunning ? ModernColors.Success : ModernColors.TextSecondary;
+                RefreshWorkersList();
+            }
+            else
+            {
+                using var dlg = new WorkerDialog(_appRoot, null, site);
+                if (dlg.ShowDialog(this) == DialogResult.OK && dlg.ResultWorker != null)
+                {
+                    WorkerManager.AddWorker(_appRoot, dlg.ResultWorker);
+                    WorkerManager.StartWorker(dlg.ResultWorker, _appRoot, _job);
+                    btnWorker.IconKind = dlg.ResultWorker.IsRunning ? IconKind.Stop : IconKind.Terminal;
+                    btnWorker.ForeColor = dlg.ResultWorker.IsRunning ? ModernColors.Success : ModernColors.TextSecondary;
+                    RefreshWorkersList();
+                }
+            }
+        };
+        tip.SetToolTip(btnWorker, linkedWorker != null
+            ? (linkedWorker.IsRunning ? $"Stop background worker ({linkedWorker.Name})" : $"Start background worker ({linkedWorker.Name})")
+            : $"Run background worker (e.g. npm run dev) for {site.Domain}");
+
         var btnEdit = new ModernButton
         {
             Text = "",
@@ -1315,7 +1375,8 @@ public partial class MainForm : Form
             btnOpenDir.Location = new Point(btnBrowse.Left - btnOpenDir.Width - 6, (cardH - btnOpenDir.Height) / 2);
             btnOpenCode.Location = new Point(btnOpenDir.Left - btnOpenCode.Width - 6, (cardH - btnOpenCode.Height) / 2);
             btnShare.Location = new Point(btnOpenCode.Left - btnShare.Width - 6, (cardH - btnShare.Height) / 2);
-            btnEdit.Location = new Point(btnShare.Left - btnEdit.Width - 6, (cardH - btnEdit.Height) / 2);
+            btnWorker.Location = new Point(btnShare.Left - btnWorker.Width - 6, (cardH - btnWorker.Height) / 2);
+            btnEdit.Location = new Point(btnWorker.Left - btnEdit.Width - 6, (cardH - btnEdit.Height) / 2);
 
             int leftBoundary = btnEdit.Left;
             if (btnDelete != null)
@@ -1335,6 +1396,7 @@ public partial class MainForm : Form
         card.Controls.Add(lblUrl);
         card.Controls.Add(btnOpenCode);
         card.Controls.Add(btnShare);
+        card.Controls.Add(btnWorker);
         card.Controls.Add(btnEdit);
         card.Controls.Add(btnOpenDir);
         card.Controls.Add(btnBrowse);
@@ -3366,6 +3428,388 @@ public partial class MainForm : Form
         return card;
     }
 
+    // ------------------------------------------
+    // PAGE 6: BACKGROUND WORKERS (WINDOWS SUPERVISOR)
+    // ------------------------------------------
+    private void PopulateWorkersPage()
+    {
+        pageWorkers.Padding = new Padding(24, 16, 24, 20);
+
+        var pnlTop = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 76,
+            Padding = new Padding(0, 0, 0, 8)
+        };
+
+        var btnAddWorker = new ModernButton
+        {
+            Text = "Add Worker",
+            IconKind = IconKind.Plus,
+            IconSize = 10,
+            Width = 108,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = false,
+            NormalColor = ModernColors.Success,
+            HoverColor = ModernColors.SuccessHover,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(0, 2)
+        };
+        btnAddWorker.Click += (s, e) =>
+        {
+            using var dlg = new WorkerDialog(_appRoot);
+            if (dlg.ShowDialog(this) == DialogResult.OK && dlg.ResultWorker != null)
+            {
+                WorkerManager.AddWorker(_appRoot, dlg.ResultWorker);
+                RefreshWorkersList();
+                lblStatusText.Text = $"Worker '{dlg.ResultWorker.Name}' added.";
+                lblStatusText.ForeColor = ModernColors.Success;
+            }
+        };
+
+        var btnStartAuto = new ModernButton
+        {
+            Text = "Start Auto",
+            IconKind = IconKind.Play,
+            IconSize = 10,
+            Width = 100,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = false,
+            NormalColor = ModernColors.Primary,
+            HoverColor = ModernColors.PrimaryHover,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(116, 2)
+        };
+        btnStartAuto.Click += (s, e) =>
+        {
+            WorkerManager.StartAllAutoWorkers(_appRoot, _job);
+            RefreshWorkersList();
+        };
+
+        var btnStopAllWorkers = new ModernButton
+        {
+            Text = "Stop All",
+            IconKind = IconKind.Stop,
+            IconSize = 10,
+            Width = 90,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.DangerBg,
+            ForeColor = ModernColors.Danger,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(224, 2)
+        };
+        btnStopAllWorkers.Click += (s, e) =>
+        {
+            WorkerManager.StopAllWorkers();
+            RefreshWorkersList();
+        };
+
+        var btnRefresh = new ModernButton
+        {
+            Text = "Refresh",
+            IconKind = IconKind.Refresh,
+            IconSize = 10,
+            Width = 84,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(322, 2)
+        };
+        btnRefresh.Click += (s, e) => RefreshWorkersList();
+
+        var lblDesc = new Label
+        {
+            Text = "Windows Supervisor: manage long-running dev servers (npm run dev), queue listeners, and schedulers cleanly via JobObject.",
+            ForeColor = ModernColors.TextMuted,
+            Font = new Font("Segoe UI", 8.25f),
+            Location = new Point(0, 42),
+            AutoSize = true
+        };
+
+        pnlTop.Controls.AddRange([btnAddWorker, btnStartAuto, btnStopAllWorkers, btnRefresh, lblDesc]);
+
+        _pnlWorkersContainer = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Padding = new Padding(0, 4, 0, 12)
+        };
+        _pnlWorkersContainer.Resize += (s, e) =>
+        {
+            int targetW = _pnlWorkersContainer.ClientSize.Width - 18;
+            if (targetW < 300) return;
+            foreach (Control c in _pnlWorkersContainer.Controls)
+            {
+                c.Width = targetW;
+            }
+        };
+
+        pageWorkers.Controls.Add(_pnlWorkersContainer);
+        pageWorkers.Controls.Add(pnlTop);
+
+        RefreshWorkersList();
+    }
+
+    private void RefreshWorkersList()
+    {
+        if (_pnlWorkersContainer == null || _pnlWorkersContainer.IsDisposed) return;
+
+        _pnlWorkersContainer.SuspendLayout();
+        _pnlWorkersContainer.Controls.Clear();
+
+        var workers = WorkerManager.Workers;
+        int targetW = Math.Max(300, _pnlWorkersContainer.ClientSize.Width - 18);
+
+        if (workers.Count == 0)
+        {
+            var lblEmpty = new Label
+            {
+                Text = "No background workers configured yet.\nClick '+ Add Worker' to add npm run dev, php artisan queue:listen, or custom scripts.",
+                ForeColor = ModernColors.TextMuted,
+                Font = new Font("Segoe UI", 9.25f),
+                AutoSize = true,
+                Padding = new Padding(8, 20, 8, 20)
+            };
+            _pnlWorkersContainer.Controls.Add(lblEmpty);
+        }
+        else
+        {
+            foreach (var worker in workers)
+            {
+                var card = CreateWorkerCard(worker);
+                card.Width = targetW;
+                _pnlWorkersContainer.Controls.Add(card);
+            }
+        }
+
+        _pnlWorkersContainer.ResumeLayout();
+    }
+
+    private Panel CreateWorkerCard(WorkerItem worker)
+    {
+        var card = new Panel
+        {
+            Height = 78,
+            Margin = new Padding(0, 0, 0, 10),
+            BackColor = Color.Transparent,
+            Padding = new Padding(14, 10, 14, 10)
+        };
+
+        Color cardBg = ModernColors.Surface;
+        card.Paint += (s, e) =>
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var rect = new RectangleF(0.5f, 0.5f, card.Width - 1f, card.Height - 5f);
+            using var path = CreateRoundedRectangle(rect, 8f);
+            using var bgBrush = new SolidBrush(cardBg);
+            g.FillPath(bgBrush, path);
+            using var pen = new Pen(ModernColors.BorderSubtle, 1f);
+            g.DrawPath(pen, path);
+        };
+
+        var pillStatus = new StatusPill
+        {
+            Text = worker.Status,
+            Status = worker.IsRunning ? ServiceStatus.Running : (worker.Status == "Failed" ? ServiceStatus.Error : ServiceStatus.Stopped),
+            Location = new Point(14, 15),
+            Size = new Size(82, 22)
+        };
+
+        var lblName = new Label
+        {
+            Text = worker.Name,
+            ForeColor = ModernColors.TextPrimary,
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+            Location = new Point(106, 12),
+            AutoSize = true
+        };
+
+        string subText = $"{worker.Command}  •  {worker.WorkingDirectory}";
+        if (!string.IsNullOrEmpty(worker.SiteDomain))
+        {
+            subText += $"  [{worker.SiteDomain}]";
+        }
+        if (worker.AutoStart)
+        {
+            subText += "  (Auto)";
+        }
+
+        var lblSub = new Label
+        {
+            Text = subText,
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f),
+            Location = new Point(107, 36),
+            AutoSize = true,
+            AutoEllipsis = true
+        };
+
+        var tip = new ToolTip();
+
+        var btnToggle = new ModernButton
+        {
+            Text = worker.IsRunning ? "Stop" : "Start",
+            IconKind = worker.IsRunning ? IconKind.Stop : IconKind.Play,
+            IconSize = 10,
+            Width = 74,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = false,
+            NormalColor = worker.IsRunning ? ModernColors.Danger : ModernColors.Success,
+            HoverColor = worker.IsRunning ? ModernColors.DangerHover : ModernColors.SuccessHover,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+        };
+
+        var btnLogs = new ModernButton
+        {
+            Text = "Logs",
+            IconKind = IconKind.Terminal,
+            IconSize = 10,
+            Width = 68,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            CustomSurfaceColor = cardBg,
+            ForeColor = ModernColors.TextPrimary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+        };
+        tip.SetToolTip(btnLogs, "Open live terminal output logs");
+
+        var btnEdit = new ModernButton
+        {
+            Text = "",
+            IconKind = IconKind.Gear,
+            IconSize = 12,
+            Width = 28,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            CustomSurfaceColor = cardBg,
+            ForeColor = ModernColors.TextSecondary
+        };
+        tip.SetToolTip(btnEdit, "Edit worker configuration");
+
+        var btnDelete = new ModernButton
+        {
+            Text = "",
+            IconKind = IconKind.Trash,
+            IconSize = 12,
+            Width = 28,
+            Height = 28,
+            BorderRadius = 5,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.DangerBg,
+            CustomSurfaceColor = cardBg,
+            ForeColor = ModernColors.Danger
+        };
+        tip.SetToolTip(btnDelete, "Delete worker");
+
+        void SyncWorkerUi()
+        {
+            if (card.IsDisposed) return;
+            bool running = worker.IsRunning;
+            pillStatus.Text = worker.Status;
+            pillStatus.Status = running ? ServiceStatus.Running : (worker.Status == "Failed" ? ServiceStatus.Error : ServiceStatus.Stopped);
+            btnToggle.Text = running ? "Stop" : "Start";
+            btnToggle.IconKind = running ? IconKind.Stop : IconKind.Play;
+            btnToggle.NormalColor = running ? ModernColors.Danger : ModernColors.Success;
+            btnToggle.HoverColor = running ? ModernColors.DangerHover : ModernColors.SuccessHover;
+        }
+
+        Action<string> statusHandler = _ =>
+        {
+            if (card.IsDisposed) return;
+            try { card.Invoke(SyncWorkerUi); } catch { }
+        };
+        worker.StatusChanged += statusHandler;
+        card.Disposed += (_, _) => worker.StatusChanged -= statusHandler;
+
+        btnToggle.Click += (s, e) =>
+        {
+            if (worker.IsRunning)
+            {
+                WorkerManager.StopWorker(worker);
+            }
+            else
+            {
+                WorkerManager.StartWorker(worker, _appRoot, _job);
+            }
+            SyncWorkerUi();
+        };
+
+        btnLogs.Click += (s, e) =>
+        {
+            if (_openWorkerLogs.TryGetValue(worker.Id, out var existing) && !existing.IsDisposed)
+            {
+                if (existing.WindowState == FormWindowState.Minimized)
+                    existing.WindowState = FormWindowState.Normal;
+                existing.BringToFront();
+                existing.Focus();
+                return;
+            }
+
+            var dlg = new WorkerLogsDialog(worker);
+            _openWorkerLogs[worker.Id] = dlg;
+            dlg.FormClosed += (_, _) => _openWorkerLogs.Remove(worker.Id);
+            dlg.Show(this);
+        };
+
+        btnEdit.Click += (s, e) =>
+        {
+            using var dlg = new WorkerDialog(_appRoot, worker);
+            if (dlg.ShowDialog(this) == DialogResult.OK && dlg.ResultWorker != null)
+            {
+                WorkerManager.UpdateWorker(_appRoot, dlg.ResultWorker);
+                RefreshWorkersList();
+            }
+        };
+
+        btnDelete.Click += (s, e) =>
+        {
+            var res = MessageBox.Show(this, $"Delete worker '{worker.Name}'?", "Delete Worker", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (res == DialogResult.Yes)
+            {
+                WorkerManager.RemoveWorker(_appRoot, worker.Id);
+                RefreshWorkersList();
+            }
+        };
+
+        void LayoutWorkerCard()
+        {
+            int cardH = card.Height - 5;
+            int rightX = card.Width > 200 ? card.Width - btnDelete.Width - 14 : 500;
+            btnDelete.Location = new Point(rightX, (cardH - btnDelete.Height) / 2);
+            btnEdit.Location = new Point(btnDelete.Left - btnEdit.Width - 6, (cardH - btnEdit.Height) / 2);
+            btnLogs.Location = new Point(btnEdit.Left - btnLogs.Width - 6, (cardH - btnLogs.Height) / 2);
+            btnToggle.Location = new Point(btnLogs.Left - btnToggle.Width - 6, (cardH - btnToggle.Height) / 2);
+
+            int maxTextW = Math.Max(60, btnToggle.Left - lblName.Left - 12);
+            lblName.MaximumSize = new Size(maxTextW, 22);
+            lblSub.MaximumSize = new Size(maxTextW, 20);
+        }
+        card.Resize += (s, e) => LayoutWorkerCard();
+        LayoutWorkerCard();
+
+        card.Controls.AddRange([pillStatus, lblName, lblSub, btnToggle, btnLogs, btnEdit, btnDelete]);
+        return card;
+    }
+
     // ==========================================
     // LIFECYCLE CONTROLLERS
     // ==========================================
@@ -3915,6 +4359,8 @@ public partial class MainForm : Form
         lblStatusText.ForeColor = ModernColors.Warning;
 
         await StopAllServicesAsync();
+        WorkerManager.StopAllWorkers();
+        CloudflareTunnelManager.StopAllTunnels();
         DnsServer.Instance.Stop();
         _job.Dispose();
         notifyIcon.Visible = false;
@@ -4136,6 +4582,8 @@ public partial class MainForm : Form
             await AutoStartConfiguredServicesAsync();
         }
 
+        WorkerManager.StartAllAutoWorkers(_appRoot, _job);
+
         if (_config.CheckUpdatesOnStart)
         {
             _ = Task.Run(async () =>
@@ -4181,6 +4629,8 @@ public partial class MainForm : Form
         }
         else
         {
+            WorkerManager.StopAllWorkers();
+            CloudflareTunnelManager.StopAllTunnels();
             _job.Dispose();
             notifyIcon.Visible = false;
         }
