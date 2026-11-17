@@ -190,6 +190,7 @@ public class PhpService : BaseService
 
         try
         {
+            await SslCertificateManager.EnsureCaBundleAsync(AppRoot);
             EnsureConfig(GetPhpDirectory());
             StartPrimaryWorkers();
             _ = Task.Run(() => SupervisorLoopAsync(_supervisorCts.Token));
@@ -293,6 +294,7 @@ public class PhpService : BaseService
         }
 
         int basePort = GetPortForVersion(version, Port);
+        await SslCertificateManager.EnsureCaBundleAsync(AppRoot);
         EnsureConfig(versionDir);
 
         var worker = new PhpWorkerInfo
@@ -335,6 +337,12 @@ public class PhpService : BaseService
         else
         {
             DevLiteServer.Core.Downloader.PackageDownloader.EnsureOpCacheEnabled(phpIni);
+        }
+
+        string caBundlePath = SslCertificateManager.GetCaBundlePath(AppRoot);
+        if (File.Exists(caBundlePath))
+        {
+            DevLiteServer.Core.Downloader.PackageDownloader.EnsureCaBundleConfigured(phpIni, caBundlePath);
         }
     }
 

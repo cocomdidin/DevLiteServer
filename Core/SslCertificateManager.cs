@@ -229,4 +229,83 @@ public static class SslCertificateManager
     {
         return Path.Combine(appRoot, "ssl", "ca", "rootCA.crt");
     }
+
+    private const string CaBundleUrl = "https://curl.se/ca/cacert.pem";
+    private static readonly SemaphoreSlim CaBundleLock = new(1, 1);
+
+    /// <summary>
+    /// Gets the expected path for the Mozilla CA bundle (cacert.pem) used by PHP cURL/OpenSSL.
+    /// </summary>
+    public static string GetCaBundlePath(string appRoot)
+    {
+        return Path.Combine(appRoot, "ssl", "cacert.pem");
+    }
+
+    /// <summary>
+    /// Ensures ssl/cacert.pem exists and is reasonably fresh (under 90 days old).
+    /// Downloads from curl.se if missing or stale; falls back to existing file if offline.
+    /// </summary>
+    public static async Task<string?> EnsureCaBundleAsync(string appRoot, bool forceRefresh = false, CancellationToken ct = default)
+    {
+        string caPath = GetCaBundlePath(appRoot);
+        if (!forceRefresh && IsValidCaBundle(caPath, TimeSpan.FromDays(90)))
+        {
+            return caPath;
+        }
+
+        await CaBundleLock.WaitAsync(ct);
+        try
+        {
+            if (!forceRefresh && IsValidCaBundle(caPath, TimeSpan.FromDays(90)))
+            {
+                return caPath;
+            }
+
+            string? sslDir = Path.GetDirectoryName(caPath);
+            if (!string.IsNullOrEmpty(sslDir) && !Directory.Exists(sslDir))
+            {
+                Directory.CreateDirectory(sslDir);
+            }
+
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+            http.DefaultRequestHeaders.Add("User-Agent", "DevLiteServer/1.0");
+
+            using var response = await http.GetAsync(CaBundleUrl, ct);
+            response.EnsureSuccessStatusCode();
+
+            byte[] data = await response.Content.ReadAsByteArrayAsync(ct);
+            if (data.Length > 50_000)
+            {
+                string tempPath = caPath + ".tmp";
+                await File.WriteAllBytesAsync(tempPath, data, ct);
+                File.Move(tempPath, caPath, overwrite: true);
+                return caPath;
+            }
+        }
+        catch
+        {
+            // Fallback to existing bundle even if older than 90 days when offline
+        }
+        finally
+        {
+            CaBundleLock.Release();
+        }
+
+        return IsValidCaBundle(caPath, TimeSpan.MaxValue) ? caPath : null;
+    }
+
+    private static bool IsValidCaBundle(string caPath, TimeSpan maxAge)
+    {
+        try
+        {
+            var info = new FileInfo(caPath);
+            if (!info.Exists || info.Length <= 50_000) return false;
+            if (maxAge != TimeSpan.MaxValue && (DateTime.UtcNow - info.LastWriteTimeUtc) > maxAge) return false;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

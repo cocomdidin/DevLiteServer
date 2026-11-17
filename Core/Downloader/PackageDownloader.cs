@@ -126,6 +126,12 @@ public static class PackageDownloader
             {
                 progress?.Report(new PackageDownloadProgress(100, totalBytes, totalBytes, "Configuring php.ini and extensions..."));
                 ConfigurePhpIni(targetDir);
+
+                string? caBundlePath = await SslCertificateManager.EnsureCaBundleAsync(appRoot, ct: ct);
+                if (!string.IsNullOrEmpty(caBundlePath))
+                {
+                    EnsureCaBundleConfigured(Path.Combine(targetDir, "php.ini"), caBundlePath);
+                }
             }
 
             // Verification
@@ -303,6 +309,76 @@ public static class PackageDownloader
             }
         }
         catch { }
+    }
+
+    /// <summary>
+    /// Ensures curl.cainfo and openssl.cafile in php.ini point to the valid cacert.pem bundle
+    /// so outbound HTTPS requests (cURL, Guzzle, Laravel Http) succeed without error 60.
+    /// </summary>
+    public static void EnsureCaBundleConfigured(string iniPath, string caBundlePath)
+    {
+        if (!File.Exists(iniPath) || !File.Exists(caBundlePath)) return;
+
+        try
+        {
+            string normalizedPath = caBundlePath.Replace('\\', '/');
+            string content = File.ReadAllText(iniPath);
+            bool modified = false;
+
+            content = UpsertIniDirective(content, "curl.cainfo", normalizedPath, "curl", ref modified);
+            content = UpsertIniDirective(content, "openssl.cafile", normalizedPath, "openssl", ref modified);
+
+            if (modified)
+            {
+                File.WriteAllText(iniPath, content);
+            }
+        }
+        catch { }
+    }
+
+    private static string UpsertIniDirective(string content, string key, string value, string sectionName, ref bool modified)
+    {
+        string targetLine = $"{key} = \"{value}\"";
+        string escapedKey = Regex.Escape(key);
+
+        // Check if active (uncommented) directive already exists
+        var activeMatch = Regex.Match(content, $@"(?m)^[ \t]*{escapedKey}\s*=\s*(.*)$");
+        if (activeMatch.Success)
+        {
+            string currentVal = activeMatch.Groups[1].Value.Trim().Trim('"', '\'');
+            if (string.Equals(currentVal, value, StringComparison.OrdinalIgnoreCase))
+            {
+                return content;
+            }
+
+            // Replace if empty or pointing to a missing file
+            if (string.IsNullOrEmpty(currentVal) || !File.Exists(currentVal))
+            {
+                modified = true;
+                return Regex.Replace(content, $@"(?m)^[ \t]*{escapedKey}\s*=.*$", targetLine);
+            }
+
+            return content;
+        }
+
+        // Uncomment and set if commented directive exists
+        if (Regex.IsMatch(content, $@"(?m)^[ \t]*;[ \t]*{escapedKey}\s*="))
+        {
+            modified = true;
+            var rx = new Regex($@"(?m)^[ \t]*;[ \t]*{escapedKey}\s*=.*$");
+            return rx.Replace(content, targetLine, 1);
+        }
+
+        // Otherwise append under [sectionName] or at end of file
+        modified = true;
+        var sectionMatch = Regex.Match(content, $@"(?mi)^\[{Regex.Escape(sectionName)}\]\s*$");
+        if (sectionMatch.Success)
+        {
+            int insertPos = sectionMatch.Index + sectionMatch.Length;
+            return content.Insert(insertPos, $"\r\n{targetLine}");
+        }
+
+        return content.TrimEnd() + $"\r\n\r\n[{sectionName}]\r\n{targetLine}\r\n";
     }
 
     private static void CleanupSafely(string tempZip, string tempExtract)
