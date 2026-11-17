@@ -367,15 +367,9 @@ public static class VirtualHostManager
                 sb.AppendLine("    }");
                 sb.AppendLine();
 
-                // Herd-style static storage bypass
-                sb.AppendLine("    location ^~ /storage/ {");
-                sb.AppendLine($"        fastcgi_pass   {upstreamName};");
-                sb.AppendLine("        fastcgi_index  index.php;");
-                sb.AppendLine("        fastcgi_param  SCRIPT_FILENAME $document_root/index.php;");
-                sb.AppendLine("        fastcgi_param  QUERY_STRING $query_string;");
-                sb.AppendLine("        include        fastcgi_params;");
-                sb.AppendLine("        fastcgi_keep_conn on;");
-                sb.AppendLine("    }");
+                // Serve Laravel/PHP /storage/ assets safely (avoids Windows NTFS symlink Error 448 and PHP-only 404 trap)
+                AppendStorageLocationBlock(sb, site, docRoot, upstreamName);
+
                 sb.AppendLine();
                 sb.AppendLine("    location ~ \\.php$ {");
                 sb.AppendLine("        try_files $uri =404;");
@@ -397,6 +391,175 @@ public static class VirtualHostManager
         }
 
         File.WriteAllText(vhostsOutputFile, sb.ToString());
+    }
+
+    private static void AppendStorageLocationBlock(StringBuilder sb, SiteItem site, string docRoot, string upstreamName)
+    {
+        string storageAppPublic = Path.Combine(site.PhysicalPath, "storage", "app", "public");
+        string publicStorage = Path.Combine(docRoot, "storage");
+        string? aliasTarget = ResolveStoragePublicTarget(site.PhysicalPath, docRoot, publicStorage, storageAppPublic);
+
+        sb.AppendLine("    location ^~ /storage/ {");
+        if (!string.IsNullOrEmpty(aliasTarget))
+        {
+            string aliasForward = Path.GetFullPath(aliasTarget).TrimEnd('\\', '/').Replace('\\', '/');
+            sb.AppendLine($"        alias \"{aliasForward}/\";");
+            sb.AppendLine("        error_page 403 404 = @storage_fallback;");
+        }
+        else
+        {
+            sb.AppendLine("        try_files $uri @storage_fallback;");
+        }
+        sb.AppendLine("    }");
+        sb.AppendLine();
+        sb.AppendLine("    location @storage_fallback {");
+        sb.AppendLine("        include        fastcgi_params;");
+        sb.AppendLine($"        fastcgi_pass   {upstreamName};");
+        sb.AppendLine("        fastcgi_index  index.php;");
+        sb.AppendLine("        fastcgi_param  SCRIPT_FILENAME $document_root/index.php;");
+        sb.AppendLine("        fastcgi_param  SCRIPT_NAME /index.php;");
+        sb.AppendLine("        fastcgi_keep_conn on;");
+        sb.AppendLine("    }");
+    }
+
+    private static string? ResolveStoragePublicTarget(string physicalPath, string docRoot, string publicStorage, string storageAppPublic)
+    {
+        try
+        {
+            bool isReparse = IsReparsePoint(publicStorage);
+            bool hasPublicStorageDir = Directory.Exists(publicStorage);
+
+            if (hasPublicStorageDir && !isReparse)
+            {
+                // Real directory inside docRoot; serve directly unless empty while storage/app/public exists
+                if (Directory.Exists(storageAppPublic) && !Directory.EnumerateFileSystemEntries(publicStorage).Any())
+                {
+                    return storageAppPublic;
+                }
+                return null;
+            }
+
+            if (Directory.Exists(storageAppPublic))
+            {
+                EnsureLaravelStorageJunction(physicalPath, docRoot, publicStorage, storageAppPublic, isReparse);
+                return storageAppPublic;
+            }
+
+            if (hasPublicStorageDir && isReparse)
+            {
+                var resolved = Directory.ResolveLinkTarget(publicStorage, returnFinalTarget: true);
+                if (resolved != null && Directory.Exists(resolved.FullName))
+                {
+                    return resolved.FullName;
+                }
+            }
+        }
+        catch
+        {
+            if (Directory.Exists(storageAppPublic))
+            {
+                return storageAppPublic;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsReparsePoint(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                return File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint);
+            }
+            if (Directory.Exists(path))
+            {
+                return (new DirectoryInfo(path).Attributes & FileAttributes.ReparsePoint) != 0;
+            }
+        }
+        catch
+        {
+            // Ignore attribute read failure
+        }
+        return false;
+    }
+
+    private static void EnsureLaravelStorageJunction(string physicalPath, string docRoot, string publicStorage, string storageAppPublic, bool isReparse)
+    {
+        try
+        {
+            if (!Directory.Exists(docRoot)) return;
+
+            string expectedTarget = Path.GetFullPath(storageAppPublic).TrimEnd('\\', '/');
+            string projectRoot = Path.GetFullPath(physicalPath).TrimEnd('\\', '/');
+
+            if (isReparse)
+            {
+                var resolved = Directory.ResolveLinkTarget(publicStorage, returnFinalTarget: true);
+                string? resolvedFull = resolved != null
+                    ? Path.GetFullPath(resolved.FullName).TrimEnd('\\', '/')
+                    : null;
+
+                bool targetExists = resolvedFull != null && Directory.Exists(resolvedFull);
+                if (targetExists && string.Equals(resolvedFull, expectedTarget, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                bool insideProject = resolvedFull != null &&
+                    resolvedFull.StartsWith(projectRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+                if (targetExists && insideProject)
+                {
+                    return;
+                }
+
+                // Stale external (e.g. Herd/Laragon) or dangling junction/symlink: remove only the reparse point
+                if (Directory.Exists(publicStorage))
+                {
+                    try
+                    {
+                        Directory.Delete(publicStorage, recursive: false);
+                    }
+                    catch
+                    {
+                        using var rmProc = Process.Start(new ProcessStartInfo
+                        {
+                            FileName = "cmd.exe",
+                            Arguments = $"/c rmdir \"{publicStorage}\"",
+                            CreateNoWindow = true,
+                            UseShellExecute = false
+                        });
+                        rmProc?.WaitForExit(2000);
+                    }
+                }
+                else if (File.Exists(publicStorage))
+                {
+                    File.Delete(publicStorage);
+                }
+            }
+            else if (!File.Exists(Path.Combine(physicalPath, "artisan")))
+            {
+                return;
+            }
+
+            if (!Directory.Exists(publicStorage) && !File.Exists(publicStorage))
+            {
+                // NTFS Directory Junction (mklink /J) works without Administrator/UAC privileges
+                using var proc = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c mklink /J \"{publicStorage}\" \"{expectedTarget}\"",
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                });
+                proc?.WaitForExit(3000);
+            }
+        }
+        catch
+        {
+            // Non-blocking: Nginx alias still serves storage/app/public directly
+        }
     }
 
     public static bool NeedsHostsSync(string appRoot)
