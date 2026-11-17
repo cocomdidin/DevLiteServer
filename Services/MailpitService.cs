@@ -36,6 +36,9 @@ public class MailpitService : BaseService
         return direct;
     }
 
+    public string GetDataDirectory() => Path.Combine(AppRoot, "bin", "mailpit", "data");
+    public string GetDbFilePath() => Path.Combine(GetDataDirectory(), "mailpit.db");
+
     public override async Task<bool> StartAsync()
     {
         LastError = null;
@@ -57,14 +60,21 @@ public class MailpitService : BaseService
             return false;
         }
 
+        string dataDir = GetDataDirectory();
+        if (!Directory.Exists(dataDir))
+        {
+            Directory.CreateDirectory(dataDir);
+        }
+
         Status = ServiceStatus.Starting;
 
         try
         {
+            string dbPath = GetDbFilePath();
             var psi = new ProcessStartInfo
             {
                 FileName = exe,
-                Arguments = $"--listen 127.0.0.1:{_config.MailpitWebPort} --smtp 127.0.0.1:{_config.MailpitSmtpPort}",
+                Arguments = $"--listen 127.0.0.1:{_config.MailpitWebPort} --smtp 127.0.0.1:{_config.MailpitSmtpPort} --db-file \"{dbPath}\"",
                 WorkingDirectory = Path.GetDirectoryName(exe) ?? AppRoot,
                 RedirectStandardOutput = false,
                 RedirectStandardError = false
