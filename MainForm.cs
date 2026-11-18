@@ -19,7 +19,7 @@ public partial class MainForm : Form
     private readonly MailpitService _mailpit;
     private readonly PostgreSqlService _postgresql;
     private readonly RedisService _redis;
-    private readonly MinioService _minio;
+    private readonly RustFsService _rustfs;
     private readonly List<IService> _services = new();
 
     private readonly bool _startMinimized;
@@ -75,9 +75,9 @@ public partial class MainForm : Form
         _mailpit = new MailpitService(_appRoot, _job, _config);
         _postgresql = new PostgreSqlService(_appRoot, _job, _config);
         _redis = new RedisService(_appRoot, _job, _config);
-        _minio = new MinioService(_appRoot, _job, _config);
+        _rustfs = new RustFsService(_appRoot, _job, _config);
 
-        _services.AddRange([_php, _nginx, _mysql, _mailpit, _postgresql, _redis, _minio]);
+        _services.AddRange([_php, _nginx, _mysql, _mailpit, _postgresql, _redis, _rustfs]);
 
         foreach (var svc in _services)
         {
@@ -105,6 +105,8 @@ public partial class MainForm : Form
         {
             DnsServer.Instance.Start();
         }
+
+        InitFooterErrorCopy();
 
         // Check for Visual C++ runtime
         if (!DependencyChecker.IsVcRedistInstalled())
@@ -220,7 +222,7 @@ public partial class MainForm : Form
                 break;
             case 5:
                 lblPageTitle.Text = "Services";
-                lblPageSubtitle.Text = "Local Mailpit SMTP/Webmail and MinIO S3 object storage mock";
+                lblPageSubtitle.Text = "Local Mailpit SMTP/Webmail and RustFS S3 object storage mock";
                 break;
             case 6:
                 lblPageTitle.Text = "Background Workers";
@@ -2903,7 +2905,7 @@ public partial class MainForm : Form
     }
 
     // ------------------------------------------
-    // PAGE 5: SERVICES (Mailpit & MinIO S3 Mock)
+    // PAGE 5: SERVICES (Mailpit & RustFS S3 Mock)
     // ------------------------------------------
     private void PopulateDevServicesPage()
     {
@@ -2913,8 +2915,8 @@ public partial class MainForm : Form
         string BuildMailpitEnv() =>
             $"MAIL_MAILER=smtp\r\nMAIL_HOST=127.0.0.1\r\nMAIL_PORT={_config.MailpitSmtpPort}\r\nMAIL_USERNAME=null\r\nMAIL_PASSWORD=null\r\nMAIL_ENCRYPTION=null";
 
-        string BuildMinioEnv() =>
-            $"FILESYSTEM_DISK=s3\r\nAWS_ACCESS_KEY_ID={_config.MinioRootUser}\r\nAWS_SECRET_ACCESS_KEY={_config.MinioRootPassword}\r\nAWS_DEFAULT_REGION=us-east-1\r\nAWS_BUCKET=local\r\nAWS_ENDPOINT=http://127.0.0.1:{_config.MinioApiPort}\r\nAWS_USE_PATH_STYLE_ENDPOINT=true";
+        string BuildRustFsEnv() =>
+            $"FILESYSTEM_DISK=s3\r\nAWS_ACCESS_KEY_ID={_config.RustFsAccessKey}\r\nAWS_SECRET_ACCESS_KEY={_config.RustFsSecretKey}\r\nAWS_DEFAULT_REGION=us-east-1\r\nAWS_BUCKET=local\r\nAWS_ENDPOINT=http://127.0.0.1:{_config.RustFsApiPort}\r\nAWS_USE_PATH_STYLE_ENDPOINT=true";
 
         var cardMailpit = CreateDevServiceCard(
             service: _mailpit,
@@ -2970,33 +2972,33 @@ public partial class MainForm : Form
                 }
             });
 
-        var cardMinio = CreateDevServiceCard(
-            service: _minio,
-            packageKey: "minio",
-            title: "MinIO (S3 Mock)",
-            description: $"Local S3-compatible storage mock ({_config.MinioRootUser} / {_config.MinioRootPassword}).",
-            getEnabled: () => _config.EnableMinio,
-            setEnabled: v => _config.EnableMinio = v,
+        var cardRustFs = CreateDevServiceCard(
+            service: _rustfs,
+            packageKey: "rustfs",
+            title: "RustFS (S3 Mock)",
+            description: $"Local S3-compatible storage mock ({_config.RustFsAccessKey} / {_config.RustFsSecretKey}).",
+            getEnabled: () => _config.EnableRustFs,
+            setEnabled: v => _config.EnableRustFs = v,
             port1Label: "API:",
-            getPort1: () => _config.MinioApiPort,
-            setPort1: p => { _config.MinioApiPort = p; _minio.UpdatePort(p); },
+            getPort1: () => _config.RustFsApiPort,
+            setPort1: p => { _config.RustFsApiPort = p; _rustfs.UpdatePort(p); },
             port2Label: "Console:",
-            getPort2: () => _config.MinioConsolePort,
-            setPort2: p => _config.MinioConsolePort = p,
+            getPort2: () => _config.RustFsConsolePort,
+            setPort2: p => _config.RustFsConsolePort = p,
             uiButtonPrefix: "Console",
             uiButtonIcon: IconKind.Globe,
             onOpenUi: () =>
             {
-                try { Process.Start(new ProcessStartInfo($"http://127.0.0.1:{_config.MinioConsolePort}") { UseShellExecute = true }); }
+                try { Process.Start(new ProcessStartInfo($"http://127.0.0.1:{_config.RustFsConsolePort}") { UseShellExecute = true }); }
                 catch { }
             },
-            getEnvSnippet: BuildMinioEnv,
+            getEnvSnippet: BuildRustFsEnv,
             toolTip: serviceTip);
 
         // Reverse dock order for DockStyle.Top
-        pageDevServices.Controls.AddRange([cardMinio, cardMailpit]);
+        pageDevServices.Controls.AddRange([cardRustFs, cardMailpit]);
         cardMailpit.BringToFront();
-        cardMinio.BringToFront();
+        cardRustFs.BringToFront();
     }
 
     private Panel CreateDevServiceCard(
@@ -3853,6 +3855,64 @@ public partial class MainForm : Form
         UpdateServiceStats();
     }
 
+    private readonly ToolTip _footerErrorTip = new() { InitialDelay = 200, AutoPopDelay = 12000 };
+
+    private void InitFooterErrorCopy()
+    {
+        lblStatusText.TextChanged += (s, e) => UpdateFooterErrorCopyButton();
+        lblStatusText.ForeColorChanged += (s, e) => UpdateFooterErrorCopyButton();
+
+        btnCopyFooterError.Click += async (s, e) =>
+        {
+            string text = lblStatusText.Text?.Trim() ?? "";
+            if (string.IsNullOrEmpty(text)) return;
+
+            try
+            {
+                Clipboard.SetText(text);
+                btnCopyFooterError.Text = "Copied!";
+                await Task.Delay(1400);
+                btnCopyFooterError.Text = "Copy Error";
+            }
+            catch { }
+        };
+
+        UpdateFooterErrorCopyButton();
+    }
+
+    private void UpdateFooterErrorCopyButton()
+    {
+        bool isError = (lblStatusText.ForeColor == ModernColors.Danger || lblStatusText.ForeColor == ModernColors.Warning)
+                       && !string.IsNullOrWhiteSpace(lblStatusText.Text);
+        btnCopyFooterError.Visible = isError;
+        btnCopyFooterError.ForeColor = lblStatusText.ForeColor == ModernColors.Warning ? ModernColors.Warning : ModernColors.Danger;
+
+        string tip = isError ? lblStatusText.Text : string.Empty;
+        _footerErrorTip.SetToolTip(lblStatusText, tip);
+        _footerErrorTip.SetToolTip(btnCopyFooterError, isError ? $"Copy error message:\r\n{tip}" : string.Empty);
+
+        LayoutFooterControls();
+    }
+
+    private void LayoutFooterControls()
+    {
+        lblStatsText.Location = new Point(footerPanel.ClientSize.Width - lblStatsText.Width - 20, 7);
+
+        int rightBoundary = lblStatsText.Left;
+        if (btnCopyFooterError.Visible)
+        {
+            btnCopyFooterError.Location = new Point(lblStatsText.Left - btnCopyFooterError.Width - 10, 5);
+            rightBoundary = btnCopyFooterError.Left;
+        }
+
+        int maxStatusW = rightBoundary - lblStatusText.Left - 10;
+        if (maxStatusW > 50)
+        {
+            lblStatusText.MaximumSize = new Size(maxStatusW, 18);
+            lblStatusText.AutoEllipsis = true;
+        }
+    }
+
     private void UpdateServiceStats()
     {
         if (InvokeRequired)
@@ -3867,7 +3927,7 @@ public partial class MainForm : Form
 
         lblStatsText.Text = $"Services: {runningCount} / {enabledCount} running";
         lblStatsText.ForeColor = runningCount > 0 ? ModernColors.Success : ModernColors.TextMuted;
-        lblStatsText.Location = new Point(footerPanel.ClientSize.Width - lblStatsText.Width - 20, 7);
+        LayoutFooterControls();
 
         _sidebarDotColor = anyError ? ModernColors.Danger : (runningCount > 0 ? ModernColors.Success : ModernColors.TextMuted);
         lblSidebarStatus.Text = anyError ? "Service Error" : (runningCount > 0 ? $"{runningCount} running" : "Stopped");
@@ -4022,10 +4082,10 @@ public partial class MainForm : Form
         }
 
         // Add enabled service cards in reverse dock order
-        if (_config.EnableMinio)
+        if (_config.EnableRustFs)
         {
-            var minioCard = new ServiceCard(_minio, IconKind.Database, onInstall: async svc => await InstallServiceWithUiAsync("minio", svc));
-            cardContainer.Controls.Add(minioCard);
+            var rustfsCard = new ServiceCard(_rustfs, IconKind.Database, onInstall: async svc => await InstallServiceWithUiAsync("rustfs", svc));
+            cardContainer.Controls.Add(rustfsCard);
         }
 
         if (_config.EnableRedis)
@@ -4242,7 +4302,7 @@ public partial class MainForm : Form
         AddServiceEnabledMenuItem("Mailpit", "mailpit", () => _config.EnableMailpit, v => _config.EnableMailpit = v);
         AddServiceEnabledMenuItem("PostgreSQL", "postgresql", () => _config.EnablePostgresql, v => _config.EnablePostgresql = v);
         AddServiceEnabledMenuItem("Redis", "redis", () => _config.EnableRedis, v => _config.EnableRedis = v);
-        AddServiceEnabledMenuItem("MinIO (S3)", "minio", () => _config.EnableMinio, v => _config.EnableMinio = v);
+        AddServiceEnabledMenuItem("RustFS (S3)", "rustfs", () => _config.EnableRustFs, v => _config.EnableRustFs = v);
 
         trayMenu.Items.Add(enabledServicesMenu);
 

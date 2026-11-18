@@ -185,16 +185,16 @@ public static class PackageCatalog
             FolderName = "cloudflared",
             ApproximateSizeBytes = 40_000_000
         },
-        ["minio"] = new PackageItem
+        ["rustfs"] = new PackageItem
         {
-            Id = "service-minio",
-            Name = "MinIO (S3 Mock)",
+            Id = "service-rustfs",
+            Name = "RustFS (S3 Mock)",
             Category = "Service",
-            ServiceKey = "minio",
+            ServiceKey = "rustfs",
             Tag = "Local S3-Compatible Object Storage (x64)",
-            DownloadUrl = "https://dl.min.io/server/minio/release/windows-amd64/minio.exe",
-            FolderName = "minio",
-            ApproximateSizeBytes = 95_000_000
+            DownloadUrl = "https://github.com/rustfs/rustfs/releases/download/1.0.6/rustfs-windows-x86_64-v1.0.6.zip",
+            FolderName = "rustfs",
+            ApproximateSizeBytes = 118_500_000
         }
     };
 

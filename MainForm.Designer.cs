@@ -43,6 +43,7 @@ partial class MainForm
     private System.Windows.Forms.Panel footerPanel = null!;
     private System.Windows.Forms.Label lblStatusText = null!;
     private System.Windows.Forms.Label lblStatsText = null!;
+    private ModernButton btnCopyFooterError = null!;
 
     // Page Panels
     private System.Windows.Forms.Panel pageDashboard = null!;
@@ -105,6 +106,7 @@ partial class MainForm
         footerPanel = new System.Windows.Forms.Panel();
         lblStatusText = new System.Windows.Forms.Label();
         lblStatsText = new System.Windows.Forms.Label();
+        btnCopyFooterError = new ModernButton();
 
         // Pages
         pageDashboard = new System.Windows.Forms.Panel();
@@ -420,16 +422,18 @@ partial class MainForm
             using var borderPen = new Pen(ModernColors.BorderSubtle, 1);
             e.Graphics.DrawLine(borderPen, 0, 0, footerPanel.Width, 0);
         };
-        footerPanel.Resize += (s, e) =>
-        {
-            lblStatsText.Location = new Point(footerPanel.ClientSize.Width - lblStatsText.Width - 20, 7);
-            int maxStatusW = lblStatsText.Left - lblStatusText.Left - 12;
-            if (maxStatusW > 50)
-            {
-                lblStatusText.MaximumSize = new Size(maxStatusW, 18);
-                lblStatusText.AutoEllipsis = true;
-            }
-        };
+        footerPanel.Resize += (s, e) => LayoutFooterControls();
+
+        btnCopyFooterError.Text = "Copy Error";
+        btnCopyFooterError.Width = 78;
+        btnCopyFooterError.Height = 20;
+        btnCopyFooterError.BorderRadius = 4;
+        btnCopyFooterError.ShowBorder = true;
+        btnCopyFooterError.NormalColor = ModernColors.Card;
+        btnCopyFooterError.HoverColor = ModernColors.SurfaceHover;
+        btnCopyFooterError.ForeColor = ModernColors.Danger;
+        btnCopyFooterError.Font = new Font("Segoe UI", 7.25f, FontStyle.Bold);
+        btnCopyFooterError.Visible = false;
 
         lblStatusText.Text = "Ready - Dev Lite Server Portable Environment";
         lblStatusText.ForeColor = ModernColors.TextSecondary;
@@ -445,6 +449,7 @@ partial class MainForm
         lblStatsText.Location = new Point(560, 7);
 
         footerPanel.Controls.Add(lblStatusText);
+        footerPanel.Controls.Add(btnCopyFooterError);
         footerPanel.Controls.Add(lblStatsText);
 
         contentCard.Controls.Add(pageContainer);

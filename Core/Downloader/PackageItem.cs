@@ -74,6 +74,11 @@ public class PackageItem
                 if (File.Exists(Path.Combine(dir, "cloudflared.exe"))) return true;
                 return Directory.GetFiles(dir, "cloudflared.exe", SearchOption.AllDirectories).Length > 0;
             }
+            if (key.Equals("rustfs", StringComparison.OrdinalIgnoreCase))
+            {
+                if (File.Exists(Path.Combine(dir, "rustfs.exe"))) return true;
+                return Directory.GetFiles(dir, "rustfs.exe", SearchOption.AllDirectories).Length > 0;
+            }
         }
 
         return false;

@@ -38,8 +38,8 @@ Dokumen ini mencatat rencana strategis dan teknis pengembangan **DevLiteServer**
   - Scheduler emulator (misal trigger `php artisan schedule:run` tiap 60 detik) tanpa perlu menyentuh Windows Task Scheduler.
 
 ### Phase 4: Extended Cloud & Storage Mocks (Priority: Medium)
-- [x] **Local S3 Object Storage Mock (MinIO)**:
-  - Integrasi binary MinIO sebagai service opsional untuk testing upload file S3 lokal.
+- [x] **Local S3 Object Storage Mock (RustFS)**:
+  - Integrasi binary RustFS sebagai service opsional untuk testing upload file S3 lokal.
 - [ ] **Search Engine Mock (Meilisearch / Typesense)**:
   - Binary service opsional untuk search engine lokal yang ringan.
 - [ ] **SQLite GUI Viewer**:
@@ -64,4 +64,4 @@ Dokumen ini mencatat rencana strategis dan teknis pengembangan **DevLiteServer**
 | Node.js Reverse Proxy VHost | ✅ Selesai | v1.1.0 | Dukungan HMR WebSocket & custom proxy port |
 | Cloudflare Tunnel 1-Click Share | ✅ Selesai | v1.1.0 | Alternatif Ngrok gratis via `cloudflared` (One-click public URL) |
 | Windows Supervisor (Worker Manager) | ✅ Selesai | v1.2.0 | Queue, Vite (`npm run dev`), & background task runner via `JobObject` |
-| MinIO S3 Mock | ✅ Selesai | v1.3.0 | S3 API (:9100) & Web Console (:9101) via `minio.exe` |
+| RustFS S3 Mock | ✅ Selesai | v1.3.0 | S3 API (:9100) & Web Console (:9101) via `rustfs.exe` |

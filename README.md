@@ -43,7 +43,7 @@ Run **Dev Lite Server**. On the very first launch, the built-in wizard will offe
 - **Zero-UAC Dynamic Domains**:  
   Thanks to the built-in Micro DNS server, any `*.test` domain works instantly without needing administrator permission or manual `hosts` file editing.
 - **No Orphan Processes**:  
-  When you close Dev Lite Server, every single daemon (Nginx, PHP-CGI workers, MySQL, PostgreSQL, Redis, Mailpit, MinIO, and background workers) cleanly terminates via Windows Job Objects.
+  When you close Dev Lite Server, every single daemon (Nginx, PHP-CGI workers, MySQL, PostgreSQL, Redis, Mailpit, RustFS, and background workers) cleanly terminates via Windows Job Objects.
 - **Multi-Worker PHP (No More 502 Bad Gateway)**:  
   PHP runs in an isolated worker pool with Nginx load balancing, keeping your local sites fast and responsive under concurrent requests.
 - **Clean, Modern Dark UI**:  
@@ -78,8 +78,8 @@ Run **Dev Lite Server**. On the very first launch, the built-in wizard will offe
 - **Windows Supervisor (`Workers` tab)**: Run and monitor persistent project tasks such as `php artisan queue:work`, `php artisan horizon`, or `npm run dev` directly inside Dev Lite Server.
 - **Live Logs & Clean Shutdown**: View real-time stdout/stderr logs, configure auto-start per worker, and guarantee zero orphaned processes on exit.
 
-### 🪣 Built-in MinIO S3 Mock
-- Local S3-compatible object storage running on `127.0.0.1:9100` (API) with Web Console at `http://127.0.0.1:9101` (`minioadmin` / `minioadmin`), avoiding conflicts with PHP FastCGI port `9000`.
+### 🪣 Built-in RustFS S3 Mock
+- Local S3-compatible object storage running on `127.0.0.1:9100` (API) with Web Console at `http://127.0.0.1:9101` (`rustfsadmin` / `rustfsadmin`), avoiding conflicts with PHP FastCGI port `9000`.
 
 ### 💻 Developer Tools & Terminal
 - **Isolated Developer Terminal**: Launch PowerShell or CMD with pre-configured environment paths for PHP, Composer, Node.js, Git, and MySQL clients without altering your global Windows environment.
@@ -101,8 +101,8 @@ Dev Lite Server uses lightweight, standard local ports:
 | **Redis** | `127.0.0.1:6379` | In-memory key-value cache |
 | **Mailpit Web UI**| `http://localhost:8025` | Local webmail viewer |
 | **Mailpit SMTP** | `127.0.0.1:1025` | Local test mail capture |
-| **MinIO S3 API** | `http://127.0.0.1:9100` | S3-compatible local storage (`minioadmin` / `minioadmin`) |
-| **MinIO Console** | `http://127.0.0.1:9101` | MinIO web admin dashboard |
+| **RustFS S3 API** | `http://127.0.0.1:9100` | S3-compatible local storage (`rustfsadmin` / `rustfsadmin`) |
+| **RustFS Console** | `http://127.0.0.1:9101` | RustFS web admin dashboard |
 
 ---
 
@@ -132,7 +132,7 @@ Mysql=true
 Postgresql=false
 Redis=false
 Mailpit=true
-Minio=false
+RustFs=false
 ```
 
 ---
@@ -145,7 +145,7 @@ We are actively expanding Dev Lite Server to be the best zero-virtualization dev
 - ✅ **Hybrid Proxying (Node.js/SSR)**: Nginx reverse proxy with full WebSocket HMR support for Vite, Next.js, and Nuxt.
 - ✅ **Cloudflare Tunnel (1-Click Share)**: Instant public HTTPS demo URLs (`*.trycloudflare.com`) powered by `cloudflared`.
 - ✅ **Windows Supervisor (Background Workers)**: GUI task manager to run queues (`artisan queue:work`) and dev servers (`npm run dev`) with zero orphaned processes.
-- ✅ **Local S3 Storage (MinIO)**: Built-in S3-compatible object storage mock.
+- ✅ **Local S3 Storage (RustFS)**: Built-in S3-compatible object storage mock.
 - 🔲 **Mini Scheduler Runner**: Lightweight cron/task scheduler for `php artisan schedule:run`.
 - 🔲 **Search Engine Mock & SQLite GUI Viewer**: Local Meilisearch/Typesense integration and built-in SQLite table browser.
 - 🔲 **Unified Log Viewer & Dump Interceptor**: Centralized real-time viewer for Nginx, PHP, MySQL, and Laravel logs.

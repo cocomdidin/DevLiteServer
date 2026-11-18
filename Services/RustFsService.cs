@@ -3,59 +3,60 @@ using DevLiteServer.Core;
 
 namespace DevLiteServer.Services;
 
-public class MinioService : BaseService
+public class RustFsService : BaseService
 {
     private readonly AppConfig _config;
 
-    public override string Name => "MinIO";
-    public override int Port => _config.MinioApiPort;
-    public int ConsolePort => _config.MinioConsolePort;
-    public override bool IsInstalled => File.Exists(GetMinioExe());
+    public override string Name => "RustFS";
+    public override int Port => _config.RustFsApiPort;
+    public int ConsolePort => _config.RustFsConsolePort;
+    public override bool IsInstalled => File.Exists(GetRustFsExe());
 
     public override void UpdatePort(int newPort)
     {
-        _config.MinioApiPort = newPort;
+        _config.RustFsApiPort = newPort;
     }
 
-    public MinioService(string appRoot, JobObject job, AppConfig config)
+    public RustFsService(string appRoot, JobObject job, AppConfig config)
         : base(appRoot, job)
     {
         _config = config;
         CheckInstallation();
     }
 
-    public string GetMinioExe()
+    public string GetRustFsExe()
     {
-        string direct = Path.Combine(AppRoot, "bin", "minio", "minio.exe");
+        string rustfsDir = Path.Combine(AppRoot, "bin", "rustfs");
+        string direct = Path.Combine(rustfsDir, "rustfs.exe");
         if (File.Exists(direct)) return direct;
-        string minioDir = Path.Combine(AppRoot, "bin", "minio");
-        if (Directory.Exists(minioDir))
+
+        if (Directory.Exists(rustfsDir))
         {
-            var files = Directory.GetFiles(minioDir, "minio.exe", SearchOption.AllDirectories);
+            var files = Directory.GetFiles(rustfsDir, "rustfs.exe", SearchOption.AllDirectories);
             if (files.Length > 0) return files[0];
         }
         return direct;
     }
 
-    public string GetDataDirectory() => Path.Combine(AppRoot, "bin", "minio", "data");
+    public string GetDataDirectory() => Path.Combine(AppRoot, "bin", "rustfs", "data");
 
     public override async Task<bool> StartAsync()
     {
         LastError = null;
-        string exe = GetMinioExe();
+        string exe = GetRustFsExe();
         if (!File.Exists(exe))
         {
-            LastError = $"minio.exe not found at: {exe}";
+            LastError = $"rustfs.exe not found at: {exe}";
             Status = ServiceStatus.Error;
             return false;
         }
 
-        if (!await CheckAndResolvePortAsync(_config.MinioApiPort, p => _config.MinioApiPort = p))
+        if (!await CheckAndResolvePortAsync(_config.RustFsApiPort, p => _config.RustFsApiPort = p))
         {
             return false;
         }
 
-        if (!await CheckAndResolvePortAsync(_config.MinioConsolePort, p => _config.MinioConsolePort = p))
+        if (!await CheckAndResolvePortAsync(_config.RustFsConsolePort, p => _config.RustFsConsolePort = p))
         {
             return false;
         }
@@ -73,21 +74,21 @@ public class MinioService : BaseService
             var psi = new ProcessStartInfo
             {
                 FileName = exe,
-                Arguments = $"server \"{dataDir}\" --address 127.0.0.1:{_config.MinioApiPort} --console-address 127.0.0.1:{_config.MinioConsolePort}",
+                Arguments = $"--address 127.0.0.1:{_config.RustFsApiPort} --console-enable true --console-address 127.0.0.1:{_config.RustFsConsolePort} \"{dataDir}\"",
                 WorkingDirectory = Path.GetDirectoryName(exe) ?? AppRoot,
                 RedirectStandardOutput = false,
                 RedirectStandardError = false
             };
 
-            psi.EnvironmentVariables["MINIO_ROOT_USER"] = _config.MinioRootUser;
-            psi.EnvironmentVariables["MINIO_ROOT_PASSWORD"] = _config.MinioRootPassword;
+            psi.EnvironmentVariables["RUSTFS_ACCESS_KEY"] = _config.RustFsAccessKey;
+            psi.EnvironmentVariables["RUSTFS_SECRET_KEY"] = _config.RustFsSecretKey;
 
             CurrentProcess = LaunchProcess(psi);
             await Task.Delay(500);
 
             if (CurrentProcess == null || CurrentProcess.HasExited)
             {
-                LastError = "MinIO process exited unexpectedly on startup.";
+                LastError = "RustFS process exited unexpectedly on startup.";
                 Status = ServiceStatus.Error;
                 return false;
             }
@@ -97,7 +98,7 @@ public class MinioService : BaseService
         }
         catch (Exception ex)
         {
-            LastError = $"Failed to start MinIO: {ex.Message}";
+            LastError = $"Failed to start RustFS: {ex.Message}";
             Status = ServiceStatus.Error;
             return false;
         }
