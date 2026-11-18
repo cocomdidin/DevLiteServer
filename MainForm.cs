@@ -182,7 +182,7 @@ public partial class MainForm : Form
         navPhp.IsActive = (index == 2);
         navNode.IsActive = (index == 3);
         navDatabases.IsActive = (index == 4);
-        navMailpit.IsActive = (index == 5);
+        navServices.IsActive = (index == 5);
         navWorkers.IsActive = (index == 6);
         navSettings.IsActive = (index == 7);
 
@@ -191,7 +191,7 @@ public partial class MainForm : Form
         pagePhp.Visible = (index == 2);
         pageNode.Visible = (index == 3);
         pageServices.Visible = (index == 4);
-        pageMail.Visible = (index == 5);
+        pageDevServices.Visible = (index == 5);
         pageWorkers.Visible = (index == 6);
         pageSettings.Visible = (index == 7);
 
@@ -219,8 +219,8 @@ public partial class MainForm : Form
                 lblPageSubtitle.Text = "Manage MySQL, PostgreSQL, Redis, and GUI client tools";
                 break;
             case 5:
-                lblPageTitle.Text = "Mailpit Testing";
-                lblPageSubtitle.Text = "Local SMTP server and webmail inspector";
+                lblPageTitle.Text = "Services";
+                lblPageSubtitle.Text = "Local Mailpit SMTP/Webmail and MinIO S3 object storage mock";
                 break;
             case 6:
                 lblPageTitle.Text = "Background Workers";
@@ -241,7 +241,7 @@ public partial class MainForm : Form
     // ==========================================
     private void InitPages()
     {
-        Panel[] mainPages = [pageDashboard, pageSites, pagePhp, pageNode, pageServices, pageMail, pageWorkers, pageSettings];
+        Panel[] mainPages = [pageDashboard, pageSites, pagePhp, pageNode, pageServices, pageDevServices, pageWorkers, pageSettings];
         foreach (var page in mainPages)
         {
             page.Dock = DockStyle.Fill;
@@ -256,7 +256,7 @@ public partial class MainForm : Form
         PopulatePhpPage();
         PopulateNodePage();
         PopulateServicesPage();
-        PopulateMailPage();
+        PopulateDevServicesPage();
         PopulateWorkersPage();
         PopulateSettingsPage();
     }
@@ -2903,29 +2903,139 @@ public partial class MainForm : Form
     }
 
     // ------------------------------------------
-    // PAGE 6: MAIL
+    // PAGE 5: SERVICES (Mailpit & MinIO S3 Mock)
     // ------------------------------------------
-    private void PopulateMailPage()
+    private void PopulateDevServicesPage()
     {
-        pageMail.Padding = new Padding(24, 16, 24, 20);
+        pageDevServices.Padding = new Padding(24, 16, 24, 20);
+        var serviceTip = new ToolTip { InitialDelay = 250, AutoPopDelay = 12000 };
 
-        // Hero Card
-        var heroCard = new Panel
+        string BuildMailpitEnv() =>
+            $"MAIL_MAILER=smtp\r\nMAIL_HOST=127.0.0.1\r\nMAIL_PORT={_config.MailpitSmtpPort}\r\nMAIL_USERNAME=null\r\nMAIL_PASSWORD=null\r\nMAIL_ENCRYPTION=null";
+
+        string BuildMinioEnv() =>
+            $"FILESYSTEM_DISK=s3\r\nAWS_ACCESS_KEY_ID={_config.MinioRootUser}\r\nAWS_SECRET_ACCESS_KEY={_config.MinioRootPassword}\r\nAWS_DEFAULT_REGION=us-east-1\r\nAWS_BUCKET=local\r\nAWS_ENDPOINT=http://127.0.0.1:{_config.MinioApiPort}\r\nAWS_USE_PATH_STYLE_ENDPOINT=true";
+
+        var cardMailpit = CreateDevServiceCard(
+            service: _mailpit,
+            packageKey: "mailpit",
+            title: "Mailpit",
+            description: "Local SMTP test capture and webmail inbox inspector.",
+            getEnabled: () => _config.EnableMailpit,
+            setEnabled: v => _config.EnableMailpit = v,
+            port1Label: "SMTP:",
+            getPort1: () => _config.MailpitSmtpPort,
+            setPort1: p => _config.MailpitSmtpPort = p,
+            port2Label: "Web:",
+            getPort2: () => _config.MailpitWebPort,
+            setPort2: p => { _config.MailpitWebPort = p; _mailpit.UpdatePort(p); },
+            uiButtonPrefix: "Inbox",
+            uiButtonIcon: IconKind.Mail,
+            onOpenUi: () => BtnOpenMailpit_Click(this, EventArgs.Empty),
+            getEnvSnippet: BuildMailpitEnv,
+            toolTip: serviceTip,
+            extraButtonText: "Test",
+            extraButtonTooltip: "Send a test SMTP email to Mailpit",
+            onExtraAction: async btn =>
+            {
+                btn.Enabled = false;
+                try
+                {
+                    using var tcp = new System.Net.Sockets.TcpClient();
+                    await tcp.ConnectAsync("127.0.0.1", _config.MailpitSmtpPort);
+                    using var stream = tcp.GetStream();
+                    using var reader = new StreamReader(stream);
+                    using var writer = new StreamWriter(stream) { AutoFlush = true };
+                    await reader.ReadLineAsync();
+                    await writer.WriteLineAsync("HELO localhost");
+                    await reader.ReadLineAsync();
+                    await writer.WriteLineAsync("MAIL FROM:<noreply@liteserver.local>");
+                    await reader.ReadLineAsync();
+                    await writer.WriteLineAsync("RCPT TO:<dev@liteserver.local>");
+                    await reader.ReadLineAsync();
+                    await writer.WriteLineAsync("DATA");
+                    await reader.ReadLineAsync();
+                    await writer.WriteLineAsync($"Subject: Dev Lite Server - Test Mail ({DateTime.Now:HH:mm:ss})\r\nFrom: noreply@liteserver.local\r\nTo: dev@liteserver.local\r\n\r\nHello from Dev Lite Server Mailpit!\r\nSent successfully at {DateTime.Now:yyyy-MM-dd HH:mm:ss}.\r\n.");
+                    await reader.ReadLineAsync();
+                    await writer.WriteLineAsync("QUIT");
+                    MessageBox.Show(this, "Test email captured successfully! Check your Mailpit Inbox.", "Mailpit", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, $"Failed to send test email:\r\n{ex.Message}\r\n\r\nEnsure Mailpit is running on SMTP port {_config.MailpitSmtpPort}.", "Mailpit Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                finally
+                {
+                    btn.Enabled = true;
+                }
+            });
+
+        var cardMinio = CreateDevServiceCard(
+            service: _minio,
+            packageKey: "minio",
+            title: "MinIO (S3 Mock)",
+            description: $"Local S3-compatible storage mock ({_config.MinioRootUser} / {_config.MinioRootPassword}).",
+            getEnabled: () => _config.EnableMinio,
+            setEnabled: v => _config.EnableMinio = v,
+            port1Label: "API:",
+            getPort1: () => _config.MinioApiPort,
+            setPort1: p => { _config.MinioApiPort = p; _minio.UpdatePort(p); },
+            port2Label: "Console:",
+            getPort2: () => _config.MinioConsolePort,
+            setPort2: p => _config.MinioConsolePort = p,
+            uiButtonPrefix: "Console",
+            uiButtonIcon: IconKind.Globe,
+            onOpenUi: () =>
+            {
+                try { Process.Start(new ProcessStartInfo($"http://127.0.0.1:{_config.MinioConsolePort}") { UseShellExecute = true }); }
+                catch { }
+            },
+            getEnvSnippet: BuildMinioEnv,
+            toolTip: serviceTip);
+
+        // Reverse dock order for DockStyle.Top
+        pageDevServices.Controls.AddRange([cardMinio, cardMailpit]);
+        cardMailpit.BringToFront();
+        cardMinio.BringToFront();
+    }
+
+    private Panel CreateDevServiceCard(
+        IService service,
+        string packageKey,
+        string title,
+        string description,
+        Func<bool> getEnabled,
+        Action<bool> setEnabled,
+        string port1Label,
+        Func<int> getPort1,
+        Action<int> setPort1,
+        string port2Label,
+        Func<int> getPort2,
+        Action<int> setPort2,
+        string uiButtonPrefix,
+        IconKind uiButtonIcon,
+        Action onOpenUi,
+        Func<string> getEnvSnippet,
+        ToolTip toolTip,
+        string? extraButtonText = null,
+        string? extraButtonTooltip = null,
+        Func<ModernButton, Task>? onExtraAction = null)
+    {
+        var card = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 156,
+            Height = 104,
             BackColor = Color.Transparent,
-            Margin = new Padding(0, 0, 0, 14),
-            Padding = new Padding(16, 8, 16, 16)
+            Padding = new Padding(16, 6, 16, 16)
         };
-        heroCard.Paint += (s, e) =>
+        card.Paint += (s, e) =>
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             float stroke = 1f;
             float halfStroke = stroke / 2f;
-            float cardH = heroCard.Height - 10f;
-            var rect = new RectangleF(halfStroke, halfStroke, heroCard.Width - stroke, cardH - stroke);
+            float cardH = card.Height - 10f;
+            var rect = new RectangleF(halfStroke, halfStroke, card.Width - stroke, cardH - stroke);
             using var path = CreateRoundedRectangle(rect, 8f);
             using var bgBrush = new SolidBrush(ModernColors.Surface);
             g.FillPath(bgBrush, path);
@@ -2935,34 +3045,33 @@ public partial class MainForm : Form
 
         var pill = new StatusPill
         {
-            Status = _mailpit.Status,
-            Location = new Point(14, 20)
+            Status = service.Status,
+            Location = new Point(14, 22)
         };
-        _mailpit.StatusChanged += (s, st) =>
+        service.StatusChanged += (s, st) =>
         {
             if (InvokeRequired) Invoke(() => pill.Status = st);
             else pill.Status = st;
         };
 
-        var lblMailTitle = new Label
+        var lblTitle = new Label
         {
-            Text = "Mailpit Local SMTP & Inbox Server",
+            Text = title,
             ForeColor = ModernColors.TextPrimary,
             Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
-            Location = new Point(116, 12),
+            Location = new Point(116, 10),
             AutoSize = true
         };
 
-        var lblMailDesc = new Label
+        var lblDesc = new Label
         {
-            Text = "Captures outgoing SMTP traffic and provides an instant webmail viewer.",
+            Text = description,
             ForeColor = ModernColors.TextMuted,
             Font = new Font("Segoe UI", 8.25f),
-            Location = new Point(117, 34),
+            Location = new Point(117, 32),
             AutoSize = true
         };
 
-        // Row 1 (Y=62): Enabled & Auto-Start
         var lblEnable = new Label
         {
             Text = "Enabled:",
@@ -2973,42 +3082,136 @@ public partial class MainForm : Form
         };
         var togEnable = new ModernToggle
         {
-            Checked = _config.EnableMailpit,
+            Checked = getEnabled(),
             Location = new Point(170, 60)
         };
         togEnable.CheckedChanged += (s, e) =>
         {
-            _config.EnableMailpit = togEnable.Checked;
+            setEnabled(togEnable.Checked);
             ConfigManager.Save(Path.Combine(_appRoot, "config.ini"), _config);
             BuildServiceCards();
             BuildTrayMenu();
         };
 
-        // Action Buttons (Right-aligned)
+        var lblPort1 = new Label
+        {
+            Text = port1Label,
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Location = new Point(224, 62),
+            AutoSize = true
+        };
+        var txtPort1 = CreatePortInput(getPort1(), p =>
+        {
+            setPort1(p);
+            toolTip.SetToolTip(lblTitle, getEnvSnippet());
+        });
+        txtPort1.Location = new Point(lblPort1.Left + (port1Label.Length * 7) + 4, 59);
+
+        var lblPort2 = new Label
+        {
+            Text = port2Label,
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Location = new Point(txtPort1.Right + 10, 62),
+            AutoSize = true
+        };
+
+        var btnOpenUi = new ModernButton
+        {
+            Text = $"{uiButtonPrefix} (:{getPort2()})",
+            IconKind = uiButtonIcon,
+            IconSize = 10,
+            Width = 122,
+            Height = 32,
+            BorderRadius = 6,
+            ShowBorder = false,
+            NormalColor = ModernColors.Primary,
+            HoverColor = ModernColors.PrimaryHover,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
+        };
+        btnOpenUi.Click += (s, e) => onOpenUi();
+
+        var txtPort2 = CreatePortInput(getPort2(), p =>
+        {
+            setPort2(p);
+            btnOpenUi.Text = $"{uiButtonPrefix} (:{p})";
+        });
+        txtPort2.Location = new Point(lblPort2.Left + (port2Label.Length * 7) + 4, 59);
+
+        var btnCopyEnv = new ModernButton
+        {
+            Text = "Copy .env",
+            IconKind = IconKind.Code,
+            IconSize = 10,
+            Width = 84,
+            Height = 32,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.Primary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
+        };
+        toolTip.SetToolTip(btnCopyEnv, "Click to copy .env snippet:\r\n" + getEnvSnippet());
+        btnCopyEnv.Click += async (s, e) =>
+        {
+            string env = getEnvSnippet();
+            Clipboard.SetText(env);
+            toolTip.SetToolTip(btnCopyEnv, "Click to copy .env snippet:\r\n" + env);
+            btnCopyEnv.Text = "Copied!";
+            await Task.Delay(1400);
+            btnCopyEnv.Text = "Copy .env";
+        };
+
+        ModernButton? btnExtra = null;
+        if (!string.IsNullOrEmpty(extraButtonText) && onExtraAction != null)
+        {
+            btnExtra = new ModernButton
+            {
+                Text = extraButtonText,
+                IconKind = IconKind.Lightning,
+                IconSize = 10,
+                Width = 66,
+                Height = 32,
+                BorderRadius = 6,
+                ShowBorder = true,
+                NormalColor = ModernColors.Card,
+                HoverColor = ModernColors.SurfaceHover,
+                ForeColor = ModernColors.TextPrimary,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
+            };
+            if (!string.IsNullOrEmpty(extraButtonTooltip))
+            {
+                toolTip.SetToolTip(btnExtra, extraButtonTooltip);
+            }
+            btnExtra.Click += async (s, e) => await onExtraAction(btnExtra);
+        }
+
         var btnToggle = new ModernButton
         {
-            Text = _mailpit.Status == ServiceStatus.Running ? "Stop" : (_mailpit.Status == ServiceStatus.NotInstalled ? "Install" : "Start"),
-            IconKind = _mailpit.Status == ServiceStatus.Running ? IconKind.Stop : (_mailpit.Status == ServiceStatus.NotInstalled ? IconKind.Download : IconKind.Play),
+            Text = service.Status == ServiceStatus.Running ? "Stop" : (service.Status == ServiceStatus.NotInstalled ? "Install" : "Start"),
+            IconKind = service.Status == ServiceStatus.Running ? IconKind.Stop : (service.Status == ServiceStatus.NotInstalled ? IconKind.Download : IconKind.Play),
             IconSize = 10,
             Width = 80,
             Height = 32,
             BorderRadius = 6,
             ShowBorder = false,
-            NormalColor = _mailpit.Status == ServiceStatus.Running ? ModernColors.Danger : (_mailpit.Status == ServiceStatus.NotInstalled ? ModernColors.Primary : ModernColors.Success),
-            HoverColor = _mailpit.Status == ServiceStatus.Running ? ModernColors.DangerHover : (_mailpit.Status == ServiceStatus.NotInstalled ? ModernColors.PrimaryHover : ModernColors.SuccessHover),
+            NormalColor = service.Status == ServiceStatus.Running ? ModernColors.Danger : (service.Status == ServiceStatus.NotInstalled ? ModernColors.Primary : ModernColors.Success),
+            HoverColor = service.Status == ServiceStatus.Running ? ModernColors.DangerHover : (service.Status == ServiceStatus.NotInstalled ? ModernColors.PrimaryHover : ModernColors.SuccessHover),
             Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
         };
 
-        void UpdateMailBtn()
+        void UpdateToggleBtn()
         {
-            if (_mailpit.Status == ServiceStatus.Running)
+            if (service.Status == ServiceStatus.Running)
             {
                 btnToggle.Text = "Stop";
                 btnToggle.IconKind = IconKind.Stop;
                 btnToggle.NormalColor = ModernColors.Danger;
                 btnToggle.HoverColor = ModernColors.DangerHover;
             }
-            else if (_mailpit.Status == ServiceStatus.NotInstalled)
+            else if (service.Status == ServiceStatus.NotInstalled)
             {
                 btnToggle.Text = "Install";
                 btnToggle.IconKind = IconKind.Download;
@@ -3029,251 +3232,70 @@ public partial class MainForm : Form
             btnToggle.Enabled = false;
             try
             {
-                if (_mailpit.Status == ServiceStatus.NotInstalled)
+                if (service.Status == ServiceStatus.NotInstalled)
                 {
-                    await InstallServiceWithUiAsync("mailpit", _mailpit);
+                    await InstallServiceWithUiAsync(packageKey, service);
                 }
-                else if (_mailpit.Status == ServiceStatus.Running)
+                else if (service.Status == ServiceStatus.Running)
                 {
-                    await _mailpit.StopAsync();
+                    await service.StopAsync();
                 }
                 else
                 {
-                    await _mailpit.StartAsync();
+                    await service.StartAsync();
                 }
             }
             finally
             {
                 btnToggle.Enabled = true;
-                UpdateMailBtn();
+                UpdateToggleBtn();
             }
         };
 
-        _mailpit.StatusChanged += (s, st) =>
+        service.StatusChanged += (s, st) =>
         {
-            if (InvokeRequired) Invoke((Action)UpdateMailBtn);
-            else UpdateMailBtn();
+            if (InvokeRequired) Invoke((Action)UpdateToggleBtn);
+            else UpdateToggleBtn();
         };
 
-        var btnOpenInbox = new ModernButton
+        void LayoutButtons()
         {
-            Text = $"Open Inbox (:{_config.MailpitWebPort})",
-            IconKind = IconKind.Mail,
-            IconSize = 10,
-            Width = 145,
-            Height = 32,
-            BorderRadius = 6,
-            ShowBorder = false,
-            NormalColor = ModernColors.Primary,
-            HoverColor = ModernColors.PrimaryHover,
-            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
-        };
-        btnOpenInbox.Click += BtnOpenMailpit_Click;
+            const int y = 14;
+            int rightX = card.Width > 200 ? card.Width - btnToggle.Width - 14 : 520;
+            btnToggle.Location = new Point(rightX, y);
+            btnOpenUi.Location = new Point(btnToggle.Left - btnOpenUi.Width - 8, y);
+            btnCopyEnv.Location = new Point(btnOpenUi.Left - btnCopyEnv.Width - 8, y);
 
-        var btnTestMail = new ModernButton
-        {
-            Text = "Send Test",
-            IconKind = IconKind.Lightning,
-            IconSize = 10,
-            Width = 92,
-            Height = 32,
-            BorderRadius = 6,
-            ShowBorder = true,
-            NormalColor = ModernColors.Card,
-            HoverColor = ModernColors.SurfaceHover,
-            ForeColor = ModernColors.Primary,
-            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold)
-        };
-        btnTestMail.Click += async (s, e) =>
-        {
-            btnTestMail.Enabled = false;
-            try
+            int leftLimit = btnCopyEnv.Left - 10;
+            if (btnExtra != null)
             {
-                using var tcp = new System.Net.Sockets.TcpClient();
-                await tcp.ConnectAsync("127.0.0.1", _config.MailpitSmtpPort);
-                using var stream = tcp.GetStream();
-                using var reader = new StreamReader(stream);
-                using var writer = new StreamWriter(stream) { AutoFlush = true };
-                await reader.ReadLineAsync();
-                await writer.WriteLineAsync("HELO localhost");
-                await reader.ReadLineAsync();
-                await writer.WriteLineAsync("MAIL FROM:<noreply@liteserver.local>");
-                await reader.ReadLineAsync();
-                await writer.WriteLineAsync("RCPT TO:<dev@liteserver.local>");
-                await reader.ReadLineAsync();
-                await writer.WriteLineAsync("DATA");
-                await reader.ReadLineAsync();
-                await writer.WriteLineAsync($"Subject: Dev Lite Server - Test Mail ({DateTime.Now:HH:mm:ss})\r\nFrom: noreply@liteserver.local\r\nTo: dev@liteserver.local\r\n\r\nHello from Dev Lite Server Mailpit!\r\nSent successfully at {DateTime.Now:yyyy-MM-dd HH:mm:ss}.\r\n.");
-                await reader.ReadLineAsync();
-                await writer.WriteLineAsync("QUIT");
-                MessageBox.Show(this, "Test email captured successfully! Check your Mailpit Inbox.", "Mailpit", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                btnExtra.Location = new Point(btnCopyEnv.Left - btnExtra.Width - 8, y);
+                leftLimit = btnExtra.Left - 10;
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, $"Failed to send test email:\r\n{ex.Message}\r\n\r\nEnsure Mailpit is running on SMTP port {_config.MailpitSmtpPort}.", "Mailpit Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
-            finally
-            {
-                btnTestMail.Enabled = true;
-            }
-        };
 
-        // Forward declare snippet update action
-        Action? updateSnippet = null;
-
-        // Row 2 (Y=100): SMTP & Web Ports
-        var lblSmtp = new Label
-        {
-            Text = "SMTP Port:",
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
-            Location = new Point(117, 103),
-            AutoSize = true
-        };
-        var txtSmtp = CreatePortInput(_config.MailpitSmtpPort, p =>
-        {
-            _config.MailpitSmtpPort = p;
-            updateSnippet?.Invoke();
-        });
-        txtSmtp.Location = new Point(190, 100);
-
-        var lblWeb = new Label
-        {
-            Text = "Web UI Port:",
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
-            Location = new Point(260, 103),
-            AutoSize = true
-        };
-        var txtWeb = CreatePortInput(_config.MailpitWebPort, p =>
-        {
-            _config.MailpitWebPort = p;
-            _mailpit.UpdatePort(p);
-            btnOpenInbox.Text = $"Open Inbox (:{p})";
-        });
-        txtWeb.Location = new Point(345, 100);
-
-        void LayoutMailButtons()
-        {
-            int cardH = heroCard.Height - 10;
-            int rightX = heroCard.Width > 200 ? heroCard.Width - btnToggle.Width - 14 : 500;
-            btnToggle.Location = new Point(rightX, (cardH - btnToggle.Height) / 2);
-            btnOpenInbox.Location = new Point(btnToggle.Left - btnOpenInbox.Width - 8, (cardH - btnOpenInbox.Height) / 2);
-            btnTestMail.Location = new Point(btnOpenInbox.Left - btnTestMail.Width - 8, (cardH - btnTestMail.Height) / 2);
-
-            int leftLimit = btnTestMail.Left - 10;
-            int maxDescW = leftLimit - lblMailDesc.Left;
+            int maxDescW = leftLimit - lblDesc.Left;
             if (maxDescW > 50)
             {
-                lblMailTitle.MaximumSize = new Size(maxDescW, 22);
-                lblMailTitle.AutoEllipsis = true;
-                lblMailDesc.MaximumSize = new Size(maxDescW, 20);
-                lblMailDesc.AutoEllipsis = true;
+                lblTitle.MaximumSize = new Size(maxDescW, 22);
+                lblTitle.AutoEllipsis = true;
+                lblDesc.MaximumSize = new Size(maxDescW, 20);
+                lblDesc.AutoEllipsis = true;
             }
         }
-        heroCard.Resize += (s, e) => LayoutMailButtons();
-        LayoutMailButtons();
 
-        heroCard.Controls.Add(pill);
-        heroCard.Controls.Add(lblMailTitle);
-        heroCard.Controls.Add(lblMailDesc);
-        heroCard.Controls.Add(lblEnable);
-        heroCard.Controls.Add(togEnable);
-        heroCard.Controls.Add(lblSmtp);
-        heroCard.Controls.Add(txtSmtp);
-        heroCard.Controls.Add(lblWeb);
-        heroCard.Controls.Add(txtWeb);
-        heroCard.Controls.Add(btnTestMail);
-        heroCard.Controls.Add(btnOpenInbox);
-        heroCard.Controls.Add(btnToggle);
+        card.Resize += (s, e) => LayoutButtons();
+        LayoutButtons();
 
-        // Env Snippet Card
-        var snippetCard = new Panel
-        {
-            Dock = DockStyle.Top,
-            Height = 170,
-            BackColor = Color.Transparent,
-            Margin = new Padding(0, 14, 0, 0),
-            Padding = new Padding(16, 12, 16, 16)
-        };
-        snippetCard.Paint += (s, e) =>
-        {
-            var g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            float stroke = 1f;
-            float halfStroke = stroke / 2f;
-            float cardH = snippetCard.Height - 10f;
-            var rect = new RectangleF(halfStroke, halfStroke, snippetCard.Width - stroke, cardH - stroke);
-            using var path = CreateRoundedRectangle(rect, 8f);
-            using var bgBrush = new SolidBrush(ModernColors.Surface);
-            g.FillPath(bgBrush, path);
-            using var pen = new Pen(ModernColors.BorderSubtle, 1f);
-            g.DrawPath(pen, path);
-        };
+        card.Controls.AddRange([
+            pill, lblTitle, lblDesc,
+            lblEnable, togEnable,
+            lblPort1, txtPort1,
+            lblPort2, txtPort2,
+            btnCopyEnv, btnOpenUi, btnToggle
+        ]);
+        if (btnExtra != null) card.Controls.Add(btnExtra);
 
-        var lblSnippetTitle = new Label
-        {
-            Text = "Laravel / Symfony / WordPress .env Configuration:",
-            ForeColor = ModernColors.TextSecondary,
-            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-            Location = new Point(16, 12),
-            AutoSize = true
-        };
-
-        var btnCopyEnv = new ModernButton
-        {
-            Text = "Copy .env",
-            IconKind = IconKind.Folder,
-            IconSize = 10,
-            Width = 86,
-            Height = 26,
-            BorderRadius = 4,
-            ShowBorder = true,
-            NormalColor = ModernColors.Card,
-            HoverColor = ModernColors.SurfaceHover,
-            ForeColor = ModernColors.Primary,
-            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
-            Location = new Point(500, 10)
-        };
-
-        var txtSnippet = new TextBox
-        {
-            Multiline = true,
-            ReadOnly = true,
-            BackColor = ModernColors.Card,
-            ForeColor = ModernColors.TextPrimary,
-            BorderStyle = BorderStyle.None,
-            Font = new Font("Cascadia Code", 8.5f),
-            Location = new Point(16, 40),
-            Size = new Size(570, 105)
-        };
-
-        void RefreshSnippetText()
-        {
-            txtSnippet.Text = $"MAIL_MAILER=smtp\r\nMAIL_HOST=127.0.0.1\r\nMAIL_PORT={_config.MailpitSmtpPort}\r\nMAIL_USERNAME=null\r\nMAIL_PASSWORD=null\r\nMAIL_ENCRYPTION=null";
-        }
-        RefreshSnippetText();
-        updateSnippet = RefreshSnippetText;
-
-        btnCopyEnv.Click += async (s, e) =>
-        {
-            Clipboard.SetText(txtSnippet.Text);
-            btnCopyEnv.Text = "Copied!";
-            await Task.Delay(1500);
-            btnCopyEnv.Text = "Copy .env";
-        };
-
-        snippetCard.Resize += (s, e) =>
-        {
-            btnCopyEnv.Location = new Point(Math.Max(300, snippetCard.Width - btnCopyEnv.Width - 18), 10);
-            txtSnippet.Width = Math.Max(200, snippetCard.Width - 36);
-        };
-
-        snippetCard.Controls.Add(lblSnippetTitle);
-        snippetCard.Controls.Add(btnCopyEnv);
-        snippetCard.Controls.Add(txtSnippet);
-
-        pageMail.Controls.AddRange([snippetCard, heroCard]);
+        return card;
     }
 
     // ==========================================
@@ -4220,6 +4242,7 @@ public partial class MainForm : Form
         AddServiceEnabledMenuItem("Mailpit", "mailpit", () => _config.EnableMailpit, v => _config.EnableMailpit = v);
         AddServiceEnabledMenuItem("PostgreSQL", "postgresql", () => _config.EnablePostgresql, v => _config.EnablePostgresql = v);
         AddServiceEnabledMenuItem("Redis", "redis", () => _config.EnableRedis, v => _config.EnableRedis = v);
+        AddServiceEnabledMenuItem("MinIO (S3)", "minio", () => _config.EnableMinio, v => _config.EnableMinio = v);
 
         trayMenu.Items.Add(enabledServicesMenu);
 

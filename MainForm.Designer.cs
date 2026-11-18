@@ -21,7 +21,7 @@ partial class MainForm
     private NavButton navPhp = null!;
     private NavButton navNode = null!;
     private NavButton navDatabases = null!;
-    private NavButton navMailpit = null!;
+    private NavButton navServices = null!;
     private NavButton navWorkers = null!;
     private NavButton navSettings = null!;
 
@@ -50,7 +50,7 @@ partial class MainForm
     private System.Windows.Forms.Panel pagePhp = null!;
     private System.Windows.Forms.Panel pageNode = null!;
     private System.Windows.Forms.Panel pageServices = null!;
-    private System.Windows.Forms.Panel pageMail = null!;
+    private System.Windows.Forms.Panel pageDevServices = null!;
     private System.Windows.Forms.Panel pageWorkers = null!;
     private System.Windows.Forms.Panel pageSettings = null!;
 
@@ -85,7 +85,7 @@ partial class MainForm
         navPhp = new NavButton();
         navNode = new NavButton();
         navDatabases = new NavButton();
-        navMailpit = new NavButton();
+        navServices = new NavButton();
         navWorkers = new NavButton();
         navSettings = new NavButton();
 
@@ -112,7 +112,7 @@ partial class MainForm
         pagePhp = new System.Windows.Forms.Panel();
         pageNode = new System.Windows.Forms.Panel();
         pageServices = new System.Windows.Forms.Panel();
-        pageMail = new System.Windows.Forms.Panel();
+        pageDevServices = new System.Windows.Forms.Panel();
         pageWorkers = new System.Windows.Forms.Panel();
         pageSettings = new System.Windows.Forms.Panel();
 
@@ -177,10 +177,10 @@ partial class MainForm
         navWorkers.Dock = DockStyle.Top;
         navWorkers.Click += (s, e) => SelectNavTab(6);
 
-        navMailpit.Text = "Mailpit";
-        navMailpit.Icon = IconKind.Mail;
-        navMailpit.Dock = DockStyle.Top;
-        navMailpit.Click += (s, e) => SelectNavTab(5);
+        navServices.Text = "Services";
+        navServices.Icon = IconKind.Code;
+        navServices.Dock = DockStyle.Top;
+        navServices.Click += (s, e) => SelectNavTab(5);
 
         navDatabases.Text = "Databases";
         navDatabases.Icon = IconKind.Database;
@@ -208,8 +208,29 @@ partial class MainForm
         navDashboard.Dock = DockStyle.Top;
         navDashboard.Click += (s, e) => SelectNavTab(0);
 
+        Label CreateNavSection(string title) => new()
+        {
+            Text = title,
+            Dock = DockStyle.Top,
+            Height = 14,
+            ForeColor = ModernColors.TextMuted,
+            Font = new Font("Segoe UI", 5.5f, FontStyle.Bold),
+            Padding = new Padding(18, 2, 0, 0),
+            TextAlign = ContentAlignment.BottomLeft
+        };
+
+        var secCore = CreateNavSection("CORE");
+        var secRuntimes = CreateNavSection("RUNTIMES");
+        var secInfra = CreateNavSection("DATA & SERVICES");
+        var secSystem = CreateNavSection("SYSTEM");
+
         // Reverse dock order for WinForms DockStyle.Top
-        navContainer.Controls.AddRange([navSettings, navWorkers, navMailpit, navDatabases, navNode, navPhp, navSites, navDashboard]);
+        navContainer.Controls.AddRange([
+            navSettings, secSystem,
+            navWorkers, navServices, navDatabases, secInfra,
+            navNode, navPhp, secRuntimes,
+            navSites, navDashboard, secCore
+        ]);
 
         // Sidebar Footer
         sidebarFooter.Dock = DockStyle.Bottom;
