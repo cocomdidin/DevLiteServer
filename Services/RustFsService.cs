@@ -74,7 +74,7 @@ public class RustFsService : BaseService
             var psi = new ProcessStartInfo
             {
                 FileName = exe,
-                Arguments = $"--address 127.0.0.1:{_config.RustFsApiPort} --console-enable true --console-address 127.0.0.1:{_config.RustFsConsolePort} \"{dataDir}\"",
+                Arguments = $"--address 127.0.0.1:{_config.RustFsApiPort} --console-enable --console-address 127.0.0.1:{_config.RustFsConsolePort} \"{dataDir}\"",
                 WorkingDirectory = Path.GetDirectoryName(exe) ?? AppRoot,
                 RedirectStandardOutput = false,
                 RedirectStandardError = false
