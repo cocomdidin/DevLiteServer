@@ -64,6 +64,7 @@ public partial class MainForm : Form
 
         _job = new JobObject();
         WorkerManager.Load(_appRoot);
+        SchedulerManager.Load(_appRoot);
 
         _php = new PhpService(_appRoot, _job, _config);
         PhpService.UpdateCurrentJunction(_appRoot, _config.ActivePhp);
@@ -3511,6 +3512,7 @@ public partial class MainForm : Form
         btnStartAuto.Click += (s, e) =>
         {
             WorkerManager.StartAllAutoWorkers(_appRoot, _job);
+        SchedulerManager.StartAutoTasks(_appRoot, _job);
             RefreshWorkersList();
         };
 
@@ -3532,6 +3534,7 @@ public partial class MainForm : Form
         btnStopAllWorkers.Click += (s, e) =>
         {
             WorkerManager.StopAllWorkers();
+        SchedulerManager.StopAll();
             RefreshWorkersList();
         };
 
@@ -3580,10 +3583,413 @@ public partial class MainForm : Form
             }
         };
 
-        pageWorkers.Controls.Add(_pnlWorkersContainer);
-        pageWorkers.Controls.Add(pnlTop);
+        var pnlWorkersView = new Panel { Dock = DockStyle.Fill };
+        pnlWorkersView.Controls.Add(_pnlWorkersContainer);
+        pnlWorkersView.Controls.Add(pnlTop);
+
+        // Scheduler Sub-View
+        var pnlSchedulerView = new Panel { Dock = DockStyle.Fill, Visible = false };
+        var pnlSchedTop = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 76,
+            Padding = new Padding(0, 0, 0, 8)
+        };
+
+        var btnAddSched = new ModernButton
+        {
+            Text = "Add Schedule",
+            IconKind = IconKind.Plus,
+            IconSize = 10,
+            Width = 118,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = false,
+            NormalColor = ModernColors.Success,
+            HoverColor = ModernColors.SuccessHover,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(0, 2)
+        };
+        btnAddSched.Click += (s, e) =>
+        {
+            using var dlg = new SchedulerDialog(_appRoot);
+            if (dlg.ShowDialog(this) == DialogResult.OK && dlg.ResultTask != null)
+            {
+                SchedulerManager.AddTask(_appRoot, dlg.ResultTask);
+                RefreshSchedulersList();
+                lblStatusText.Text = $"Schedule '{dlg.ResultTask.Name}' added.";
+                lblStatusText.ForeColor = ModernColors.Success;
+            }
+        };
+
+        var btnStartAutoSched = new ModernButton
+        {
+            Text = "Start Auto",
+            IconKind = IconKind.Play,
+            IconSize = 10,
+            Width = 100,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = false,
+            NormalColor = ModernColors.Primary,
+            HoverColor = ModernColors.PrimaryHover,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(126, 2)
+        };
+        btnStartAutoSched.Click += (s, e) =>
+        {
+            SchedulerManager.StartAutoTasks(_appRoot, _job);
+            RefreshSchedulersList();
+        };
+
+        var btnStopAllSched = new ModernButton
+        {
+            Text = "Stop All",
+            IconKind = IconKind.Stop,
+            IconSize = 10,
+            Width = 90,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.DangerBg,
+            ForeColor = ModernColors.Danger,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(234, 2)
+        };
+        btnStopAllSched.Click += (s, e) =>
+        {
+            SchedulerManager.StopAll();
+            RefreshSchedulersList();
+        };
+
+        var btnRefreshSched = new ModernButton
+        {
+            Text = "Refresh",
+            IconKind = IconKind.Refresh,
+            IconSize = 10,
+            Width = 86,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextPrimary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(332, 2)
+        };
+        btnRefreshSched.Click += (s, e) => RefreshSchedulersList();
+
+        var lblSchedDesc = new Label
+        {
+            Text = "Run periodic one-shot commands (e.g. php artisan schedule:run every 60s) without Windows Task Scheduler.",
+            ForeColor = ModernColors.TextMuted,
+            Font = new Font("Segoe UI", 8.25f),
+            Location = new Point(0, 44),
+            AutoSize = true
+        };
+        pnlSchedTop.Controls.AddRange([btnAddSched, btnStartAutoSched, btnStopAllSched, btnRefreshSched, lblSchedDesc]);
+
+        _pnlSchedulersContainer = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Padding = new Padding(0, 4, 0, 12)
+        };
+        _pnlSchedulersContainer.Resize += (s, e) =>
+        {
+            int targetW = _pnlSchedulersContainer.ClientSize.Width - 18;
+            if (targetW < 300) return;
+            foreach (Control c in _pnlSchedulersContainer.Controls)
+            {
+                c.Width = targetW;
+            }
+        };
+
+        pnlSchedulerView.Controls.Add(_pnlSchedulersContainer);
+        pnlSchedulerView.Controls.Add(pnlSchedTop);
+
+        // Segmented Sub-Tab Bar
+        var pnlSubTabs = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 40,
+            Padding = new Padding(0, 0, 0, 8)
+        };
+
+        var btnTabWorkers = new ModernButton
+        {
+            Text = "Background Workers",
+            Width = 148,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = false,
+            NormalColor = ModernColors.Primary,
+            HoverColor = ModernColors.PrimaryHover,
+            ForeColor = Color.White,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(0, 0)
+        };
+        var btnTabScheduler = new ModernButton
+        {
+            Text = "Scheduler",
+            Width = 104,
+            Height = 30,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextSecondary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(156, 0)
+        };
+
+        void SelectWorkersSubTab(bool showScheduler)
+        {
+            pnlWorkersView.Visible = !showScheduler;
+            pnlSchedulerView.Visible = showScheduler;
+
+            btnTabWorkers.NormalColor = !showScheduler ? ModernColors.Primary : ModernColors.Card;
+            btnTabWorkers.HoverColor = !showScheduler ? ModernColors.PrimaryHover : ModernColors.SurfaceHover;
+            btnTabWorkers.ForeColor = !showScheduler ? Color.White : ModernColors.TextSecondary;
+            btnTabWorkers.ShowBorder = showScheduler;
+
+            btnTabScheduler.NormalColor = showScheduler ? ModernColors.Primary : ModernColors.Card;
+            btnTabScheduler.HoverColor = showScheduler ? ModernColors.PrimaryHover : ModernColors.SurfaceHover;
+            btnTabScheduler.ForeColor = showScheduler ? Color.White : ModernColors.TextSecondary;
+            btnTabScheduler.ShowBorder = !showScheduler;
+
+            if (showScheduler) RefreshSchedulersList();
+            else RefreshWorkersList();
+        }
+
+        btnTabWorkers.Click += (s, e) => SelectWorkersSubTab(false);
+        btnTabScheduler.Click += (s, e) => SelectWorkersSubTab(true);
+        pnlSubTabs.Controls.AddRange([btnTabWorkers, btnTabScheduler]);
+
+        SchedulerManager.TaskUpdated += (s, t) =>
+        {
+            if (pageWorkers.Visible && pnlSchedulerView.Visible && !IsDisposed)
+            {
+                BeginInvoke(RefreshSchedulersList);
+            }
+        };
+
+        pageWorkers.Controls.Add(pnlWorkersView);
+        pageWorkers.Controls.Add(pnlSchedulerView);
+        pageWorkers.Controls.Add(pnlSubTabs);
 
         RefreshWorkersList();
+    }
+
+    private FlowLayoutPanel? _pnlSchedulersContainer;
+
+    private void RefreshSchedulersList()
+    {
+        if (_pnlSchedulersContainer == null || _pnlSchedulersContainer.IsDisposed) return;
+
+        _pnlSchedulersContainer.SuspendLayout();
+        _pnlSchedulersContainer.Controls.Clear();
+
+        var tasks = SchedulerManager.Tasks;
+        int targetW = Math.Max(300, _pnlSchedulersContainer.ClientSize.Width - 18);
+
+        if (tasks.Count == 0)
+        {
+            var empty = new Label
+            {
+                Text = "No scheduled tasks configured yet.\nClick '+ Add Schedule' to run php artisan schedule:run periodically.",
+                ForeColor = ModernColors.TextMuted,
+                Font = new Font("Segoe UI", 9.5f),
+                AutoSize = true,
+                Padding = new Padding(4, 16, 4, 16)
+            };
+            _pnlSchedulersContainer.Controls.Add(empty);
+        }
+        else
+        {
+            foreach (var task in tasks)
+            {
+                _pnlSchedulersContainer.Controls.Add(CreateSchedulerCard(task, targetW));
+            }
+        }
+
+        _pnlSchedulersContainer.ResumeLayout();
+    }
+
+    private Panel CreateSchedulerCard(SchedulerItem task, int width)
+    {
+        var card = new Panel
+        {
+            Width = width,
+            Height = 92,
+            Margin = new Padding(0, 0, 0, 10),
+            BackColor = Color.Transparent
+        };
+        card.Paint += (s, e) =>
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var rect = new RectangleF(0.5f, 0.5f, card.Width - 1f, card.Height - 1f);
+            using var path = CreateRoundedRectangle(rect, 8f);
+            using var bg = new SolidBrush(ModernColors.Surface);
+            g.FillPath(bg, path);
+            using var pen = new Pen(ModernColors.BorderSubtle, 1f);
+            g.DrawPath(pen, path);
+        };
+
+        string statusText = task.IsRunning ? "Running" : (task.IsActive ? "Active" : "Paused");
+        Color statusColor = task.IsRunning ? ModernColors.Primary : (task.IsActive ? ModernColors.Success : ModernColors.TextMuted);
+
+        var lblTitle = new Label
+        {
+            Text = task.Name,
+            ForeColor = ModernColors.TextPrimary,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            Location = new Point(16, 12),
+            AutoSize = true
+        };
+
+        var lblStatus = new Label
+        {
+            Text = $"● {statusText}",
+            ForeColor = statusColor,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Location = new Point(16, 36),
+            AutoSize = true
+        };
+
+        string lastRun = task.LastRunAt.HasValue
+            ? $"Last: {task.LastRunAt.Value:HH:mm:ss} (Exit {task.LastExitCode ?? 0}, {task.LastDurationMs}ms)"
+            : "Last: Never";
+        var lblMeta = new Label
+        {
+            Text = $"{task.Command}  •  Every {task.IntervalSeconds}s  •  {lastRun}",
+            ForeColor = ModernColors.TextMuted,
+            Font = new Font("Segoe UI", 8.25f),
+            Location = new Point(16, 58),
+            AutoSize = true
+        };
+
+        var btnDelete = new ModernButton
+        {
+            Text = "Delete",
+            Width = 62,
+            Height = 28,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.DangerBg,
+            ForeColor = ModernColors.Danger,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+        };
+        btnDelete.Click += (s, e) =>
+        {
+            if (MessageBox.Show(this, $"Delete schedule '{task.Name}'?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                SchedulerManager.DeleteTask(_appRoot, task.Id);
+                RefreshSchedulersList();
+            }
+        };
+
+        var btnEdit = new ModernButton
+        {
+            Text = "Edit",
+            Width = 54,
+            Height = 28,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextPrimary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+        };
+        btnEdit.Click += (s, e) =>
+        {
+            using var dlg = new SchedulerDialog(_appRoot, task);
+            if (dlg.ShowDialog(this) == DialogResult.OK && dlg.ResultTask != null)
+            {
+                SchedulerManager.UpdateTask(_appRoot, dlg.ResultTask);
+                RefreshSchedulersList();
+            }
+        };
+
+        var btnLogs = new ModernButton
+        {
+            Text = "Logs",
+            Width = 56,
+            Height = 28,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.TextPrimary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+        };
+        btnLogs.Click += (s, e) =>
+        {
+            string logs = task.GetLogsText();
+            MessageBox.Show(this, string.IsNullOrWhiteSpace(logs) ? "(No logs yet)" : logs, $"Schedule Logs: {task.Name}", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        };
+
+        var btnRunNow = new ModernButton
+        {
+            Text = task.IsRunning ? "Running..." : "Run Now",
+            Enabled = !task.IsRunning,
+            Width = 76,
+            Height = 28,
+            BorderRadius = 6,
+            ShowBorder = true,
+            NormalColor = ModernColors.Card,
+            HoverColor = ModernColors.SurfaceHover,
+            ForeColor = ModernColors.Primary,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+        };
+        btnRunNow.Click += async (s, e) => await SchedulerManager.RunNowAsync(_appRoot, _job, task);
+
+        var btnToggle = new ModernButton
+        {
+            Text = task.IsActive ? "Pause" : "Start",
+            IconKind = task.IsActive ? IconKind.Stop : IconKind.Play,
+            IconSize = 9,
+            Width = 72,
+            Height = 28,
+            BorderRadius = 6,
+            ShowBorder = false,
+            NormalColor = task.IsActive ? ModernColors.Danger : ModernColors.Success,
+            HoverColor = task.IsActive ? ModernColors.DangerHover : ModernColors.SuccessHover,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold)
+        };
+        btnToggle.Click += (s, e) =>
+        {
+            if (task.IsActive) SchedulerManager.StopTask(task);
+            else SchedulerManager.StartTask(_appRoot, _job, task);
+            RefreshSchedulersList();
+        };
+
+        void LayoutButtons()
+        {
+            int y = 32;
+            btnDelete.Location = new Point(card.Width - btnDelete.Width - 14, y);
+            btnEdit.Location = new Point(btnDelete.Left - btnEdit.Width - 6, y);
+            btnLogs.Location = new Point(btnEdit.Left - btnLogs.Width - 6, y);
+            btnRunNow.Location = new Point(btnLogs.Left - btnRunNow.Width - 6, y);
+            btnToggle.Location = new Point(btnRunNow.Left - btnToggle.Width - 6, y);
+
+            int maxW = btnToggle.Left - 24;
+            if (maxW > 80)
+            {
+                lblMeta.MaximumSize = new Size(maxW, 20);
+                lblMeta.AutoEllipsis = true;
+            }
+        }
+        card.Resize += (s, e) => LayoutButtons();
+        LayoutButtons();
+
+        card.Controls.AddRange([lblTitle, lblStatus, lblMeta, btnToggle, btnRunNow, btnLogs, btnEdit, btnDelete]);
+        return card;
     }
 
     private void RefreshWorkersList()
@@ -4451,6 +4857,7 @@ public partial class MainForm : Form
 
         await StopAllServicesAsync();
         WorkerManager.StopAllWorkers();
+        SchedulerManager.StopAll();
         CloudflareTunnelManager.StopAllTunnels();
         DnsServer.Instance.Stop();
         _job.Dispose();
@@ -4674,6 +5081,7 @@ public partial class MainForm : Form
         }
 
         WorkerManager.StartAllAutoWorkers(_appRoot, _job);
+        SchedulerManager.StartAutoTasks(_appRoot, _job);
 
         if (_config.CheckUpdatesOnStart)
         {
@@ -4721,6 +5129,7 @@ public partial class MainForm : Form
         else
         {
             WorkerManager.StopAllWorkers();
+        SchedulerManager.StopAll();
             CloudflareTunnelManager.StopAllTunnels();
             _job.Dispose();
             notifyIcon.Visible = false;

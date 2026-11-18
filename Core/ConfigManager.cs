@@ -34,7 +34,7 @@ public class AppConfig
 
     /// <summary>
     /// Gets the effective PHP FastCGI worker count. If set to 0 (Auto),
-    /// scales dynamically to match CPU cores (min 2, max 16).
+    /// scales dynamically to half of CPU cores (min 2, max 6) to keep local memory light.
     /// </summary>
     public int EffectivePhpWorkerCount
     {
@@ -42,7 +42,7 @@ public class AppConfig
         {
             if (PhpWorkerCount <= 0)
             {
-                return Math.Clamp(Environment.ProcessorCount, 2, 16);
+                return Math.Clamp(Environment.ProcessorCount / 2, 2, 6);
             }
             return Math.Clamp(PhpWorkerCount, 2, 16);
         }

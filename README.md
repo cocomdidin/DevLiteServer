@@ -74,9 +74,10 @@ Run **Dev Lite Server**. On the very first launch, the built-in wizard will offe
 - Clean web inbox viewer at `http://localhost:8025` to inspect email contents, headers, and HTML formatting.
 - Persistent SQLite inbox storage enabled out of the box (`bin/mailpit/data/mailpit.db`).
 
-### ⚙️ Background Workers & Task Manager
+### ⚙️ Background Workers & Mini Scheduler
 - **Windows Supervisor (`Workers` tab)**: Run and monitor persistent project tasks such as `php artisan queue:work`, `php artisan horizon`, or `npm run dev` directly inside Dev Lite Server.
-- **Live Logs & Clean Shutdown**: View real-time stdout/stderr logs, configure auto-start per worker, and guarantee zero orphaned processes on exit.
+- **Mini Scheduler Runner**: Run periodic one-shot commands (such as `php artisan schedule:run` every 60s) with `Run Now`, interval presets, output logs, and zero Windows Task Scheduler setup.
+- **Live Logs & Clean Shutdown**: View real-time stdout/stderr logs, configure auto-start per task, and guarantee zero orphaned processes on exit.
 
 ### 🪣 Built-in RustFS S3 Mock
 - Local S3-compatible object storage running on `127.0.0.1:9100` (API) with Web Console at `http://127.0.0.1:9101` (`rustfsadmin` / `rustfsadmin`), avoiding conflicts with PHP FastCGI port `9000`.
@@ -144,9 +145,8 @@ We are actively expanding Dev Lite Server to be the best zero-virtualization dev
 - ✅ **Smart Framework Auto-Detection**: Instant docroot detection for Laravel (`/public`), WordPress, and Symfony.
 - ✅ **Hybrid Proxying (Node.js/SSR)**: Nginx reverse proxy with full WebSocket HMR support for Vite, Next.js, and Nuxt.
 - ✅ **Cloudflare Tunnel (1-Click Share)**: Instant public HTTPS demo URLs (`*.trycloudflare.com`) powered by `cloudflared`.
-- ✅ **Windows Supervisor (Background Workers)**: GUI task manager to run queues (`artisan queue:work`) and dev servers (`npm run dev`) with zero orphaned processes.
+- ✅ **Windows Supervisor & Mini Scheduler**: GUI task manager for persistent workers (`artisan queue:work`, `npm run dev`) and periodic scheduled commands (`artisan schedule:run`).
 - ✅ **Local S3 Storage (RustFS)**: Built-in S3-compatible object storage mock.
-- 🔲 **Mini Scheduler Runner**: Lightweight cron/task scheduler for `php artisan schedule:run`.
 - 🔲 **Search Engine Mock & SQLite GUI Viewer**: Local Meilisearch/Typesense integration and built-in SQLite table browser.
 - 🔲 **Unified Log Viewer & Dump Interceptor**: Centralized real-time viewer for Nginx, PHP, MySQL, and Laravel logs.
 

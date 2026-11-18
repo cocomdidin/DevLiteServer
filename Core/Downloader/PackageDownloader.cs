@@ -274,7 +274,7 @@ public static class PackageDownloader
             }
             else if (!Regex.IsMatch(content, @"(?m)^zend_extension\s*=\s*opcache"))
             {
-                content += "\r\n[opcache]\r\nzend_extension=opcache\r\nopcache.enable=1\r\nopcache.enable_cli=0\r\nopcache.memory_consumption=128\r\nopcache.interned_strings_buffer=16\r\nopcache.max_accelerated_files=20000\r\nopcache.validate_timestamps=1\r\nopcache.revalidate_freq=0\r\n";
+                content += "\r\n[opcache]\r\nzend_extension=opcache\r\nopcache.enable=1\r\nopcache.enable_cli=0\r\nopcache.memory_consumption=96\r\nopcache.interned_strings_buffer=12\r\nopcache.max_accelerated_files=16000\r\nopcache.validate_timestamps=1\r\nopcache.revalidate_freq=1\r\n";
                 modified = true;
             }
 
@@ -290,18 +290,28 @@ public static class PackageDownloader
                 modified = true;
             }
 
-            // 3. Ensure validate_timestamps and revalidate_freq for live dev reload
+            // 3. Ensure validate_timestamps and 1s revalidate_freq for lightweight live dev reload
             if (content.Contains(";opcache.validate_timestamps=1"))
             {
                 content = content.Replace(";opcache.validate_timestamps=1", "opcache.validate_timestamps=1");
                 modified = true;
             }
 
-            if (content.Contains(";opcache.revalidate_freq="))
+            if (Regex.IsMatch(content, @"(?m)^[ \t]*;[ \t]*opcache\.revalidate_freq\s*="))
             {
-                content = Regex.Replace(content, @";opcache\.revalidate_freq\s*=\s*\d+", "opcache.revalidate_freq=0");
+                content = Regex.Replace(content, @"(?m)^[ \t]*;[ \t]*opcache\.revalidate_freq\s*=.*$", "opcache.revalidate_freq=1");
                 modified = true;
             }
+            else if (Regex.IsMatch(content, @"(?m)^[ \t]*opcache\.revalidate_freq\s*=\s*0\b"))
+            {
+                content = Regex.Replace(content, @"(?m)^[ \t]*opcache\.revalidate_freq\s*=\s*0\b.*$", "opcache.revalidate_freq=1");
+                modified = true;
+            }
+
+            // 4. Enable realpath_cache & hide X-Powered-By header for lower Windows stat() overhead
+            content = UpsertScalarDirective(content, "realpath_cache_size", "4096k", "PHP", ref modified);
+            content = UpsertScalarDirective(content, "realpath_cache_ttl", "600", "PHP", ref modified);
+            content = UpsertScalarDirective(content, "expose_php", "Off", "PHP", ref modified);
 
             if (modified)
             {
@@ -309,6 +319,32 @@ public static class PackageDownloader
             }
         }
         catch { }
+    }
+
+    private static string UpsertScalarDirective(string content, string key, string value, string sectionName, ref bool modified)
+    {
+        string escapedKey = Regex.Escape(key);
+        if (Regex.IsMatch(content, $@"(?m)^[ \t]*{escapedKey}\s*="))
+        {
+            return content;
+        }
+
+        string targetLine = $"{key} = {value}";
+        if (Regex.IsMatch(content, $@"(?m)^[ \t]*;[ \t]*{escapedKey}\s*="))
+        {
+            modified = true;
+            return new Regex($@"(?m)^[ \t]*;[ \t]*{escapedKey}\s*=.*$").Replace(content, targetLine, 1);
+        }
+
+        modified = true;
+        var sectionMatch = Regex.Match(content, $@"(?mi)^\[{Regex.Escape(sectionName)}\]\s*$");
+        if (sectionMatch.Success)
+        {
+            int insertPos = sectionMatch.Index + sectionMatch.Length;
+            return content.Insert(insertPos, $"\r\n{targetLine}");
+        }
+
+        return content + $"\r\n{targetLine}\r\n";
     }
 
     /// <summary>
