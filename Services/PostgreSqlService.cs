@@ -138,7 +138,7 @@ public class PostgreSqlService : BaseService
         try
         {
             string pgCtl = Path.Combine(GetPostgreSqlDirectory(), "bin", "pg_ctl.exe");
-            if (File.Exists(pgCtl))
+            if (!IsWindowsShuttingDown && File.Exists(pgCtl))
             {
                 var psi = new ProcessStartInfo
                 {

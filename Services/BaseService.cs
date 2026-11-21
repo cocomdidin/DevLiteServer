@@ -5,6 +5,7 @@ namespace DevLiteServer.Services;
 
 public abstract class BaseService : IService
 {
+    public static volatile bool IsWindowsShuttingDown;
     protected readonly string AppRoot;
     protected readonly JobObject Job;
     protected Process? CurrentProcess;

@@ -150,7 +150,7 @@ public class MySqlService : BaseService
         try
         {
             string adminExe = Path.Combine(GetMySqlDirectory(), "bin", "mysqladmin.exe");
-            if (File.Exists(adminExe))
+            if (!IsWindowsShuttingDown && File.Exists(adminExe))
             {
                 var stopPsi = new ProcessStartInfo
                 {

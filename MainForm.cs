@@ -5161,6 +5161,7 @@ public partial class MainForm : Form
 
         _isShuttingDown = true;
         _isExitingExplicitly = true;
+        BaseService.IsWindowsShuttingDown = true;
         try { notifyIcon.Visible = false; } catch { }
 
         bool blockReasonSet = false;

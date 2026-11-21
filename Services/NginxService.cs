@@ -170,7 +170,7 @@ public class NginxService : BaseService
         {
             GenerateConfig();
             string nginxExe = GetNginxExe();
-            if (File.Exists(nginxExe))
+            if (!IsWindowsShuttingDown && File.Exists(nginxExe))
             {
                 string prefix = GetNginxDirectory().Replace('\\', '/').TrimEnd('/') + "/";
                 var reloadPsi = new ProcessStartInfo
@@ -203,7 +203,7 @@ public class NginxService : BaseService
         try
         {
             string nginxExe = GetNginxExe();
-            if (File.Exists(nginxExe))
+            if (!IsWindowsShuttingDown && File.Exists(nginxExe))
             {
                 string prefix = GetNginxDirectory().Replace('\\', '/').TrimEnd('/') + "/";
                 var stopPsi = new ProcessStartInfo
