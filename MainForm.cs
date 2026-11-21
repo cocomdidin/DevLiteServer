@@ -5210,6 +5210,8 @@ public partial class MainForm : Form
     {
         _allowVisible = true;
         Show();
+        RefreshAllServiceCards();
+        UpdateServiceStats();
         if (WindowState == FormWindowState.Minimized)
         {
             WindowState = FormWindowState.Normal;

@@ -249,6 +249,12 @@ public class ServiceCard : Panel
         }
     }
 
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        RefreshInfo();
+    }
+
     public void RefreshInfo()
     {
         _lblSub.Text = $"{_categoryTag}  •  Port: {_service.Port}";
