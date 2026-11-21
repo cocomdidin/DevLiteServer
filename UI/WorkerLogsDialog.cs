@@ -120,12 +120,12 @@ public class WorkerLogsDialog : Form
 
         _logHandler = line =>
         {
-            if (IsDisposed) return;
+            if (IsDisposed || !IsHandleCreated) return;
             try
             {
-                Invoke(() =>
+                BeginInvoke(() =>
                 {
-                    _txtLogs.AppendText(line + Environment.NewLine);
+                    if (!IsDisposed) _txtLogs.AppendText(line + Environment.NewLine);
                 });
             }
             catch { }
@@ -133,11 +133,12 @@ public class WorkerLogsDialog : Form
 
         _statusHandler = status =>
         {
-            if (IsDisposed) return;
+            if (IsDisposed || !IsHandleCreated) return;
             try
             {
-                Invoke(() =>
+                BeginInvoke(() =>
                 {
+                    if (IsDisposed) return;
                     _pillStatus.Text = status;
                     _pillStatus.Status = status == "Running" ? Services.ServiceStatus.Running : Services.ServiceStatus.Stopped;
                 });

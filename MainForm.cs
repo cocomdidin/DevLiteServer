@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using DevLiteServer.Core;
 using DevLiteServer.Core.Downloader;
 using DevLiteServer.Services;
@@ -27,6 +28,17 @@ public partial class MainForm : Form
     private bool _hasAutoStartedServices = false;
     private bool _hasRunStartupTasks = false;
     private bool _isExitingExplicitly = false;
+    private volatile bool _isShuttingDown = false;
+    private int _shutdownCleanupDone = 0;
+
+    private const int WM_QUERYENDSESSION = 0x0011;
+    private const int WM_ENDSESSION = 0x0016;
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool ShutdownBlockReasonCreate(IntPtr hWnd, string pwszReason);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShutdownBlockReasonDestroy(IntPtr hWnd);
 
     // Sites Page dynamic container
     private FlowLayoutPanel _pnlSitesContainer = null!;
@@ -85,9 +97,10 @@ public partial class MainForm : Form
             svc.PortConflictResolver = PromptPortConflictResolverAsync;
             svc.StatusChanged += (s, status) =>
             {
+                if (_isShuttingDown || IsDisposed || !IsHandleCreated) return;
                 if (InvokeRequired)
                 {
-                    Invoke(() => OnServiceStatusChanged(s, status));
+                    try { BeginInvoke(() => { if (!_isShuttingDown && !IsDisposed) OnServiceStatusChanged(s, status); }); } catch { }
                 }
                 else
                 {
@@ -641,7 +654,8 @@ public partial class MainForm : Form
 
         void UpdateDomainSyncButtonState()
         {
-            if (InvokeRequired) { Invoke(UpdateDomainSyncButtonState); return; }
+            if (_isShuttingDown || IsDisposed || !IsHandleCreated) return;
+            if (InvokeRequired) { try { BeginInvoke(UpdateDomainSyncButtonState); } catch { } return; }
             if (DnsServer.IsZeroUacActive)
             {
                 btnSyncDomains.Text = "Domains Active";
@@ -2688,7 +2702,8 @@ public partial class MainForm : Form
         };
         service.StatusChanged += (s, st) =>
         {
-            if (InvokeRequired) Invoke(() => pill.Status = st);
+            if (_isShuttingDown || IsDisposed || !IsHandleCreated || pill.IsDisposed) return;
+            if (InvokeRequired) try { BeginInvoke(() => { if (!_isShuttingDown && !pill.IsDisposed) pill.Status = st; }); } catch { }
             else pill.Status = st;
         };
 
@@ -2817,7 +2832,8 @@ public partial class MainForm : Form
 
         service.StatusChanged += (s, st) =>
         {
-            if (InvokeRequired) Invoke((Action)UpdateBtn);
+            if (_isShuttingDown || IsDisposed || !IsHandleCreated) return;
+            if (InvokeRequired) try { BeginInvoke((Action)(() => { if (!_isShuttingDown && !IsDisposed) UpdateBtn(); })); } catch { }
             else UpdateBtn();
         };
 
@@ -3053,7 +3069,8 @@ public partial class MainForm : Form
         };
         service.StatusChanged += (s, st) =>
         {
-            if (InvokeRequired) Invoke(() => pill.Status = st);
+            if (_isShuttingDown || IsDisposed || !IsHandleCreated || pill.IsDisposed) return;
+            if (InvokeRequired) try { BeginInvoke(() => { if (!_isShuttingDown && !pill.IsDisposed) pill.Status = st; }); } catch { }
             else pill.Status = st;
         };
 
@@ -3257,7 +3274,8 @@ public partial class MainForm : Form
 
         service.StatusChanged += (s, st) =>
         {
-            if (InvokeRequired) Invoke((Action)UpdateToggleBtn);
+            if (_isShuttingDown || IsDisposed || !IsHandleCreated) return;
+            if (InvokeRequired) try { BeginInvoke((Action)(() => { if (!_isShuttingDown && !IsDisposed) UpdateToggleBtn(); })); } catch { }
             else UpdateToggleBtn();
         };
 
@@ -4166,8 +4184,8 @@ public partial class MainForm : Form
 
         Action<string> statusHandler = _ =>
         {
-            if (card.IsDisposed) return;
-            try { card.Invoke(SyncWorkerUi); } catch { }
+            if (_isShuttingDown || card.IsDisposed || !card.IsHandleCreated) return;
+            try { card.BeginInvoke(SyncWorkerUi); } catch { }
         };
         worker.StatusChanged += statusHandler;
         card.Disposed += (_, _) => worker.StatusChanged -= statusHandler;
@@ -4321,9 +4339,10 @@ public partial class MainForm : Form
 
     private void UpdateServiceStats()
     {
+        if (_isShuttingDown || IsDisposed || !IsHandleCreated) return;
         if (InvokeRequired)
         {
-            Invoke(UpdateServiceStats);
+            try { BeginInvoke(UpdateServiceStats); } catch { }
             return;
         }
 
@@ -4784,12 +4803,13 @@ public partial class MainForm : Form
         lblStatusText.Text = "Stopping all services...";
         lblStatusText.ForeColor = ModernColors.Warning;
 
-        foreach (var svc in _services)
+        var runningServices = _services
+            .Where(s => s.Status == ServiceStatus.Running || s.Status == ServiceStatus.Starting)
+            .ToList();
+
+        if (runningServices.Count > 0)
         {
-            if (svc.Status == ServiceStatus.Running)
-            {
-                await svc.StopAsync();
-            }
+            await Task.WhenAll(runningServices.Select(s => s.StopAsync()));
         }
 
         btnStopAll.Enabled = true;
@@ -4862,6 +4882,8 @@ public partial class MainForm : Form
         DnsServer.Instance.Stop();
         _job.Dispose();
         notifyIcon.Visible = false;
+        _isShuttingDown = true;
+        Interlocked.Exchange(ref _shutdownCleanupDone, 1);
         Application.Exit();
     }
 
@@ -5128,11 +5150,57 @@ public partial class MainForm : Form
         }
         else
         {
-            WorkerManager.StopAllWorkers();
-        SchedulerManager.StopAll();
-            CloudflareTunnelManager.StopAllTunnels();
-            _job.Dispose();
-            notifyIcon.Visible = false;
+            e.Cancel = false;
+            PerformGracefulShutdown(3500);
+        }
+    }
+
+    private void PerformGracefulShutdown(int timeoutMs = 3500)
+    {
+        if (Interlocked.Exchange(ref _shutdownCleanupDone, 1) != 0) return;
+
+        _isShuttingDown = true;
+        _isExitingExplicitly = true;
+        try { notifyIcon.Visible = false; } catch { }
+
+        bool blockReasonSet = false;
+        if (IsHandleCreated && !IsDisposed)
+        {
+            try { blockReasonSet = ShutdownBlockReasonCreate(Handle, "Stopping DevLiteServer services cleanly..."); } catch { }
+        }
+
+        try
+        {
+            var tasks = new List<Task>();
+            foreach (var svc in _services)
+            {
+                if (svc.Status == ServiceStatus.Running || svc.Status == ServiceStatus.Starting)
+                {
+                    var captured = svc;
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        try { await captured.StopAsync(); } catch { }
+                    }));
+                }
+            }
+
+            tasks.Add(Task.Run(() =>
+            {
+                try { WorkerManager.StopAllWorkers(); } catch { }
+                try { SchedulerManager.StopAll(); } catch { }
+                try { CloudflareTunnelManager.StopAllTunnels(); } catch { }
+                try { DnsServer.Instance.Stop(); } catch { }
+            }));
+
+            Task.WhenAll(tasks).Wait(timeoutMs);
+            try { _job.Dispose(); } catch { }
+        }
+        finally
+        {
+            if (blockReasonSet && IsHandleCreated && !IsDisposed)
+            {
+                try { ShutdownBlockReasonDestroy(Handle); } catch { }
+            }
         }
     }
 
@@ -5153,6 +5221,20 @@ public partial class MainForm : Form
 
     protected override void WndProc(ref Message m)
     {
+        if (m.Msg == WM_QUERYENDSESSION)
+        {
+            m.Result = new IntPtr(1);
+            return;
+        }
+        if (m.Msg == WM_ENDSESSION)
+        {
+            if (m.WParam != IntPtr.Zero)
+            {
+                PerformGracefulShutdown(3500);
+            }
+            base.WndProc(ref m);
+            return;
+        }
         if (SingleInstance.IsRestoreMessage(m.Msg))
         {
             RestoreFromTray();

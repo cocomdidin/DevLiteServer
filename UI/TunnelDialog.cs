@@ -290,12 +290,12 @@ public class TunnelDialog : Form
 
         _logHandler = line =>
         {
-            if (IsDisposed) return;
+            if (IsDisposed || !IsHandleCreated) return;
             try
             {
-                Invoke(() =>
+                BeginInvoke(() =>
                 {
-                    _txtLogs.AppendText(line + Environment.NewLine);
+                    if (!IsDisposed) _txtLogs.AppendText(line + Environment.NewLine);
                 });
             }
             catch { }
@@ -303,11 +303,12 @@ public class TunnelDialog : Form
 
         _urlHandler = url =>
         {
-            if (IsDisposed) return;
+            if (IsDisposed || !IsHandleCreated) return;
             try
             {
-                Invoke(() =>
+                BeginInvoke(() =>
                 {
+                    if (IsDisposed) return;
                     _txtUrl.Text = url;
                     _pillStatus.Text = "Online";
                     _pillStatus.Status = ServiceStatus.Running;

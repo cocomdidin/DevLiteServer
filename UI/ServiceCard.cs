@@ -230,9 +230,18 @@ public class ServiceCard : Panel
 
     private void OnStatusChanged(IService svc, ServiceStatus status)
     {
+        if (IsDisposed || !IsHandleCreated) return;
+
         if (InvokeRequired)
         {
-            Invoke(() => UpdateVisuals(status));
+            try
+            {
+                BeginInvoke(() =>
+                {
+                    if (!IsDisposed) UpdateVisuals(status);
+                });
+            }
+            catch { }
         }
         else
         {
