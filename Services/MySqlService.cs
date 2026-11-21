@@ -163,14 +163,30 @@ public class MySqlService : BaseService
                 var stopProc = Process.Start(stopPsi);
                 if (stopProc != null)
                 {
-                    await stopProc.WaitForExitAsync();
+                    using var cts = new CancellationTokenSource(2500);
+                    try
+                    {
+                        await stopProc.WaitForExitAsync(cts.Token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        try { stopProc.Kill(true); } catch { }
+                    }
                 }
             }
 
             if (CurrentProcess != null && !CurrentProcess.HasExited)
             {
-                CurrentProcess.Kill(true);
-                await CurrentProcess.WaitForExitAsync();
+                using var exitCts = new CancellationTokenSource(2000);
+                try
+                {
+                    await CurrentProcess.WaitForExitAsync(exitCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    CurrentProcess.Kill(true);
+                    await CurrentProcess.WaitForExitAsync();
+                }
             }
         }
         catch
