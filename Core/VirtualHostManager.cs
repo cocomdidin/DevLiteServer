@@ -391,6 +391,7 @@ public static class VirtualHostManager
         }
 
         File.WriteAllText(vhostsOutputFile, sb.ToString());
+        SslCertificateManager.SyncViteTlsCertificates(appRoot, sites);
     }
 
     private static void AppendStorageLocationBlock(StringBuilder sb, SiteItem site, string docRoot, string upstreamName)

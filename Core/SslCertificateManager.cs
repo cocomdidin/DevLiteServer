@@ -308,4 +308,143 @@ public static class SslCertificateManager
             return false;
         }
     }
+
+    /// <summary>
+    /// Synchronizes LiteServer SSL certificates into Valet/Herd-compatible directories
+    /// so tools like laravel-vite-plugin automatically enable HTTPS and WSS HMR.
+    /// Non-blocking and never modifies or deletes certificates not issued by LiteServer.
+    /// </summary>
+    public static void SyncViteTlsCertificates(string appRoot, IEnumerable<SiteItem> sites, string? userProfileOverride = null)
+    {
+        string userHome = string.IsNullOrWhiteSpace(userProfileOverride)
+            ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+            : userProfileOverride;
+
+        if (string.IsNullOrWhiteSpace(userHome))
+        {
+            return;
+        }
+
+        var activeSslDomains = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var site in sites)
+        {
+            if (site.SslEnabled && !string.IsNullOrWhiteSpace(site.Domain))
+            {
+                activeSslDomains.Add(site.Domain.Trim().ToLowerInvariant());
+            }
+        }
+
+        var targetConfigDirs = new List<string>();
+        var seenDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void AddTargetDir(string path)
+        {
+            if (seenDirs.Add(path))
+            {
+                targetConfigDirs.Add(path);
+            }
+        }
+
+        AddTargetDir(Path.Combine(userHome, ".config", "valet"));
+
+        if (userProfileOverride == null)
+        {
+            string? herdHome = Environment.GetEnvironmentVariable("HERD_HOME");
+            if (!string.IsNullOrWhiteSpace(herdHome))
+            {
+                string herdValetDir = Path.Combine(herdHome, "config", "valet");
+                if (Directory.Exists(herdValetDir))
+                {
+                    AddTargetDir(herdValetDir);
+                }
+            }
+        }
+
+        string userHerdValetDir = Path.Combine(userHome, ".config", "herd", "config", "valet");
+        if (Directory.Exists(userHerdValetDir))
+        {
+            AddTargetDir(userHerdValetDir);
+        }
+
+        foreach (string configDir in targetConfigDirs)
+        {
+            try
+            {
+                string certDir = Path.Combine(configDir, "Certificates");
+                string configJsonPath = Path.Combine(configDir, "config.json");
+
+                if (activeSslDomains.Count > 0)
+                {
+                    Directory.CreateDirectory(certDir);
+
+                    if (!File.Exists(configJsonPath))
+                    {
+                        File.WriteAllText(configJsonPath, "{\n  \"tld\": \"test\"\n}\n");
+                    }
+
+                    foreach (string domain in activeSslDomains)
+                    {
+                        string srcCert = Path.Combine(appRoot, "ssl", $"{domain}.crt");
+                        string srcKey = Path.Combine(appRoot, "ssl", $"{domain}.key");
+
+                        if (File.Exists(srcCert) && File.Exists(srcKey))
+                        {
+                            CopyFileIfChanged(srcCert, Path.Combine(certDir, $"{domain}.crt"));
+                            CopyFileIfChanged(srcKey, Path.Combine(certDir, $"{domain}.key"));
+                        }
+                    }
+                }
+
+                if (Directory.Exists(certDir))
+                {
+                    foreach (string crtPath in Directory.EnumerateFiles(certDir, "*.crt"))
+                    {
+                        string domain = Path.GetFileNameWithoutExtension(crtPath).ToLowerInvariant();
+                        if (!activeSslDomains.Contains(domain) && IsLiteServerIssuedCert(crtPath))
+                        {
+                            File.Delete(crtPath);
+                            string keyPath = Path.Combine(certDir, $"{domain}.key");
+                            if (File.Exists(keyPath))
+                            {
+                                File.Delete(keyPath);
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Non-blocking: Vite TLS certificate sync must never prevent vhost generation
+            }
+        }
+    }
+
+    private static bool IsLiteServerIssuedCert(string certPath)
+    {
+        try
+        {
+            using var cert = X509CertificateLoader.LoadCertificateFromFile(certPath);
+            return cert.Issuer.Contains("LiteServer", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void CopyFileIfChanged(string sourcePath, string destPath)
+    {
+        if (File.Exists(destPath))
+        {
+            var srcInfo = new FileInfo(sourcePath);
+            var dstInfo = new FileInfo(destPath);
+            if (srcInfo.Length == dstInfo.Length &&
+                File.ReadAllBytes(sourcePath).AsSpan().SequenceEqual(File.ReadAllBytes(destPath)))
+            {
+                return;
+            }
+        }
+
+        File.Copy(sourcePath, destPath, overwrite: true);
+    }
 }

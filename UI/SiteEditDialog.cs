@@ -291,7 +291,7 @@ public class SiteEditDialog : Form
         // 5. SSL Checkbox
         _chkSsl = new CheckBox
         {
-            Text = " Enable SSL / HTTPS (Auto-generates self-signed TLS cert on port 443)",
+            Text = " Enable SSL / HTTPS (Trusted local TLS for Nginx 443 & Vite HMR)",
             Location = new Point(24, top + 4),
             AutoSize = true,
             ForeColor = ModernColors.TextPrimary,
